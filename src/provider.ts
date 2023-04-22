@@ -1,150 +1,166 @@
 import * as vscode from "vscode";
-import * as fs from "fs";
-import * as path from "path";
 
-export type SourcemapNode = {
-	name: string;
-	className: string;
-	filePaths?: string[];
-	children?: SourcemapNode[];
-};
-
-const getTreeItemOrder = (node: SourcemapNode): number => {
-	if (
-		node.className == "Script" ||
-		node.className == "LocalScript" ||
-		node.className == "ModuleScript"
-	) {
-		return 2;
-	} else {
-		return 1;
-	}
-};
+import { getClassIconPath } from "./utils/icons";
+import {
+	SourcemapNode,
+	findFilePath,
+	getSourcemapNodeTreeOrder,
+} from "./utils/sourcemap";
 
 export class RojoTreeProvider implements vscode.TreeDataProvider<RojoTreeItem> {
-	private roots: Map<string, SourcemapNode> = new Map();
+	private rootSourcemaps: Map<string, SourcemapNode> = new Map();
+	private rootTreeItems: Map<string, RojoTreeItem> = new Map();
+	private rootFilePaths: Map<string, Map<string, RojoTreeItem>> = new Map();
 
-	private _onDidChangeTreeData: vscode.EventEmitter<
-		RojoTreeItem | undefined | null | void
-	> = new vscode.EventEmitter<RojoTreeItem | undefined | null | void>();
-	readonly onDidChangeTreeData: vscode.Event<
-		RojoTreeItem | undefined | null | void
-	> = this._onDidChangeTreeData.event;
+	private _onDidChangeTreeData: vscode.EventEmitter<void> =
+		new vscode.EventEmitter();
+	readonly onDidChangeTreeData: vscode.Event<void> =
+		this._onDidChangeTreeData.event;
 
-	constructor(private context: vscode.ExtensionContext) {
-		context.subscriptions.push(
-			vscode.commands.registerCommand(
-				"rojoExplorer.openProjectRoot",
-				(item: RojoTreeItem) => {
-					item.openFile();
-				}
-			)
-		);
-	}
-
+	/**
+	 * Update a workspace path with a new sourcemap.
+	 *
+	 * This will create a new sub-tree, or update an existing tree, if found.
+	 */
 	public update(workspacePath: string, rootNode: SourcemapNode) {
-		this.roots.set(workspacePath, rootNode);
+		const workspaceItem = new RojoTreeItem(workspacePath, rootNode, null);
+		this.rootSourcemaps.set(workspacePath, rootNode);
+		this.rootTreeItems.set(workspacePath, workspaceItem);
+		this.rootFilePaths.set(workspacePath, workspaceItem.gatherFilePaths());
 		this._onDidChangeTreeData.fire();
 	}
 
+	/**
+	 * Delete a workspace path.
+	 *
+	 * This will remove all tree items and references to the workspace.
+	 */
 	public delete(workspacePath: string) {
-		this.roots.delete(workspacePath);
+		this.rootSourcemaps.delete(workspacePath);
+		this.rootTreeItems.delete(workspacePath);
+		this.rootFilePaths.delete(workspacePath);
 		this._onDidChangeTreeData.fire();
+	}
+
+	/**
+	 * Find a workspace tree item from the given file path.
+	 *
+	 * This will search all currently known workspace paths.
+	 */
+	public find(filePath: string): RojoTreeItem | null {
+		for (const map of this.rootFilePaths.values()) {
+			const item = map.get(filePath);
+			if (item) {
+				return item;
+			}
+		}
+		return null;
 	}
 
 	getTreeItem(item: RojoTreeItem): vscode.TreeItem {
 		return item;
 	}
 
-	getChildren(item?: RojoTreeItem): Thenable<RojoTreeItem[] | null> {
+	getParent(item: RojoTreeItem): RojoTreeItem | null {
+		return item.getParent();
+	}
+
+	getChildren(item?: RojoTreeItem): RojoTreeItem[] {
 		if (!item) {
-			const workspacePaths = [...this.roots.keys()];
-			workspacePaths.sort();
-			return Promise.resolve(
-				workspacePaths.map(
-					(workspacePath) =>
-						new RojoTreeItem(
-							workspacePath,
-							this.roots.get(workspacePath)!
-						)
-				)
-			);
+			return [...this.rootTreeItems.keys()]
+				.sort()
+				.map((workspacePath) => this.rootTreeItems.get(workspacePath)!);
 		} else {
-			const children = item.getChildren();
-			children.sort((left, right) => {
-				const leftOrder = getTreeItemOrder(left);
-				const rightOrder = getTreeItemOrder(right);
-				if (leftOrder != rightOrder) {
-					return leftOrder - rightOrder;
-				} else {
-					return left.name.localeCompare(right.name);
-				}
-			});
-			return Promise.resolve(
-				children.map(
-					(child) => new RojoTreeItem(item.workspaceRoot, child)
-				)
-			);
+			return item.getChildren();
 		}
 	}
 }
 
-class RojoTreeItem extends vscode.TreeItem {
-	private filePath: string | null = null;
-	private fileIsScript: boolean = false;
+export class RojoTreeItem extends vscode.TreeItem {
+	private filePath: string | null;
+	private fileIsScript: boolean;
+
+	private parent: RojoTreeItem | null;
+	private children: RojoTreeItem[] = [];
 
 	constructor(
-		public readonly workspaceRoot: string,
-		private node: SourcemapNode
+		workspaceRoot: string,
+		node: SourcemapNode,
+		parent: RojoTreeItem | null
 	) {
-		super("<<<INSTANCE>>>");
-		this.update(node);
-	}
-
-	public update(node: SourcemapNode) {
-		this.node = node;
-
-		this.label = node.name;
-		this.collapsibleState = node.children
-			? vscode.TreeItemCollapsibleState.Collapsed
-			: vscode.TreeItemCollapsibleState.None;
-
-		this.tooltip = node.className;
-		this.iconPath = path.join(
-			__dirname,
-			"..",
-			"icons",
-			`${node.className}.png`
+		super(
+			node.name,
+			node.children
+				? vscode.TreeItemCollapsibleState.Collapsed
+				: vscode.TreeItemCollapsibleState.None
 		);
 
-		if (node.filePaths) {
-			let filePath = node.filePaths.find((filePath) => {
-				if (
-					filePath.endsWith(".lua") ||
-					filePath.endsWith(".luau") ||
-					filePath.endsWith(".project.json")
-				) {
-					return filePath;
-				}
-			});
-			if (filePath) {
-				this.filePath = path.join(this.workspaceRoot, filePath);
-				this.fileIsScript = !filePath.endsWith(".project.json");
-			}
-		}
+		this.tooltip = node.className;
+		this.iconPath = getClassIconPath(node.className);
 
-		if (this.filePath && this.fileIsScript) {
+		const [filePath, fileIsScript] = findFilePath(workspaceRoot, node);
+		this.filePath = filePath;
+		this.fileIsScript = fileIsScript || false;
+
+		if (filePath && fileIsScript) {
 			this.command = {
 				title: "Open file",
 				command: "vscode.open",
-				arguments: [vscode.Uri.file(this.filePath)],
+				arguments: [vscode.Uri.file(filePath)],
 			};
-		} else if (this.filePath) {
+		} else if (filePath) {
 			this.contextValue = "projectRoot";
+		}
+
+		this.parent = parent;
+		if (node.children) {
+			this.children = [...node.children]
+				.filter((child) => {
+					return (
+						child.className !== "Folder" || child.name !== "_Index"
+					);
+				})
+				.sort((left, right) => {
+					const leftOrder = getSourcemapNodeTreeOrder(left);
+					const rightOrder = getSourcemapNodeTreeOrder(right);
+					if (leftOrder !== rightOrder) {
+						return leftOrder - rightOrder;
+					} else {
+						return left.name.localeCompare(right.name);
+					}
+				})
+				.map((child) => new RojoTreeItem(workspaceRoot, child, this));
 		}
 	}
 
-	public openFile() {
+	/**
+	 * Gathers a map of file path -> tree items.
+	 *
+	 * This will include the tree item it is called on.
+	 */
+	public gatherFilePaths(
+		map: Map<string, RojoTreeItem> | void
+	): Map<string, RojoTreeItem> {
+		if (map === undefined) {
+			map = new Map();
+		}
+		if (this.filePath) {
+			map.set(this.filePath, this);
+		}
+		if (this.children) {
+			for (const child of this.children.values()) {
+				child.gatherFilePaths(map);
+			}
+		}
+		return map;
+	}
+
+	/**
+	 * Opens the file path associated with this tree item.
+	 *
+	 * @returns `true` if the file was opened, `false` otherwise.
+	 */
+	public openFile(): boolean {
 		if (this.filePath) {
 			vscode.commands.executeCommand(
 				"vscode.open",
@@ -156,11 +172,26 @@ class RojoTreeItem extends vscode.TreeItem {
 		}
 	}
 
-	public getChildren(): SourcemapNode[] {
-		if (this.node.children) {
-			return [...this.node.children];
-		} else {
-			return [];
-		}
+	/**
+	 * Gets the file path associated with this tree item.
+	 */
+	public getFilePath(): string | null {
+		return this.filePath;
+	}
+
+	/**
+	 * Gets the parent tree item for this tree item, if any.
+	 */
+	public getParent(): RojoTreeItem | null {
+		return this.parent;
+	}
+
+	/**
+	 * Gets a list of all child tree items for this tree item.
+	 *
+	 * This list of children is unique and can be mutated freely.
+	 */
+	public getChildren(): RojoTreeItem[] {
+		return [...this.children];
 	}
 }
