@@ -61,6 +61,13 @@
 			}
 		],
 		"menus": {
+			"view/title": [
+				{
+					"command": "rojoExplorer.refresh",
+					"when": "view == rojoExplorer",
+					"group": "navigation"
+				}
+			],
 			"view/item/context": [
 				{
 					"command": "rojoExplorer.instanceCut",
