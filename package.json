@@ -1,0 +1,131 @@
+{
+	"name": "rojo-explorer",
+	"displayName": "Rojo Explorer",
+	"description": "",
+	"repository": "https://github.com/filiptibell/rojo-explorer",
+	"version": "0.0.1",
+	"engines": {
+		"vscode": "^1.77.0"
+	},
+	"categories": [
+		"Other"
+	],
+	"activationEvents": [],
+	"main": "./out/extension.js",
+	"contributes": {
+		"commands": [
+			{
+				"command": "rojoExplorer.refresh",
+				"title": "Refresh",
+				"icon": "$(refresh)"
+			},
+			{
+				"command": "rojoExplorer.instanceCut",
+				"title": "Cut",
+				"icon": "$(file)"
+			},
+			{
+				"command": "rojoExplorer.instanceCopy",
+				"title": "Copy",
+				"icon": "$(files)"
+			},
+			{
+				"command": "rojoExplorer.instancePaste",
+				"title": "Paste Into",
+				"icon": "$(file)"
+			},
+			{
+				"command": "rojoExplorer.openProjectRoot",
+				"title": "Open Project File",
+				"icon": "$(go-to-file)"
+			}
+		],
+		"keybindings": [
+			{
+				"command": "rojoExplorer.instanceCut",
+				"key": "ctrl+X",
+				"mac": "cmd+X",
+				"when": "canCut == true"
+			},
+			{
+				"command": "rojoExplorer.instanceCopy",
+				"key": "ctrl+C",
+				"mac": "cmd+C",
+				"when": "canCopy == true"
+			},
+			{
+				"command": "rojoExplorer.instancePaste",
+				"key": "ctrl+V",
+				"mac": "cmd+V",
+				"when": "canPaste == true"
+			}
+		],
+		"menus": {
+			"view/item/context": [
+				{
+					"command": "rojoExplorer.instanceCut",
+					"when": "view == rojoExplorer && canCut == true",
+					"group": "navigation@1"
+				},
+				{
+					"command": "rojoExplorer.instanceCopy",
+					"when": "view == rojoExplorer && canCopy == true",
+					"group": "navigation@2"
+				},
+				{
+					"command": "rojoExplorer.instancePaste",
+					"when": "view == rojoExplorer && canPaste == true",
+					"group": "navigation@3"
+				},
+				{
+					"command": "rojoExplorer.openProjectRoot",
+					"when": "view == rojoExplorer && viewItem == projectRoot",
+					"group": "inline@4"
+				}
+			]
+		},
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "rojo-explorer",
+					"title": "Rojo Explorer",
+					"icon": "$(remote-explorer)"
+				}
+			]
+		},
+		"views": {
+			"rojo-explorer": [
+				{
+					"id": "rojoExplorer",
+					"name": "Rojo Explorer",
+					"visibility": "visible"
+				}
+			]
+		},
+		"viewsWelcome": [
+			{
+				"view": "rojoExplorer",
+				"contents": "No workspace found"
+			}
+		]
+	},
+	"scripts": {
+		"vscode:prepublish": "npm run compile",
+		"compile": "tsc -p ./",
+		"watch": "tsc -watch -p ./",
+		"lint": "eslint src --ext ts"
+	},
+	"devDependencies": {
+		"@types/vscode": "^1.77.0",
+		"@types/glob": "^8.1.0",
+		"@types/mocha": "^10.0.1",
+		"@types/node": "16.x",
+		"@typescript-eslint/eslint-plugin": "^5.56.0",
+		"@typescript-eslint/parser": "^5.56.0",
+		"eslint": "^8.36.0",
+		"glob": "^8.1.0",
+		"mocha": "^10.2.0",
+		"typescript": "^4.9.5",
+		"@vscode/test-electron": "^2.3.0"
+	}
+}
