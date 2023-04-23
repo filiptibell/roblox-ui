@@ -19,12 +19,13 @@ export class RojoTreeProvider
 {
 	private rootLoadStates: Map<string, boolean> = new Map();
 	private rootSourcemaps: Map<string, SourcemapNode> = new Map();
-	private rootTreeItems: Map<string, vscode.TreeItem> = new Map();
+	private rootTreeItems: Map<string, RojoTreeItem | LoadingTreeItem> =
+		new Map();
 	private rootFilePaths: Map<string, Map<string, RojoTreeItem>> = new Map();
 
-	private _onDidChangeTreeData: vscode.EventEmitter<void> =
+	private _onDidChangeTreeData: vscode.EventEmitter<void | vscode.TreeItem> =
 		new vscode.EventEmitter();
-	readonly onDidChangeTreeData: vscode.Event<void> =
+	readonly onDidChangeTreeData: vscode.Event<void | vscode.TreeItem> =
 		this._onDidChangeTreeData.event;
 
 	private gitRepos: Map<string, GitRepositoryState | null> = new Map();
@@ -61,15 +62,17 @@ export class RojoTreeProvider
 	 * Mark a workspace path as currently loading.
 	 *
 	 * This will display a loading spinner in the tree view.
-	 *
-	 * Note that this will *only* display a loading spinner if
-	 * the workspace is completely blank and has no sourcemap.
 	 */
 	public setLoading(workspacePath: string) {
 		this.tryInitGitRepo(workspacePath);
-		if (!this.rootSourcemaps.has(workspacePath)) {
+		this.rootLoadStates.set(workspacePath, true);
+		const existingItem = this.rootTreeItems.get(workspacePath);
+		if (existingItem) {
+			if (existingItem.setIsLoading(true)) {
+				this._onDidChangeTreeData.fire(existingItem);
+			}
+		} else {
 			const workspaceItem = new LoadingTreeItem(workspacePath);
-			this.rootLoadStates.set(workspacePath, true);
 			this.rootTreeItems.set(workspacePath, workspaceItem);
 			this._onDidChangeTreeData.fire();
 		}
@@ -82,7 +85,7 @@ export class RojoTreeProvider
 	 */
 	public update(workspacePath: string, rootNode: SourcemapNode) {
 		this.tryInitGitRepo(workspacePath);
-		const workspaceItem = new RojoTreeItem(workspacePath, rootNode, null);
+		const workspaceItem = new RojoTreeItem(workspacePath, rootNode);
 		this.rootLoadStates.delete(workspacePath);
 		this.rootSourcemaps.set(workspacePath, rootNode);
 		this.rootTreeItems.set(workspacePath, workspaceItem);
@@ -159,13 +162,17 @@ export class RojoTreeItem extends vscode.TreeItem {
 	private filePath: string | null;
 	private fileIsScript: boolean;
 
-	private parent: RojoTreeItem | null;
+	private parent: RojoTreeItem | null = null;
 	private children: RojoTreeItem[] = [];
+	private className: string;
+
+	private isLoading: boolean = false;
 
 	constructor(
 		workspaceRoot: string,
 		node: SourcemapNode,
-		parent: RojoTreeItem | null
+		parent: RojoTreeItem | undefined | null | void,
+		isLoading: boolean | undefined | null | void
 	) {
 		super(
 			node.name,
@@ -174,8 +181,12 @@ export class RojoTreeItem extends vscode.TreeItem {
 				: vscode.TreeItemCollapsibleState.None
 		);
 
+		this.setIsLoading(isLoading);
+		this.className = node.className;
 		this.tooltip = node.className;
-		this.iconPath = getClassIconPath(node.className);
+		this.iconPath = this.isLoading
+			? new vscode.ThemeIcon("loading~spin")
+			: getClassIconPath(this.className);
 
 		const [filePath, fileIsScript] = findFilePath(workspaceRoot, node);
 		this.filePath = filePath;
@@ -192,7 +203,9 @@ export class RojoTreeItem extends vscode.TreeItem {
 			this.contextValue = "projectRoot";
 		}
 
-		this.parent = parent;
+		if (parent) {
+			this.parent = parent;
+		}
 		if (node.children) {
 			this.children = [...node.children]
 				.filter((child) => {
@@ -210,6 +223,21 @@ export class RojoTreeItem extends vscode.TreeItem {
 					}
 				})
 				.map((child) => new RojoTreeItem(workspaceRoot, child, this));
+		}
+	}
+
+	public setIsLoading(
+		isLoadingArg: boolean | undefined | null | void
+	): boolean {
+		const isLoading = isLoadingArg ? true : false;
+		if (this.isLoading !== isLoading) {
+			this.isLoading = isLoading;
+			this.iconPath = this.isLoading
+				? new vscode.ThemeIcon("loading~spin")
+				: getClassIconPath(this.className);
+			return true;
+		} else {
+			return false;
 		}
 	}
 
@@ -288,4 +316,6 @@ export class LoadingTreeItem extends vscode.TreeItem {
 		super(label);
 		this.iconPath = new vscode.ThemeIcon("loading~spin");
 	}
+
+	public setIsLoading(_isLoading: boolean | undefined | null | void) {}
 }
