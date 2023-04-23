@@ -1,5 +1,7 @@
 import * as vscode from "vscode";
 import * as path from "path";
+import * as cp from "child_process";
+import * as semver from "semver";
 
 export type SourcemapNode = {
 	name: string;
@@ -63,4 +65,41 @@ export const findFilePath = (
 		}
 	}
 	return [null, null];
+};
+
+const globalWatchSupportCache: Map<string, boolean> = new Map();
+export const rojoSourcemapWatchIsSupported = (cwd: string) => {
+	const cached = globalWatchSupportCache.get(cwd);
+	if (cached !== undefined) {
+		return cached;
+	}
+	// Rojo version 7.3.0 is the minimum supported version for sourcemap watching
+	let supported = true;
+	const result = cp.spawnSync("rojo --version", {
+		cwd: cwd,
+		env: process.env,
+		shell: true,
+	});
+	if (result.status !== null && result.status !== 0) {
+		vscode.window.showWarningMessage(
+			"Rojo Explorer failed to generate a sourcemap!" +
+				"\nMake sure Rojo is installed and available in the current directory."
+		);
+		supported = false;
+	} else {
+		const version = result.stdout.toString("utf8").slice(5);
+		if (!semver.satisfies(version, "^7.3.0")) {
+			vscode.window.showWarningMessage(
+				"Rojo Explorer failed to generate a sourcemap!" +
+					`\nRojo is installed with version ${version}` +
+					", but a minimum version of 7.3.0 is required."
+			);
+			supported = false;
+		}
+	}
+	globalWatchSupportCache.set(cwd, supported);
+	setTimeout(() => {
+		globalWatchSupportCache.delete(cwd);
+	}, 30_000);
+	return supported;
 };
