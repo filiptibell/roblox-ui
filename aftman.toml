@@ -1,0 +1,3 @@
+[tools]
+just = "readysetplay/just@1.8.0"
+rojo = "rojo-rbx/rojo@7.3.0"
