@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import * as path from "path";
 
 import { getClassIconPath } from "./utils/icons";
 import {
@@ -7,9 +8,12 @@ import {
 	getSourcemapNodeTreeOrder,
 } from "./utils/sourcemap";
 
-export class RojoTreeProvider implements vscode.TreeDataProvider<RojoTreeItem> {
+export class RojoTreeProvider
+	implements vscode.TreeDataProvider<vscode.TreeItem>
+{
+	private rootLoadStates: Map<string, boolean> = new Map();
 	private rootSourcemaps: Map<string, SourcemapNode> = new Map();
-	private rootTreeItems: Map<string, RojoTreeItem> = new Map();
+	private rootTreeItems: Map<string, vscode.TreeItem> = new Map();
 	private rootFilePaths: Map<string, Map<string, RojoTreeItem>> = new Map();
 
 	private _onDidChangeTreeData: vscode.EventEmitter<void> =
@@ -18,12 +22,30 @@ export class RojoTreeProvider implements vscode.TreeDataProvider<RojoTreeItem> {
 		this._onDidChangeTreeData.event;
 
 	/**
+	 * Mark a workspace path as currently loading.
+	 *
+	 * This will display a loading spinner in the tree view.
+	 *
+	 * Note that this will *only* display a loading spinner if
+	 * the workspace is completely blank and has no sourcemap.
+	 */
+	public setLoading(workspacePath: string) {
+		if (!this.rootSourcemaps.has(workspacePath)) {
+			const workspaceItem = new LoadingTreeItem(workspacePath);
+			this.rootLoadStates.set(workspacePath, true);
+			this.rootTreeItems.set(workspacePath, workspaceItem);
+			this._onDidChangeTreeData.fire();
+		}
+	}
+
+	/**
 	 * Update a workspace path with a new sourcemap.
 	 *
 	 * This will create a new sub-tree, or update an existing tree, if found.
 	 */
 	public update(workspacePath: string, rootNode: SourcemapNode) {
 		const workspaceItem = new RojoTreeItem(workspacePath, rootNode, null);
+		this.rootLoadStates.delete(workspacePath);
 		this.rootSourcemaps.set(workspacePath, rootNode);
 		this.rootTreeItems.set(workspacePath, workspaceItem);
 		this.rootFilePaths.set(workspacePath, workspaceItem.gatherFilePaths());
@@ -36,6 +58,7 @@ export class RojoTreeProvider implements vscode.TreeDataProvider<RojoTreeItem> {
 	 * This will remove all tree items and references to the workspace.
 	 */
 	public delete(workspacePath: string) {
+		this.rootLoadStates.delete(workspacePath);
 		this.rootSourcemaps.delete(workspacePath);
 		this.rootTreeItems.delete(workspacePath);
 		this.rootFilePaths.delete(workspacePath);
@@ -61,13 +84,17 @@ export class RojoTreeProvider implements vscode.TreeDataProvider<RojoTreeItem> {
 		return item;
 	}
 
-	getParent(item: RojoTreeItem): RojoTreeItem | null {
+	getParent(item: RojoTreeItem): vscode.TreeItem | null {
 		return item.getParent();
 	}
 
-	getChildren(item?: RojoTreeItem): RojoTreeItem[] {
+	getChildren(item?: RojoTreeItem): vscode.TreeItem[] {
 		if (!item) {
-			return [...this.rootTreeItems.keys()]
+			const keys = new Set([...this.rootTreeItems.keys()]);
+			for (const key of this.rootLoadStates.keys()) {
+				keys.add(key);
+			}
+			return Array.from(keys)
 				.sort()
 				.map((workspacePath) => this.rootTreeItems.get(workspacePath)!);
 		} else {
@@ -193,5 +220,19 @@ export class RojoTreeItem extends vscode.TreeItem {
 	 */
 	public getChildren(): RojoTreeItem[] {
 		return [...this.children];
+	}
+}
+
+export class LoadingTreeItem extends vscode.TreeItem {
+	constructor(workspacePath: string) {
+		let label;
+		try {
+			const wpath = path.parse(workspacePath);
+			label = `Loading workspace - ${wpath.name}`;
+		} catch {
+			label = "Loading workspace";
+		}
+		super(label);
+		this.iconPath = new vscode.ThemeIcon("loading~spin");
 	}
 }
