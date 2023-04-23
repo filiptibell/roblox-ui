@@ -13,6 +13,21 @@
 	"activationEvents": [],
 	"main": "./out/extension.js",
 	"contributes": {
+		"configuration": {
+			"title": "Rojo Explorer",
+			"properties": {
+				"rojoExplorer.includeNonScripts": {
+					"type": "boolean",
+					"default": false,
+					"description": "Include instances that are not scripts in the explorer"
+				},
+				"rojoExplorer.rojoProjectFile": {
+					"type": "string",
+					"default": "default.project.json",
+					"description": "Which project file to use for generating sourcemaps"
+				}
+			}
+		},
 		"commands": [
 			{
 				"command": "rojoExplorer.refresh",
