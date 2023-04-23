@@ -60,7 +60,11 @@ export const connectWorkspace = (
 		// keep track of stdout since data may be received in pieces and incomplete json
 		// When we have complete parseable json we will update + clear the current stdout
 		let stdout = "";
+		treeDataProvider.setLoading(workspacePath);
 		childProcess.stdout.on("data", (data: Buffer) => {
+			if (stdout === "") {
+				treeDataProvider.setLoading(workspacePath);
+			}
 			stdout += data.toString("utf8");
 			try {
 				let sourcemap = parseSourcemap(stdout);
