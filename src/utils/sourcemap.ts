@@ -1,7 +1,10 @@
 import * as vscode from "vscode";
 import * as path from "path";
-import * as cp from "child_process";
-import * as semver from "semver";
+import * as fs from "fs/promises";
+
+import { SettingsManager } from "./settings";
+import { RojoTreeProvider } from "../provider";
+import { rojoSourcemapWatch } from "./rojo";
 
 export type SourcemapNode = {
 	name: string;
@@ -67,39 +70,77 @@ export const findFilePath = (
 	return [null, null];
 };
 
-const globalWatchSupportCache: Map<string, boolean> = new Map();
-export const rojoSourcemapWatchIsSupported = (cwd: string) => {
-	const cached = globalWatchSupportCache.get(cwd);
-	if (cached !== undefined) {
-		return cached;
-	}
-	// Rojo version 7.3.0 is the minimum supported version for sourcemap watching
-	let supported = true;
-	const result = cp.spawnSync("rojo --version", {
-		cwd: cwd,
-		env: process.env,
-		shell: true,
-	});
-	if (result.status !== null && result.status !== 0) {
-		vscode.window.showWarningMessage(
-			"Rojo Explorer failed to generate a sourcemap!" +
-				"\nMake sure Rojo is installed and available in the current directory."
-		);
-		supported = false;
-	} else {
-		const version = result.stdout.toString("utf8").slice(5);
-		if (!semver.satisfies(version, "^7.3.0")) {
-			vscode.window.showWarningMessage(
-				"Rojo Explorer failed to generate a sourcemap!" +
-					`\nRojo is installed with version ${version}` +
-					", but a minimum version of 7.3.0 is required."
-			);
-			supported = false;
+export const connectSourcemapUsingRojo = (
+	workspacePath: string,
+	settings: SettingsManager,
+	treeDataProvider: RojoTreeProvider
+): [Function, Function] => {
+	// Spawn a new rojo process that will generate sourcemaps and watch for changes
+	const childProcess = rojoSourcemapWatch(
+		workspacePath,
+		settings,
+		() => {
+			treeDataProvider.setLoading(workspacePath);
+		},
+		(_, sourcemap) => {
+			treeDataProvider.update(workspacePath, sourcemap);
 		}
-	}
-	globalWatchSupportCache.set(cwd, supported);
-	setTimeout(() => {
-		globalWatchSupportCache.delete(cwd);
-	}, 30_000);
-	return supported;
+	);
+
+	// Create callback for manually updating the sourcemap
+	const update = () => {
+		rojoSourcemapWatch(
+			workspacePath,
+			settings,
+			() => {
+				treeDataProvider.setLoading(workspacePath);
+			},
+			(childProcess, sourcemap) => {
+				treeDataProvider.update(workspacePath, sourcemap);
+				childProcess.kill();
+			}
+		);
+	};
+
+	// Create callback for disconnecting (destroying)
+	// everything created for this workspace folder
+	const destroy = () => {
+		treeDataProvider.delete(workspacePath);
+		childProcess.kill();
+	};
+
+	return [update, destroy];
+};
+
+export const connectSourcemapUsingFile = (
+	workspacePath: string,
+	settings: SettingsManager,
+	treeDataProvider: RojoTreeProvider
+): [Function, Function] => {
+	// Create a file watcher for the sourcemap
+	const sourcemapPath = `${workspacePath}/sourcemap.json`;
+	const fileWatcher = vscode.workspace.createFileSystemWatcher(sourcemapPath);
+
+	// Create callback for updating sourcemap
+	const update = () => {
+		fs.readFile(sourcemapPath, "utf8").then((sourcemapJson) => {
+			treeDataProvider.update(
+				workspacePath,
+				parseSourcemap(sourcemapJson)
+			);
+		});
+	};
+
+	// Create callback for disconnecting (destroying)
+	// everything created for this workspace folder
+	const destroy = () => {
+		treeDataProvider.delete(workspacePath);
+		fileWatcher.dispose();
+	};
+
+	// Start watching the sourcemap for changes and update once initially
+	fileWatcher.onDidChange(update);
+	update();
+
+	return [update, destroy];
 };
