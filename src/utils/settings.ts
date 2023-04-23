@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 
 const EXTENSION = "rojoExplorer";
 const DEFAULTS = {
+	autogenerateSourcemap: true,
 	includeNonScripts: false,
 	rojoProjectFile: "default.project.json",
 };

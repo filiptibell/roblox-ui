@@ -41,10 +41,10 @@ export function activate(context: vscode.ExtensionContext) {
 	// command change we have to re-initialize the workspace
 	const settingsManager = new SettingsManager();
 	settingsManager.listen("includeNonScripts", (value) => {
-		connectAllWorkspaces(treeDataProvider);
+		connectAllWorkspaces(settingsManager, treeDataProvider);
 	});
 	settingsManager.listen("rojoProjectFile", () => {
-		connectAllWorkspaces(treeDataProvider);
+		connectAllWorkspaces(settingsManager, treeDataProvider);
 	});
 	context.subscriptions.push(settingsManager);
 
@@ -65,14 +65,18 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.workspace.onDidChangeWorkspaceFolders((event) => {
 			for (const addedFolder of event.added) {
-				connectWorkspace(addedFolder, treeDataProvider);
+				connectWorkspace(
+					addedFolder,
+					settingsManager,
+					treeDataProvider
+				);
 			}
 			for (const removedFolder of event.removed) {
 				disconnectWorkspace(removedFolder);
 			}
 		})
 	);
-	connectAllWorkspaces(treeDataProvider);
+	connectAllWorkspaces(settingsManager, treeDataProvider);
 }
 
 export function deactivate() {
