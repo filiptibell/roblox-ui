@@ -1,6 +1,12 @@
 import * as vscode from "vscode";
 import * as path from "path";
 
+import {
+	GitExtension,
+	API as GitAPI,
+	RepositoryState as GitRepositoryState,
+} from "./types/git";
+
 import { getClassIconPath } from "./utils/icons";
 import {
 	SourcemapNode,
@@ -21,6 +27,36 @@ export class RojoTreeProvider
 	readonly onDidChangeTreeData: vscode.Event<void> =
 		this._onDidChangeTreeData.event;
 
+	private gitRepos: Map<string, GitRepositoryState | null> = new Map();
+	private gitDisposables: Map<string, vscode.Disposable> = new Map();
+
+	tryInitGitRepo(workspacePath: string) {
+		try {
+			const gitExtension =
+				vscode.extensions.getExtension<GitExtension>("vscode.git");
+			if (gitExtension && gitExtension.exports.enabled) {
+				const gitApi = gitExtension.exports.getAPI(1);
+				if (gitApi && !this.gitRepos.has(workspacePath)) {
+					const repo = gitApi.getRepository(
+						vscode.Uri.file(workspacePath)
+					);
+					if (repo) {
+						this.gitRepos.set(workspacePath, repo.state);
+						this.gitDisposables.set(
+							workspacePath,
+							repo.state.onDidChange(() => {
+								this.gitRepos.set(workspacePath, repo.state);
+								// FUTURE: Git decorations on stuff? git actions?
+							})
+						);
+					} else {
+						this.gitRepos.set(workspacePath, null);
+					}
+				}
+			}
+		} catch {}
+	}
+
 	/**
 	 * Mark a workspace path as currently loading.
 	 *
@@ -30,6 +66,7 @@ export class RojoTreeProvider
 	 * the workspace is completely blank and has no sourcemap.
 	 */
 	public setLoading(workspacePath: string) {
+		this.tryInitGitRepo(workspacePath);
 		if (!this.rootSourcemaps.has(workspacePath)) {
 			const workspaceItem = new LoadingTreeItem(workspacePath);
 			this.rootLoadStates.set(workspacePath, true);
@@ -44,6 +81,7 @@ export class RojoTreeProvider
 	 * This will create a new sub-tree, or update an existing tree, if found.
 	 */
 	public update(workspacePath: string, rootNode: SourcemapNode) {
+		this.tryInitGitRepo(workspacePath);
 		const workspaceItem = new RojoTreeItem(workspacePath, rootNode, null);
 		this.rootLoadStates.delete(workspacePath);
 		this.rootSourcemaps.set(workspacePath, rootNode);
@@ -58,10 +96,16 @@ export class RojoTreeProvider
 	 * This will remove all tree items and references to the workspace.
 	 */
 	public delete(workspacePath: string) {
+		const disposable = this.gitDisposables.get(workspacePath);
+		if (disposable) {
+			disposable.dispose();
+		}
 		this.rootLoadStates.delete(workspacePath);
 		this.rootSourcemaps.delete(workspacePath);
 		this.rootTreeItems.delete(workspacePath);
 		this.rootFilePaths.delete(workspacePath);
+		this.gitRepos.delete(workspacePath);
+		this.gitDisposables.delete(workspacePath);
 		this._onDidChangeTreeData.fire();
 	}
 
@@ -101,6 +145,14 @@ export class RojoTreeProvider
 			return item.getChildren();
 		}
 	}
+
+	dispose() {
+		const disposables = this.gitDisposables.entries();
+		for (const [key, disposable] of disposables) {
+			disposable.dispose();
+			this.gitDisposables.delete(key);
+		}
+	}
 }
 
 export class RojoTreeItem extends vscode.TreeItem {
@@ -128,6 +180,7 @@ export class RojoTreeItem extends vscode.TreeItem {
 		const [filePath, fileIsScript] = findFilePath(workspaceRoot, node);
 		this.filePath = filePath;
 		this.fileIsScript = fileIsScript || false;
+		this.resourceUri = filePath ? vscode.Uri.file(filePath) : undefined;
 
 		if (filePath && fileIsScript) {
 			this.command = {
