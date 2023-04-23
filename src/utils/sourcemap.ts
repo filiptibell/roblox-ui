@@ -4,7 +4,12 @@ import * as fs from "fs/promises";
 
 import { SettingsManager } from "./settings";
 import { RojoTreeProvider } from "../provider";
-import { rojoSourcemapWatch } from "./rojo";
+import {
+	extractRojoFileExtension,
+	isInitFilePath,
+	isProjectFilePath,
+	rojoSourcemapWatch,
+} from "./rojo";
 
 export type SourcemapNode = {
 	name: string;
@@ -51,23 +56,69 @@ export const getSourcemapNodeTreeOrder = (node: SourcemapNode): number => {
 export const findFilePath = (
 	workspaceRoot: string,
 	node: SourcemapNode
-): [string | null, boolean | null] => {
+): string | null => {
 	if (node.filePaths) {
-		let filePath = node.filePaths.find((filePath) => {
+		const filePath = node.filePaths.find((filePath) => {
 			return (
-				filePath.endsWith(".project.json") ||
-				filePath.endsWith(".lua") ||
-				filePath.endsWith(".luau")
+				isProjectFilePath(filePath) ||
+				extractRojoFileExtension(filePath) !== null
 			);
 		});
 		if (filePath) {
-			return [
-				path.join(workspaceRoot, filePath),
-				!filePath.endsWith(".project.json"),
-			];
+			return path.join(workspaceRoot, filePath);
 		}
 	}
-	return [null, null];
+	return null;
+};
+
+export const findFolderPath = (
+	workspaceRoot: string,
+	node: SourcemapNode
+): string | null => {
+	// Init files are easy, they have a guaranteed parent folder
+	const filePath = findFilePath(workspaceRoot, node);
+	if (filePath) {
+		if (isProjectFilePath(filePath)) {
+			return null;
+		} else if (isInitFilePath(filePath)) {
+			return path.join(workspaceRoot, path.dirname(filePath));
+		}
+	}
+	// Other folders are trickier, and the sourcemap does not contain information for them
+	if (node.className === "Folder") {
+		// Look for the first descendant that has a known file path
+		let foundFilePath: string | undefined;
+		let currentDepth = 0;
+		let currentNode: SourcemapNode | undefined = node;
+		while (currentNode) {
+			if (currentNode.children && currentNode.children.length > 0) {
+				currentNode = currentNode.children[0];
+				currentDepth += 1;
+			} else {
+				break;
+			}
+			const filePath = currentNode
+				? findFilePath(workspaceRoot, currentNode)
+				: null;
+			if (filePath) {
+				foundFilePath = filePath;
+				break;
+			}
+		}
+		if (foundFilePath && currentDepth > 0) {
+			// We found a file and we know how deep in the hierarchy it is,
+			// so we step up the number of directories deep it was found
+			const parts = [path.dirname(foundFilePath)];
+			if (currentDepth > 0) {
+				for (let index = 1; index < currentDepth; index++) {
+					parts.push("..");
+				}
+			}
+			const folderPath = path.resolve(...parts);
+			return folderPath;
+		}
+	}
+	return null;
 };
 
 export const connectSourcemapUsingRojo = (

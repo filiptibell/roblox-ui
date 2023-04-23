@@ -1,9 +1,20 @@
 import * as vscode from "vscode";
 import * as cp from "child_process";
+import * as path from "path";
 import * as semver from "semver";
 
 import { SettingsManager } from "./settings";
 import { SourcemapNode, parseSourcemap } from "./sourcemap";
+
+const ROJO_PROJECT_EXTENSION = ".project.json";
+const ROJO_FILE_EXTENSIONS = [
+	"server.luau",
+	"server.lua",
+	"client.luau",
+	"client.lua",
+	"luau",
+	"lua",
+];
 
 const globalWatchSupportCache: Map<string, boolean> = new Map();
 export const rojoSupportsSourcemapWatch = (cwd: string) => {
@@ -107,4 +118,28 @@ export const rojoSourcemapWatch = (
 	});
 
 	return childProcess;
+};
+
+export const extractRojoFileExtension = (filePath: string): string | null => {
+	const fileName = path.basename(filePath);
+	for (const ext of ROJO_FILE_EXTENSIONS) {
+		if (fileName.endsWith(`.${ext}`)) {
+			return ext;
+		}
+	}
+	return null;
+};
+
+export const isProjectFilePath = (filePath: string): boolean => {
+	return filePath.endsWith(ROJO_PROJECT_EXTENSION);
+};
+
+export const isInitFilePath = (filePath: string): boolean => {
+	const fileExt = extractRojoFileExtension(filePath);
+	if (fileExt) {
+		const fileName = path.basename(filePath, `.${fileExt}`);
+		return fileName === "init";
+	} else {
+		return false;
+	}
 };

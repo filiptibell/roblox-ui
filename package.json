@@ -46,8 +46,28 @@
 			},
 			{
 				"command": "rojoExplorer.instancePaste",
+				"title": "Paste",
+				"icon": "$(file)"
+			},
+			{
+				"command": "rojoExplorer.instancePasteInto",
 				"title": "Paste Into",
 				"icon": "$(file)"
+			},
+			{
+				"command": "rojoExplorer.insertObject",
+				"title": "Insert Object",
+				"icon": "$(file-add)"
+			},
+			{
+				"command": "rojoExplorer.renameObject",
+				"title": "Rename...",
+				"icon": "$(file-rename)"
+			},
+			{
+				"command": "rojoExplorer.deleteObject",
+				"title": "Delete",
+				"icon": "$(file-remove)"
 			},
 			{
 				"command": "rojoExplorer.openProjectRoot",
@@ -60,19 +80,43 @@
 				"command": "rojoExplorer.instanceCut",
 				"key": "ctrl+X",
 				"mac": "cmd+X",
-				"when": "canCut == true"
+				"when": "(viewItem == scriptInstance || viewItem == folderInstance)"
 			},
 			{
 				"command": "rojoExplorer.instanceCopy",
 				"key": "ctrl+C",
 				"mac": "cmd+C",
-				"when": "canCopy == true"
+				"when": "(viewItem == scriptInstance || viewItem == folderInstance)"
 			},
 			{
 				"command": "rojoExplorer.instancePaste",
 				"key": "ctrl+V",
 				"mac": "cmd+V",
-				"when": "canPaste == true"
+				"when": "(viewItem == scriptInstance || viewItem == folderInstance)"
+			},
+			{
+				"command": "rojoExplorer.instancePasteInto",
+				"key": "shift+ctrl+V",
+				"mac": "shift+cmd+V",
+				"when": "(viewItem == scriptInstance || viewItem == folderInstance)"
+			},
+			{
+				"command": "rojoExplorer.insertObject",
+				"key": "shift+ctrl+I",
+				"mac": "shift+cmd+I",
+				"when": "(viewItem == scriptInstance || viewItem == folderInstance)"
+			},
+			{
+				"command": "rojoExplorer.renameObject",
+				"key": "F2",
+				"mac": "enter",
+				"when": "(viewItem == scriptInstance || viewItem == folderInstance)"
+			},
+			{
+				"command": "rojoExplorer.deleteObject",
+				"key": "backspace",
+				"mac": "cmd+backspace",
+				"when": "(viewItem == scriptInstance || viewItem == folderInstance)"
 			}
 		],
 		"menus": {
@@ -86,23 +130,48 @@
 			"view/item/context": [
 				{
 					"command": "rojoExplorer.instanceCut",
-					"when": "view == rojoExplorer && canCut == true",
+					"when": "view == rojoExplorer && (viewItem == scriptInstance || viewItem == folderInstance)",
 					"group": "navigation@1"
 				},
 				{
 					"command": "rojoExplorer.instanceCopy",
-					"when": "view == rojoExplorer && canCopy == true",
+					"when": "view == rojoExplorer && (viewItem == scriptInstance || viewItem == folderInstance)",
 					"group": "navigation@2"
 				},
 				{
 					"command": "rojoExplorer.instancePaste",
-					"when": "view == rojoExplorer && canPaste == true",
+					"when": "view == rojoExplorer && (viewItem == scriptInstance || viewItem == folderInstance)",
 					"group": "navigation@3"
+				},
+				{
+					"command": "rojoExplorer.instancePasteInto",
+					"when": "view == rojoExplorer && (viewItem == scriptInstance || viewItem == folderInstance)",
+					"group": "navigation@4"
+				},
+				{
+					"command": "rojoExplorer.insertObject",
+					"when": "view == rojoExplorer && (viewItem == scriptInstance || viewItem == folderInstance)",
+					"group": "navigation_2@1"
+				},
+				{
+					"command": "rojoExplorer.renameObject",
+					"when": "view == rojoExplorer && (viewItem == scriptInstance || viewItem == folderInstance)",
+					"group": "navigation_3@1"
+				},
+				{
+					"command": "rojoExplorer.deleteObject",
+					"when": "view == rojoExplorer && (viewItem == scriptInstance || viewItem == folderInstance)",
+					"group": "navigation_3@2"
+				},
+				{
+					"command": "rojoExplorer.insertObject",
+					"when": "view == rojoExplorer && (viewItem == scriptInstance || viewItem == folderInstance)",
+					"group": "inline@1"
 				},
 				{
 					"command": "rojoExplorer.openProjectRoot",
 					"when": "view == rojoExplorer && viewItem == projectRoot",
-					"group": "inline@4"
+					"group": "inline@2"
 				}
 			]
 		},

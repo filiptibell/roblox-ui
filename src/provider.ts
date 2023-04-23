@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import * as path from "path";
+import * as fs from "fs";
 
 import {
 	GitExtension,
@@ -11,6 +12,7 @@ import { getClassIconPath } from "./utils/icons";
 import {
 	SourcemapNode,
 	findFilePath,
+	findFolderPath,
 	getSourcemapNodeTreeOrder,
 } from "./utils/sourcemap";
 
@@ -160,11 +162,13 @@ export class RojoTreeProvider
 
 export class RojoTreeItem extends vscode.TreeItem {
 	private filePath: string | null;
+	private folderPath: string | null;
 	private fileIsScript: boolean;
 
+	private workspaceRoot: string;
+	private node: SourcemapNode;
 	private parent: RojoTreeItem | null = null;
 	private children: RojoTreeItem[] = [];
-	private className: string;
 
 	private isLoading: boolean = false;
 
@@ -182,25 +186,42 @@ export class RojoTreeItem extends vscode.TreeItem {
 		);
 
 		this.setIsLoading(isLoading);
-		this.className = node.className;
+		this.workspaceRoot = workspaceRoot;
+		this.node = node;
 		this.tooltip = node.className;
 		this.iconPath = this.isLoading
 			? new vscode.ThemeIcon("loading~spin")
-			: getClassIconPath(this.className);
+			: getClassIconPath(this.node.className);
 
-		const [filePath, fileIsScript] = findFilePath(workspaceRoot, node);
+		const filePath = findFilePath(workspaceRoot, node);
+		const folderPath = filePath
+			? null
+			: findFolderPath(workspaceRoot, node);
+		const fileIsScript = filePath
+			? !filePath.endsWith(".project.json")
+			: false;
 		this.filePath = filePath;
+		this.folderPath = folderPath;
 		this.fileIsScript = fileIsScript || false;
-		this.resourceUri = filePath ? vscode.Uri.file(filePath) : undefined;
+		this.resourceUri = filePath
+			? vscode.Uri.file(filePath)
+			: folderPath
+			? vscode.Uri.file(folderPath)
+			: undefined;
 
-		if (filePath && fileIsScript) {
-			this.command = {
-				title: "Open file",
-				command: "vscode.open",
-				arguments: [vscode.Uri.file(filePath)],
-			};
-		} else if (filePath) {
-			this.contextValue = "projectRoot";
+		if (filePath) {
+			if (fileIsScript) {
+				this.command = {
+					title: "Open file",
+					command: "vscode.open",
+					arguments: [vscode.Uri.file(filePath)],
+				};
+				this.contextValue = "scriptInstance";
+			} else {
+				this.contextValue = "projectRoot";
+			}
+		} else if (folderPath) {
+			this.contextValue = "folderInstance";
 		}
 
 		if (parent) {
@@ -226,6 +247,11 @@ export class RojoTreeItem extends vscode.TreeItem {
 		}
 	}
 
+	/**
+	 * Set if this tree item is currently loading or not.
+	 *
+	 * When the tree item is loading, it will show a spinning loading indicator.
+	 */
 	public setIsLoading(
 		isLoadingArg: boolean | undefined | null | void
 	): boolean {
@@ -234,7 +260,7 @@ export class RojoTreeItem extends vscode.TreeItem {
 			this.isLoading = isLoading;
 			this.iconPath = this.isLoading
 				? new vscode.ThemeIcon("loading~spin")
-				: getClassIconPath(this.className);
+				: getClassIconPath(this.node.className);
 			return true;
 		} else {
 			return false;
@@ -288,6 +314,13 @@ export class RojoTreeItem extends vscode.TreeItem {
 	}
 
 	/**
+	 * Gets the folder path associated with this tree item.
+	 */
+	public getFolderPath(): string | null {
+		return this.folderPath;
+	}
+
+	/**
 	 * Gets the parent tree item for this tree item, if any.
 	 */
 	public getParent(): RojoTreeItem | null {
@@ -301,6 +334,31 @@ export class RojoTreeItem extends vscode.TreeItem {
 	 */
 	public getChildren(): RojoTreeItem[] {
 		return [...this.children];
+	}
+
+	/**
+	 * @returns `true` if the tree item can be copied, `false` otherwise.
+	 */
+	public canMove(): boolean {
+		return this.filePath !== null || this.folderPath !== null;
+	}
+
+	/**
+	 * @returns `true` if the tree item can have other tree items pasted next to it, `false` otherwise.
+	 */
+	public canPaste(): boolean {
+		if (this.parent && this.parent.folderPath) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	/**
+	 * @returns `true` if the tree item can have other tree items pasted into it, `false` otherwise.
+	 */
+	public canPasteInto(): boolean {
+		return this.folderPath !== null;
 	}
 }
 
