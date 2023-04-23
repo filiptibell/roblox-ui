@@ -1,7 +1,10 @@
 import * as path from "path";
 
 const KNOWN_ICON_CLASSES: Set<string> = new Set([
+	"Attachment",
 	"BasePart",
+	"BindableEvent",
+	"BindableFunction",
 	"DataModel",
 	"Folder",
 	"Instance",
@@ -33,6 +36,7 @@ const KNOWN_ICON_CLASSES: Set<string> = new Set([
 	"StarterPlayerScripts",
 	"Teams",
 	"Terrain",
+	"TextChatService",
 	"VoiceChatService",
 	"Workspace",
 	"WorldModel",
