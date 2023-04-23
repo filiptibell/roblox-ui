@@ -1,5 +1,6 @@
 node_modules
 out
+bin
 
 /.DS_Store
 /**/.DS_Store
