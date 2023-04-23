@@ -9,6 +9,12 @@ import {
 	disconnectWorkspace,
 	updateAllWorkspaces,
 } from "./workspaces";
+import { connectSelection, disconnectSelection } from "./selection";
+import {
+	deleteExistingInstance,
+	promptNewInstanceCreation,
+	promptRenameExistingInstance,
+} from "./utils/instances";
 
 export function activate(context: vscode.ExtensionContext) {
 	// Create the main tree view and data provider
@@ -29,6 +35,39 @@ export function activate(context: vscode.ExtensionContext) {
 	// Register per-file commands
 	context.subscriptions.push(
 		vscode.commands.registerCommand(
+			"rojoExplorer.insertObject",
+			(item: RojoTreeItem) => {
+				promptNewInstanceCreation(
+					item.getFolderPath(),
+					item.getFilePath()
+				);
+			}
+		)
+	);
+	context.subscriptions.push(
+		vscode.commands.registerCommand(
+			"rojoExplorer.renameObject",
+			(item: RojoTreeItem) => {
+				promptRenameExistingInstance(
+					item.getFolderPath(),
+					item.getFilePath()
+				);
+			}
+		)
+	);
+	context.subscriptions.push(
+		vscode.commands.registerCommand(
+			"rojoExplorer.deleteObject",
+			(item: RojoTreeItem) => {
+				deleteExistingInstance(
+					item.getFolderPath(),
+					item.getFilePath()
+				);
+			}
+		)
+	);
+	context.subscriptions.push(
+		vscode.commands.registerCommand(
 			"rojoExplorer.openProjectRoot",
 			(item: RojoTreeItem) => {
 				item.openFile();
@@ -40,7 +79,7 @@ export function activate(context: vscode.ExtensionContext) {
 	// change behavior of the sourcemap or the sourcemap watch
 	// command change we have to re-initialize the workspace
 	const settingsManager = new SettingsManager();
-	settingsManager.listen("includeNonScripts", (value) => {
+	settingsManager.listen("includeNonScripts", () => {
 		connectAllWorkspaces(settingsManager, treeDataProvider);
 	});
 	settingsManager.listen("rojoProjectFile", () => {
@@ -77,8 +116,10 @@ export function activate(context: vscode.ExtensionContext) {
 		})
 	);
 	connectAllWorkspaces(settingsManager, treeDataProvider);
+	connectSelection(treeView, treeDataProvider);
 }
 
 export function deactivate() {
 	disconnectAllWorkspaces();
+	disconnectSelection();
 }
