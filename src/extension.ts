@@ -1,68 +1,14 @@
-import * as fs from "fs";
 import * as vscode from "vscode";
 
 import { RojoTreeItem, RojoTreeProvider } from "./provider";
-import { parseSourcemap } from "./utils/sourcemap";
-
-const workspaceDestructors: Map<string, Function> = new Map();
-const workspaceUpdaters: Map<string, Function> = new Map();
-
-const disconnectWorkspace = (folder: vscode.WorkspaceFolder) => {
-	const destroy = workspaceDestructors.get(folder.uri.fsPath);
-	if (destroy) {
-		destroy();
-	}
-};
-
-const updateWorkspace = (folder: vscode.WorkspaceFolder) => {
-	const update = workspaceUpdaters.get(folder.uri.fsPath);
-	if (update) {
-		update();
-	}
-};
-
-const connectWorkspace = (
-	folder: vscode.WorkspaceFolder,
-	treeDataProvider: RojoTreeProvider
-) => {
-	// Watch the sourcemap.json in this workspace folder
-	const workspacePath = folder.uri.fsPath;
-	const sourcemapPath = `${workspacePath}/sourcemap.json`;
-	const fileWatcher = vscode.workspace.createFileSystemWatcher(sourcemapPath);
-
-	// Create callback for updating sourcemap
-	const update = () => {
-		fs.readFile(
-			sourcemapPath,
-			{
-				encoding: "utf8",
-			},
-			(err, txt) => {
-				if (!err) {
-					const sourcemap = parseSourcemap(txt);
-					treeDataProvider.update(workspacePath, sourcemap);
-				}
-			}
-		);
-	};
-
-	// Create callback for disconnecting (destroying)
-	// everything created for this workspace folder
-	const destroy = () => {
-		workspaceUpdaters.delete(workspacePath);
-		workspaceDestructors.delete(workspacePath);
-		treeDataProvider.delete(workspacePath);
-		fileWatcher.dispose();
-	};
-
-	// Store callbacks to access them from other listeners
-	workspaceUpdaters.set(workspacePath, update);
-	workspaceDestructors.set(workspacePath, destroy);
-
-	// Start watching the sourcemap for changes and update once initially
-	fileWatcher.onDidChange(update);
-	updateWorkspace(folder);
-};
+import { SettingsManager } from "./utils/settings";
+import {
+	connectAllWorkspaces,
+	connectWorkspace,
+	disconnectAllWorkspaces,
+	disconnectWorkspace,
+	updateAllWorkspaces,
+} from "./workspaces";
 
 export function activate(context: vscode.ExtensionContext) {
 	// Create the main tree view and data provider
@@ -74,12 +20,10 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Register global commands
 	context.subscriptions.push(
-		vscode.commands.registerCommand("rojoExplorer.refresh", () => {
-			const workspaceFolders = vscode.workspace.workspaceFolders;
-			if (workspaceFolders) {
-				workspaceFolders.forEach(updateWorkspace);
-			}
-		})
+		vscode.commands.registerCommand(
+			"rojoExplorer.refresh",
+			updateAllWorkspaces
+		)
 	);
 
 	// Register per-file commands
@@ -91,6 +35,18 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 		)
 	);
+
+	// Listen for settings changing, if any of the settings that
+	// change behavior of the sourcemap or the sourcemap watch
+	// command change we have to re-initialize the workspace
+	const settingsManager = new SettingsManager();
+	settingsManager.listen("includeNonScripts", (value) => {
+		connectAllWorkspaces(treeDataProvider);
+	});
+	settingsManager.listen("rojoProjectFile", () => {
+		connectAllWorkspaces(treeDataProvider);
+	});
+	context.subscriptions.push(settingsManager);
 
 	// Listen for focus changing to sync selection with our tree view items
 	context.subscriptions.push(
@@ -116,19 +72,9 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 		})
 	);
-	if (vscode.workspace.workspaceFolders) {
-		vscode.workspace.workspaceFolders.forEach((folder) => {
-			connectWorkspace(folder, treeDataProvider);
-		});
-	}
+	connectAllWorkspaces(treeDataProvider);
 }
 
 export function deactivate() {
-	let workspacePaths = [...workspaceDestructors.keys()];
-	workspacePaths.forEach((workspacePath) => {
-		const destroy = workspaceDestructors.get(workspacePath);
-		if (destroy) {
-			destroy();
-		}
-	});
+	disconnectAllWorkspaces();
 }
