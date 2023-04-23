@@ -21,3 +21,4 @@ To test the extension, follow these steps:
 -   [ ] Automatically download & store icons instead of hardcoding
 -   [ ] Automatically download & store the Roblox API dump to get rid of some more hardcoding
 -   [ ] Fix folders & files being able to be created outside of project root directories
+-   [ ] Fix ordering of instances, make it consistent with Roblox Studio

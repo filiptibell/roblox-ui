@@ -25,26 +25,25 @@ export const createNewInstance = async (
 	// need to convert the file into a subfolder + init file
 	if (!folderPath) {
 		if (!filePath) {
-			vscode.window.showWarningMessage(
-				`Failed to insert new ${className} instance!` +
-					"\nThe selected instance had no file path."
-			);
-			return;
+			throw new Error("Unreachable");
 		}
-		const dirName = path.dirname(filePath);
-		const fileExt = extractRojoFileExtension(filePath);
-		vscode.window.showInformationMessage(filePath);
-		if (fileExt) {
-			const subdirName = path.basename(filePath, `.${fileExt}`);
-			folderPath = path.join(dirName, subdirName);
-			await fs.mkdir(folderPath);
-			await fs.rename(filePath, `${folderPath}/init.${fileExt}`);
+		if (isInitFilePath(filePath)) {
+			folderPath = path.dirname(filePath);
 		} else {
-			vscode.window.showWarningMessage(
-				`Failed to insert new ${className} instance!` +
-					"\nThe selected instance had an invalid file extension."
-			);
-			return;
+			const fileExt = extractRojoFileExtension(filePath);
+			if (fileExt) {
+				const dirName = path.dirname(filePath);
+				const subdirName = path.basename(filePath, `.${fileExt}`);
+				folderPath = path.join(dirName, subdirName);
+				await fs.mkdir(folderPath);
+				await fs.rename(filePath, `${folderPath}/init.${fileExt}`);
+			} else {
+				vscode.window.showWarningMessage(
+					`Failed to insert new ${className} instance!` +
+						"\nThe selected instance had an invalid file extension."
+				);
+				return;
+			}
 		}
 	}
 
