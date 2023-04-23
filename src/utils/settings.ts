@@ -2,8 +2,8 @@ import * as vscode from "vscode";
 
 const EXTENSION = "rojoExplorer";
 const DEFAULTS = {
-	includeNonScripts: true,
-	rojoProjectFile: "",
+	includeNonScripts: false,
+	rojoProjectFile: "default.project.json",
 };
 
 type Settings = typeof DEFAULTS;
