@@ -1,7 +1,12 @@
 import * as vscode from "vscode";
 
-import { RojoTreeItem, RojoTreeProvider } from "./provider";
 import { SettingsManager } from "./utils/settings";
+import {
+	deleteExistingInstance,
+	promptNewInstanceCreation,
+	promptRenameExistingInstance,
+} from "./utils/instances";
+
 import {
 	connectAllWorkspaces,
 	connectWorkspace,
@@ -9,16 +14,36 @@ import {
 	disconnectWorkspace,
 	updateAllWorkspaces,
 } from "./workspaces";
-import { connectSelection, disconnectSelection } from "./selection";
-import {
-	deleteExistingInstance,
-	promptNewInstanceCreation,
-	promptRenameExistingInstance,
-} from "./utils/instances";
 
-export function activate(context: vscode.ExtensionContext) {
+import { connectSelection, disconnectSelection } from "./selection";
+
+import { RojoTreeItem, RojoTreeProvider } from "./provider";
+
+import {
+	getRobloxApiDump,
+	getRobloxApiReflection,
+	getRobloxApiVersion,
+} from "./web/roblox";
+
+export async function activate(context: vscode.ExtensionContext) {
+	// Fetch api dump and reflection metadata, if the user does not
+	// have an internet connection the very first time they activate
+	// the extension this may fail but will otherwise fall back to a
+	// cached version and warn the user about the potential desync
+	let apiVersion;
+	let apiDump;
+	let apiReflection;
+	try {
+		apiVersion = await getRobloxApiVersion(context);
+		apiDump = await getRobloxApiDump(context, apiVersion);
+		apiReflection = await getRobloxApiReflection(context, apiVersion);
+	} catch (err) {
+		vscode.window.showErrorMessage(`${err}`);
+		return;
+	}
+
 	// Create the main tree view and data provider
-	const treeDataProvider = new RojoTreeProvider();
+	const treeDataProvider = new RojoTreeProvider(apiDump, apiReflection);
 	const treeView = vscode.window.createTreeView("rojoExplorer", {
 		treeDataProvider,
 	});
@@ -90,7 +115,7 @@ export function activate(context: vscode.ExtensionContext) {
 	// Listen for focus changing to sync selection with our tree view items
 	context.subscriptions.push(
 		vscode.window.onDidChangeActiveTextEditor((e) => {
-			if (e) {
+			if (e && treeView.visible) {
 				const filePath = e.document.uri.fsPath;
 				const fileItem = treeDataProvider.find(filePath);
 				if (fileItem) {

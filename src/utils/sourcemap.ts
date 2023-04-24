@@ -10,6 +10,7 @@ import {
 	isProjectFilePath,
 	rojoSourcemapWatch,
 } from "./rojo";
+import { RobloxReflectionMetadata } from "../web/robloxReflectionMetadata";
 
 export type SourcemapNode = {
 	name: string;
@@ -39,7 +40,16 @@ export const parseSourcemap = (txt: string): SourcemapNode => {
 	return sourcemap;
 };
 
-export const getSourcemapNodeTreeOrder = (node: SourcemapNode): number => {
+export const getSourcemapNodeTreeOrder = (
+	node: SourcemapNode,
+	reflectionMetadata: RobloxReflectionMetadata | undefined | null | void
+): number => {
+	if (reflectionMetadata) {
+		const metadata = reflectionMetadata.Classes.get(node.className);
+		if (metadata && metadata.ExplorerOrder) {
+			return metadata.ExplorerOrder;
+		}
+	}
 	if (
 		node.className === "Script" ||
 		node.className === "LocalScript" ||
