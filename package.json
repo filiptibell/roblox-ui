@@ -16,6 +16,11 @@
 		"configuration": {
 			"title": "Rojo Explorer",
 			"properties": {
+				"rojoExplorer.autogenerateSourcemap": {
+					"type": "boolean",
+					"default": true,
+					"description": "Autogenerate sourcemap using the rojo project file\nTurn this setting off to watch a `sourcemap.json` file instead"
+				},
 				"rojoExplorer.includeNonScripts": {
 					"type": "boolean",
 					"default": false,
