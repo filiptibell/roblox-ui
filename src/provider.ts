@@ -1,10 +1,8 @@
 import * as vscode from "vscode";
 import * as path from "path";
-import * as fs from "fs";
 
 import {
 	GitExtension,
-	API as GitAPI,
 	RepositoryState as GitRepositoryState,
 } from "./types/git";
 
@@ -15,6 +13,9 @@ import {
 	findFolderPath,
 	getSourcemapNodeTreeOrder,
 } from "./utils/sourcemap";
+
+import { RobloxApiDump } from "./web/robloxApiDump";
+import { RobloxReflectionMetadata } from "./web/robloxReflectionMetadata";
 
 export class RojoTreeProvider
 	implements vscode.TreeDataProvider<vscode.TreeItem>
@@ -32,6 +33,11 @@ export class RojoTreeProvider
 
 	private gitRepos: Map<string, GitRepositoryState | null> = new Map();
 	private gitDisposables: Map<string, vscode.Disposable> = new Map();
+
+	constructor(
+		public readonly apiDump: RobloxApiDump,
+		public readonly reflectionMetadata: RobloxReflectionMetadata
+	) {}
 
 	tryInitGitRepo(workspacePath: string) {
 		try {
@@ -87,7 +93,7 @@ export class RojoTreeProvider
 	 */
 	public update(workspacePath: string, rootNode: SourcemapNode) {
 		this.tryInitGitRepo(workspacePath);
-		const workspaceItem = new RojoTreeItem(workspacePath, rootNode);
+		const workspaceItem = new RojoTreeItem(this, workspacePath, rootNode);
 		this.rootLoadStates.delete(workspacePath);
 		this.rootSourcemaps.set(workspacePath, rootNode);
 		this.rootTreeItems.set(workspacePath, workspaceItem);
@@ -173,6 +179,7 @@ export class RojoTreeItem extends vscode.TreeItem {
 	private isLoading: boolean = false;
 
 	constructor(
+		treeProvider: RojoTreeProvider,
 		workspaceRoot: string,
 		node: SourcemapNode,
 		parent: RojoTreeItem | undefined | null | void,
@@ -235,15 +242,29 @@ export class RojoTreeItem extends vscode.TreeItem {
 					);
 				})
 				.sort((left, right) => {
-					const leftOrder = getSourcemapNodeTreeOrder(left);
-					const rightOrder = getSourcemapNodeTreeOrder(right);
+					const leftOrder = getSourcemapNodeTreeOrder(
+						left,
+						treeProvider.reflectionMetadata
+					);
+					const rightOrder = getSourcemapNodeTreeOrder(
+						right,
+						treeProvider.reflectionMetadata
+					);
 					if (leftOrder !== rightOrder) {
 						return leftOrder - rightOrder;
 					} else {
 						return left.name.localeCompare(right.name);
 					}
 				})
-				.map((child) => new RojoTreeItem(workspaceRoot, child, this));
+				.map(
+					(child) =>
+						new RojoTreeItem(
+							treeProvider,
+							workspaceRoot,
+							child,
+							this
+						)
+				);
 		}
 	}
 

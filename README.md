@@ -19,6 +19,6 @@ To test the extension, follow these steps:
 -   [ ] Implement support for Rojo's `.meta` files in rename/delete operations
 -   [ ] Implement support for adding arbitrary classes using `.model.json` files
 -   [ ] Automatically download & store icons instead of hardcoding
--   [ ] Automatically download & store the Roblox API dump to get rid of some more hardcoding
+-   [x] Automatically download & store the Roblox API dump to get rid of some more hardcoding
 -   [ ] Fix folders & files being able to be created outside of project root directories
--   [ ] Fix ordering of instances, make it consistent with Roblox Studio
+-   [x] Fix ordering of instances, make it consistent with Roblox Studio
