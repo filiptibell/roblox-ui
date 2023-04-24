@@ -6,6 +6,18 @@ import * as semver from "semver";
 import { SettingsProvider } from "../providers/settings";
 import { SourcemapNode, parseSourcemap } from "./sourcemap";
 
+export type ProjectRootNode = {
+	name: string;
+	tree: ProjectOrMetaFileNode;
+};
+
+export type ProjectOrMetaFileNode = {
+	["$ignoreUnknownInstances"]?: boolean;
+	["$className"]?: string;
+	["$path"]?: string;
+	[key: string]: any | ProjectOrMetaFileNode;
+};
+
 const ROJO_PROJECT_EXTENSION = ".project.json";
 const ROJO_FILE_EXTENSIONS = [
 	"server.luau",

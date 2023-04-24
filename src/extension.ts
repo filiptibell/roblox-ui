@@ -35,19 +35,21 @@ export async function activate(context: vscode.ExtensionContext) {
 		return;
 	}
 
+	// Create settings provider which lots of other stuff has to use first
+	const settings = new SettingsProvider();
+	context.subscriptions.push(settings);
+
 	// Create the main tree view and data provider
 	// TODO: Create drag & drop provider here
-	const treeProvider = new RojoTreeProvider(apiDump, apiReflection);
+	const treeProvider = new RojoTreeProvider(settings, apiDump, apiReflection);
 	const treeView = vscode.window.createTreeView("rojoExplorer", {
 		treeDataProvider: treeProvider,
 	});
 	context.subscriptions.push(treeView);
 
-	// Create other providers for things such as settings, selection handling, ...
-	const settings = new SettingsProvider();
+	// Create other providers for things such as selection handling, ...
 	const selection = new SelectionProvider(treeView, treeProvider);
 	const commands = new CommandsProvider(treeView, treeProvider);
-	context.subscriptions.push(settings);
 	context.subscriptions.push(selection);
 	context.subscriptions.push(commands);
 
@@ -58,6 +60,9 @@ export async function activate(context: vscode.ExtensionContext) {
 		connectAllWorkspaces(settings, treeProvider);
 	});
 	settings.listen("rojoProjectFile", () => {
+		connectAllWorkspaces(settings, treeProvider);
+	});
+	settings.listen("showFilePaths", () => {
 		connectAllWorkspaces(settings, treeProvider);
 	});
 

@@ -16,6 +16,7 @@ import {
 
 import { RobloxApiDump } from "../web/robloxApiDump";
 import { RobloxReflectionMetadata } from "../web/robloxReflectionMetadata";
+import { SettingsProvider } from "./settings";
 
 export class RojoTreeProvider
 	implements vscode.TreeDataProvider<vscode.TreeItem>
@@ -35,6 +36,7 @@ export class RojoTreeProvider
 	private gitDisposables: Map<string, vscode.Disposable> = new Map();
 
 	constructor(
+		public readonly settingsProvider: SettingsProvider,
 		public readonly apiDump: RobloxApiDump,
 		public readonly reflectionMetadata: RobloxReflectionMetadata
 	) {}
@@ -93,7 +95,12 @@ export class RojoTreeProvider
 	 */
 	public update(workspacePath: string, rootNode: SourcemapNode) {
 		this.tryInitGitRepo(workspacePath);
-		const workspaceItem = new RojoTreeItem(this, workspacePath, rootNode);
+		const workspaceItem = new RojoTreeItem(
+			this.settingsProvider,
+			this,
+			workspacePath,
+			rootNode
+		);
 		this.rootLoadStates.delete(workspacePath);
 		this.rootSourcemaps.set(workspacePath, rootNode);
 		this.rootTreeItems.set(workspacePath, workspaceItem);
@@ -180,8 +187,9 @@ export class RojoTreeItem extends vscode.TreeItem {
 	private isLoading: boolean = false;
 
 	constructor(
+		settingsProvider: SettingsProvider,
 		treeProvider: RojoTreeProvider,
-		workspaceRoot: string,
+		workspacePath: string,
 		node: SourcemapNode,
 		parent: RojoTreeItem | undefined | null | void,
 		isLoading: boolean | undefined | null | void
@@ -194,7 +202,7 @@ export class RojoTreeItem extends vscode.TreeItem {
 		);
 
 		this.setIsLoading(isLoading);
-		this.workspaceRoot = workspaceRoot;
+		this.workspaceRoot = workspacePath;
 		this.node = node;
 		this.tooltip = node.className;
 
@@ -206,10 +214,10 @@ export class RojoTreeItem extends vscode.TreeItem {
 			? new vscode.ThemeIcon("loading~spin")
 			: this.iconPathReal;
 
-		const filePath = findFilePath(workspaceRoot, node);
+		const filePath = findFilePath(workspacePath, node);
 		const folderPath = filePath
 			? null
-			: findFolderPath(workspaceRoot, node);
+			: findFolderPath(workspacePath, node);
 		const fileIsScript = filePath
 			? !filePath.endsWith(".project.json")
 			: false;
@@ -221,6 +229,17 @@ export class RojoTreeItem extends vscode.TreeItem {
 			: folderPath
 			? vscode.Uri.file(folderPath)
 			: undefined;
+
+		if (settingsProvider.get("showFilePaths")) {
+			const fsPath = filePath
+				? filePath
+				: folderPath
+				? folderPath
+				: undefined;
+			if (fsPath) {
+				this.description = fsPath.slice(workspacePath.length + 1);
+			}
+		}
 
 		if (filePath) {
 			if (fileIsScript) {
@@ -265,8 +284,9 @@ export class RojoTreeItem extends vscode.TreeItem {
 				.map(
 					(child) =>
 						new RojoTreeItem(
+							settingsProvider,
 							treeProvider,
-							workspaceRoot,
+							workspacePath,
 							child,
 							this
 						)
@@ -367,18 +387,21 @@ export class RojoTreeItem extends vscode.TreeItem {
 	 * @returns `true` if the tree item can be copied, `false` otherwise.
 	 */
 	public canMove(): boolean {
-		return this.filePath !== null || this.folderPath !== null;
+		return (
+			(this.filePath !== null || this.folderPath !== null) &&
+			!this.node.folderPath
+		);
 	}
 
 	/**
 	 * @returns `true` if the tree item can have other tree items pasted next to it, `false` otherwise.
 	 */
 	public canPaste(): boolean {
-		if (this.parent && this.parent.folderPath) {
-			return true;
-		} else {
-			return false;
-		}
+		return (
+			this.parent !== null &&
+			this.parent.folderPath !== null &&
+			!this.node.folderPath
+		);
 	}
 
 	/**

@@ -43,32 +43,27 @@ export const connectWorkspace = (
 		}
 	}
 
-	let update: Function;
-	let destroy: Function;
 	if (autogenerate) {
 		// Autogeneration is enabled and available, we can
 		// watch for changes using the rojo sourcemap cli command
-		const [updateCallback, destroyCallback] = connectSourcemapUsingRojo(
+		const [update, destroy] = connectSourcemapUsingRojo(
 			workspacePath,
 			settings,
 			treeProvider
 		);
-		update = updateCallback;
-		destroy = destroyCallback;
+		workspaceUpdaters.set(workspacePath, update);
+		workspaceDestructors.set(workspacePath, destroy);
 	} else {
 		// Autogeneration is either disabled or not available, so we will
 		// instead watch the sourcemap.json file in this workspace folder
-		const [updateCallback, destroyCallback] = connectSourcemapUsingFile(
+		const [update, destroy] = connectSourcemapUsingFile(
 			workspacePath,
 			settings,
 			treeProvider
 		);
-		update = updateCallback;
-		destroy = destroyCallback;
+		workspaceUpdaters.set(workspacePath, update);
+		workspaceDestructors.set(workspacePath, destroy);
 	}
-
-	workspaceUpdaters.set(workspacePath, update);
-	workspaceDestructors.set(workspacePath, destroy);
 };
 
 export const connectAllWorkspaces = (
