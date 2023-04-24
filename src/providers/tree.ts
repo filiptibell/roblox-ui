@@ -176,6 +176,7 @@ export class RojoTreeItem extends vscode.TreeItem {
 	private parent: RojoTreeItem | null = null;
 	private children: RojoTreeItem[] = [];
 
+	private iconPathReal: string;
 	private isLoading: boolean = false;
 
 	constructor(
@@ -196,9 +197,14 @@ export class RojoTreeItem extends vscode.TreeItem {
 		this.workspaceRoot = workspaceRoot;
 		this.node = node;
 		this.tooltip = node.className;
+
+		this.iconPathReal = getClassIconPath(
+			treeProvider.apiDump,
+			this.node.className
+		);
 		this.iconPath = this.isLoading
 			? new vscode.ThemeIcon("loading~spin")
-			: getClassIconPath(this.node.className);
+			: this.iconPathReal;
 
 		const filePath = findFilePath(workspaceRoot, node);
 		const folderPath = filePath
@@ -281,7 +287,7 @@ export class RojoTreeItem extends vscode.TreeItem {
 			this.isLoading = isLoading;
 			this.iconPath = this.isLoading
 				? new vscode.ThemeIcon("loading~spin")
-				: getClassIconPath(this.node.className);
+				: this.iconPathReal;
 			return true;
 		} else {
 			return false;
