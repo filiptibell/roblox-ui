@@ -16,6 +16,7 @@ To test the extension, follow these steps:
 ## TODO
 
 -   [ ] Implement remaining file tree operations - copy/cut/paste/paste into
+-   [ ] Implement drag & drop functionality for the file tree
 -   [ ] Implement support for Rojo's `.meta` files in rename/delete operations
 -   [ ] Implement support for adding arbitrary classes using `.model.json` files
 -   [ ] Automatically download & store icons instead of hardcoding

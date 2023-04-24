@@ -2,8 +2,8 @@ import * as vscode from "vscode";
 import * as fs from "fs/promises";
 import * as cp from "child_process";
 
-import { RojoTreeProvider } from "./provider";
-import { SettingsManager } from "./utils/settings";
+import { RojoTreeProvider } from "./providers/tree";
+import { SettingsProvider } from "./providers/settings";
 import { rojoSupportsSourcemapWatch } from "./utils/rojo";
 import {
 	connectSourcemapUsingFile,
@@ -29,8 +29,8 @@ export const updateAllWorkspaces = () => {
 
 export const connectWorkspace = (
 	folder: vscode.WorkspaceFolder,
-	settings: SettingsManager,
-	treeDataProvider: RojoTreeProvider
+	settings: SettingsProvider,
+	treeProvider: RojoTreeProvider
 ) => {
 	const workspacePath = folder.uri.fsPath;
 
@@ -51,7 +51,7 @@ export const connectWorkspace = (
 		const [updateCallback, destroyCallback] = connectSourcemapUsingRojo(
 			workspacePath,
 			settings,
-			treeDataProvider
+			treeProvider
 		);
 		update = updateCallback;
 		destroy = destroyCallback;
@@ -61,7 +61,7 @@ export const connectWorkspace = (
 		const [updateCallback, destroyCallback] = connectSourcemapUsingFile(
 			workspacePath,
 			settings,
-			treeDataProvider
+			treeProvider
 		);
 		update = updateCallback;
 		destroy = destroyCallback;
@@ -72,7 +72,7 @@ export const connectWorkspace = (
 };
 
 export const connectAllWorkspaces = (
-	settings: SettingsManager,
+	settings: SettingsProvider,
 	provider: RojoTreeProvider
 ) => {
 	if (vscode.workspace.workspaceFolders) {

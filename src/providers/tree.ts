@@ -4,18 +4,18 @@ import * as path from "path";
 import {
 	GitExtension,
 	RepositoryState as GitRepositoryState,
-} from "./types/git";
+} from "../types/git";
 
-import { getClassIconPath } from "./utils/icons";
+import { getClassIconPath } from "../utils/icons";
 import {
 	SourcemapNode,
 	findFilePath,
 	findFolderPath,
 	getSourcemapNodeTreeOrder,
-} from "./utils/sourcemap";
+} from "../utils/sourcemap";
 
-import { RobloxApiDump } from "./web/robloxApiDump";
-import { RobloxReflectionMetadata } from "./web/robloxReflectionMetadata";
+import { RobloxApiDump } from "../web/robloxApiDump";
+import { RobloxReflectionMetadata } from "../web/robloxReflectionMetadata";
 
 export class RojoTreeProvider
 	implements vscode.TreeDataProvider<vscode.TreeItem>
