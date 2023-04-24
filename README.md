@@ -1,7 +1,8 @@
 # Rojo Explorer
 
-This extension is currently under development and as such is not yet published to the extension marketplace.
+An extension that brings the Explorer view from Roblox Studio into Visual Studio Code.
 
+The extension is currently under development and as such is not yet published to the extension marketplace.  
 Once the extension reaches a more usable state it will be published.
 
 ## Installation
@@ -11,20 +12,35 @@ Once the extension reaches a more usable state it will be published.
 3. Run `aftman install` in the repository
 4. Run `just install` in the repository to install the extension
 
-## Plans
+## Project Status
 
-### TODO
+### Unimplemented
+
+#### Features
 
 -   Implement remaining file tree operations - copy/cut/paste/paste into
 -   Implement drag & drop functionality for the file tree
 -   Implement support for Rojo's `.meta` files in rename/delete operations
 -   Implement support for adding arbitrary classes using `.model.json` files
+
+#### Improvements
+
 -   Automatically download & store explorer icons in a cache instead of hardcoding
 -   Parse the Rojo project file that the user has selected to discover root files/dirs
+
+#### Fixes
+
 -   Fix folders & files being able to be created outside of project root directories
+-   Fix folder paths not being parsed correctly for complex folder structures
 
-### Future
+### Future Plans
 
--   Properties panel to see the current properties of instances
--   Properties editing in the properties panel for `.model.json` or `.meta` files
--   Properties editing in the properties panel for binary/xml files, maybe using [Lune](https://github.com/filiptibell/lune) as a backend?
+-   Integration with [Wally](https://github.com/UpliftGames/wally)
+    -   Button for opening the wally manifest, similar to the one for the rojo manifest
+    -   Hovering over the root of a tree for info about version, description, ...
+    -   Special "package" icon for projects that are publishable and have a script as the root
+-   Properties panel
+    -   Simple text view of properties
+    -   Editing properties for simple `.model.json` or `.meta` files
+    -   Complex property editing for properties such as colors, vectors
+    -   Editing properties for binary/xml files, maybe using [Lune](https://github.com/filiptibell/lune) as a backend?
