@@ -3,7 +3,7 @@ import * as cp from "child_process";
 import * as path from "path";
 import * as semver from "semver";
 
-import { SettingsManager } from "./settings";
+import { SettingsProvider } from "../providers/settings";
 import { SourcemapNode, parseSourcemap } from "./sourcemap";
 
 const ROJO_PROJECT_EXTENSION = ".project.json";
@@ -55,7 +55,7 @@ export const rojoSupportsSourcemapWatch = (cwd: string) => {
 
 export const rojoSourcemapWatch = (
 	workspacePath: string,
-	settings: SettingsManager,
+	settings: SettingsProvider,
 	loadingCallback: (child: cp.ChildProcessWithoutNullStreams) => any,
 	updateCallback: (
 		child: cp.ChildProcessWithoutNullStreams,

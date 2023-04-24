@@ -2,8 +2,8 @@ import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs/promises";
 
-import { SettingsManager } from "./settings";
-import { RojoTreeProvider } from "../provider";
+import { SettingsProvider } from "../providers/settings";
+import { RojoTreeProvider } from "../providers/tree";
 import {
 	extractRojoFileExtension,
 	isInitFilePath,
@@ -133,18 +133,18 @@ export const findFolderPath = (
 
 export const connectSourcemapUsingRojo = (
 	workspacePath: string,
-	settings: SettingsManager,
-	treeDataProvider: RojoTreeProvider
+	settings: SettingsProvider,
+	treeProvider: RojoTreeProvider
 ): [Function, Function] => {
 	// Spawn a new rojo process that will generate sourcemaps and watch for changes
 	const childProcess = rojoSourcemapWatch(
 		workspacePath,
 		settings,
 		() => {
-			treeDataProvider.setLoading(workspacePath);
+			treeProvider.setLoading(workspacePath);
 		},
 		(_, sourcemap) => {
-			treeDataProvider.update(workspacePath, sourcemap);
+			treeProvider.update(workspacePath, sourcemap);
 		}
 	);
 
@@ -154,10 +154,10 @@ export const connectSourcemapUsingRojo = (
 			workspacePath,
 			settings,
 			() => {
-				treeDataProvider.setLoading(workspacePath);
+				treeProvider.setLoading(workspacePath);
 			},
 			(childProcess, sourcemap) => {
-				treeDataProvider.update(workspacePath, sourcemap);
+				treeProvider.update(workspacePath, sourcemap);
 				childProcess.kill();
 			}
 		);
@@ -166,7 +166,7 @@ export const connectSourcemapUsingRojo = (
 	// Create callback for disconnecting (destroying)
 	// everything created for this workspace folder
 	const destroy = () => {
-		treeDataProvider.delete(workspacePath);
+		treeProvider.delete(workspacePath);
 		childProcess.kill();
 	};
 
@@ -175,8 +175,8 @@ export const connectSourcemapUsingRojo = (
 
 export const connectSourcemapUsingFile = (
 	workspacePath: string,
-	settings: SettingsManager,
-	treeDataProvider: RojoTreeProvider
+	settings: SettingsProvider,
+	treeProvider: RojoTreeProvider
 ): [Function, Function] => {
 	// Create a file watcher for the sourcemap
 	const sourcemapPath = `${workspacePath}/sourcemap.json`;
@@ -185,17 +185,14 @@ export const connectSourcemapUsingFile = (
 	// Create callback for updating sourcemap
 	const update = () => {
 		fs.readFile(sourcemapPath, "utf8").then((sourcemapJson) => {
-			treeDataProvider.update(
-				workspacePath,
-				parseSourcemap(sourcemapJson)
-			);
+			treeProvider.update(workspacePath, parseSourcemap(sourcemapJson));
 		});
 	};
 
 	// Create callback for disconnecting (destroying)
 	// everything created for this workspace folder
 	const destroy = () => {
-		treeDataProvider.delete(workspacePath);
+		treeProvider.delete(workspacePath);
 		fileWatcher.dispose();
 	};
 

@@ -1,23 +1,16 @@
 import * as vscode from "vscode";
 
-import { SettingsManager } from "./utils/settings";
-import {
-	deleteExistingInstance,
-	promptNewInstanceCreation,
-	promptRenameExistingInstance,
-} from "./utils/instances";
-
 import {
 	connectAllWorkspaces,
 	connectWorkspace,
 	disconnectAllWorkspaces,
 	disconnectWorkspace,
-	updateAllWorkspaces,
 } from "./workspaces";
 
-import { connectSelection, disconnectSelection } from "./selection";
-
-import { RojoTreeItem, RojoTreeProvider } from "./provider";
+import { RojoTreeProvider } from "./providers/tree";
+import { SettingsProvider } from "./providers/settings";
+import { SelectionProvider } from "./providers/selection";
+import { CommandsProvider } from "./providers/commands";
 
 import {
 	getRobloxApiDump,
@@ -43,81 +36,37 @@ export async function activate(context: vscode.ExtensionContext) {
 	}
 
 	// Create the main tree view and data provider
-	const treeDataProvider = new RojoTreeProvider(apiDump, apiReflection);
+	// TODO: Create drag & drop provider here
+	const treeProvider = new RojoTreeProvider(apiDump, apiReflection);
 	const treeView = vscode.window.createTreeView("rojoExplorer", {
-		treeDataProvider,
+		treeDataProvider: treeProvider,
 	});
 	context.subscriptions.push(treeView);
 
-	// Register global commands
-	context.subscriptions.push(
-		vscode.commands.registerCommand(
-			"rojoExplorer.refresh",
-			updateAllWorkspaces
-		)
-	);
-
-	// Register per-file commands
-	context.subscriptions.push(
-		vscode.commands.registerCommand(
-			"rojoExplorer.insertObject",
-			(item: RojoTreeItem) => {
-				promptNewInstanceCreation(
-					item.getFolderPath(),
-					item.getFilePath()
-				);
-			}
-		)
-	);
-	context.subscriptions.push(
-		vscode.commands.registerCommand(
-			"rojoExplorer.renameObject",
-			(item: RojoTreeItem) => {
-				promptRenameExistingInstance(
-					item.getFolderPath(),
-					item.getFilePath()
-				);
-			}
-		)
-	);
-	context.subscriptions.push(
-		vscode.commands.registerCommand(
-			"rojoExplorer.deleteObject",
-			(item: RojoTreeItem) => {
-				deleteExistingInstance(
-					item.getFolderPath(),
-					item.getFilePath()
-				);
-			}
-		)
-	);
-	context.subscriptions.push(
-		vscode.commands.registerCommand(
-			"rojoExplorer.openProjectRoot",
-			(item: RojoTreeItem) => {
-				item.openFile();
-			}
-		)
-	);
+	// Create other providers for things such as settings, selection handling, ...
+	const settings = new SettingsProvider();
+	const selection = new SelectionProvider(treeView, treeProvider);
+	const commands = new CommandsProvider();
+	context.subscriptions.push(settings);
+	context.subscriptions.push(selection);
+	context.subscriptions.push(commands);
 
 	// Listen for settings changing, if any of the settings that
 	// change behavior of the sourcemap or the sourcemap watch
 	// command change we have to re-initialize the workspace
-	const settingsManager = new SettingsManager();
-	settingsManager.listen("includeNonScripts", () => {
-		connectAllWorkspaces(settingsManager, treeDataProvider);
+	settings.listen("includeNonScripts", () => {
+		connectAllWorkspaces(settings, treeProvider);
 	});
-	settingsManager.listen("rojoProjectFile", () => {
-		connectAllWorkspaces(settingsManager, treeDataProvider);
+	settings.listen("rojoProjectFile", () => {
+		connectAllWorkspaces(settings, treeProvider);
 	});
-	context.subscriptions.push(settingsManager);
 
 	// Listen for focus changing to sync selection with our tree view items
 	context.subscriptions.push(
 		vscode.window.onDidChangeActiveTextEditor((e) => {
 			if (e && treeView.visible) {
 				const filePath = e.document.uri.fsPath;
-				const fileItem = treeDataProvider.find(filePath);
+				const fileItem = treeProvider.find(filePath);
 				if (fileItem) {
 					treeView.reveal(fileItem);
 				}
@@ -129,22 +78,16 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.workspace.onDidChangeWorkspaceFolders((event) => {
 			for (const addedFolder of event.added) {
-				connectWorkspace(
-					addedFolder,
-					settingsManager,
-					treeDataProvider
-				);
+				connectWorkspace(addedFolder, settings, treeProvider);
 			}
 			for (const removedFolder of event.removed) {
 				disconnectWorkspace(removedFolder);
 			}
 		})
 	);
-	connectAllWorkspaces(settingsManager, treeDataProvider);
-	connectSelection(treeView, treeDataProvider);
+	connectAllWorkspaces(settings, treeProvider);
 }
 
 export function deactivate() {
 	disconnectAllWorkspaces();
-	disconnectSelection();
 }
