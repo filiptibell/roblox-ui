@@ -26,12 +26,6 @@ Once the extension reaches a more usable state it will be published.
 #### Improvements
 
 -   Automatically download & store explorer icons in a cache instead of hardcoding
--   Parse the Rojo project file that the user has selected to discover root files/dirs
-
-#### Fixes
-
--   Fix folders & files being able to be created outside of project root directories
--   Fix folder paths not being parsed correctly for complex folder structures
 
 ### Future Plans
 

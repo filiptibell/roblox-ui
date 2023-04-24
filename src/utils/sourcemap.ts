@@ -1,10 +1,13 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs/promises";
+import * as cp from "child_process";
 
 import { SettingsProvider } from "../providers/settings";
 import { RojoTreeProvider } from "../providers/tree";
 import {
+	ProjectOrMetaFileNode,
+	ProjectRootNode,
 	extractRojoFileExtension,
 	isInitFilePath,
 	isProjectFilePath,
@@ -15,6 +18,7 @@ import { RobloxReflectionMetadata } from "../web/robloxReflectionMetadata";
 export type SourcemapNode = {
 	name: string;
 	className: string;
+	folderPath?: string;
 	filePaths?: string[];
 	children?: SourcemapNode[];
 	parent?: SourcemapNode;
@@ -94,38 +98,28 @@ export const findFolderPath = (
 			return path.join(workspaceRoot, path.dirname(filePath));
 		}
 	}
-	// Other folders are trickier, and the sourcemap does not contain information for them
+	// Some instance may have a direct folder path tied
+	// to them, depending on how they were created
+	if (node.folderPath) {
+		return path.join(workspaceRoot, node.folderPath);
+	}
+	// Other folders are trickier, and the sourcemap does
+	// not contain information for them, so we need to try
+	// and use our root folders parsed from the project file
 	if (node.className === "Folder") {
-		// Look for the first descendant that has a known file path
-		let foundFilePath: string | undefined;
-		let currentDepth = 0;
-		let currentNode: SourcemapNode | undefined = node;
-		while (currentNode) {
-			if (currentNode.children && currentNode.children.length > 0) {
-				currentNode = currentNode.children[0];
-				currentDepth += 1;
+		const parts = [];
+		let current = node;
+		while (current && !current.folderPath) {
+			parts.push(current.name);
+			if (current.parent) {
+				current = current.parent;
 			} else {
 				break;
 			}
-			const filePath = currentNode
-				? findFilePath(workspaceRoot, currentNode)
-				: null;
-			if (filePath) {
-				foundFilePath = filePath;
-				break;
-			}
 		}
-		if (foundFilePath && currentDepth > 0) {
-			// We found a file and we know how deep in the hierarchy it is,
-			// so we step up the number of directories deep it was found
-			const parts = [path.dirname(foundFilePath)];
-			if (currentDepth > 0) {
-				for (let index = 1; index < currentDepth; index++) {
-					parts.push("..");
-				}
-			}
-			const folderPath = path.resolve(...parts);
-			return folderPath;
+		if (current.folderPath) {
+			parts.reverse();
+			return path.join(workspaceRoot, current.folderPath, ...parts);
 		}
 	}
 	return null;
@@ -136,20 +130,71 @@ export const connectSourcemapUsingRojo = (
 	settings: SettingsProvider,
 	treeProvider: RojoTreeProvider
 ): [Function, Function] => {
-	// Spawn a new rojo process that will generate sourcemaps and watch for changes
-	const childProcess = rojoSourcemapWatch(
-		workspacePath,
-		settings,
-		() => {
-			treeProvider.setLoading(workspacePath);
-		},
-		(_, sourcemap) => {
-			treeProvider.update(workspacePath, sourcemap);
+	let destroyed: boolean = false;
+	let projectFileContents: string | null = null;
+	let currentChildProcess: cp.ChildProcessWithoutNullStreams | null = null;
+
+	// Set as loading right away to let the user know
+	treeProvider.setLoading(workspacePath);
+
+	// Create a file watcher for the project file
+	const projectFilePath = `${workspacePath}/${
+		settings.get("rojoProjectFile") || "default.project.json"
+	}`;
+	const projectFileWatcher =
+		vscode.workspace.createFileSystemWatcher(projectFilePath);
+
+	// Create the callback that will watch
+	// and generate a sourcemap for our tree
+	const updateProjectFile = async (contents: string | null) => {
+		if (projectFileContents !== contents) {
+			projectFileContents = contents;
+			// Kill any previous child process
+			if (currentChildProcess) {
+				currentChildProcess.kill();
+				currentChildProcess = null;
+			}
+			// If we got a project file, spawn a new rojo process
+			// that will generate sourcemaps and watch for changes
+			if (projectFileContents && !destroyed) {
+				const projectFileNode: ProjectRootNode =
+					JSON.parse(projectFileContents);
+				currentChildProcess = rojoSourcemapWatch(
+					workspacePath,
+					settings,
+					() => {
+						treeProvider.setLoading(workspacePath);
+					},
+					async (_, sourcemap) => {
+						try {
+							await mergeProjectIntoSourcemap(
+								workspacePath,
+								projectFileNode,
+								sourcemap
+							);
+						} catch (e) {
+							vscode.window.showWarningMessage(
+								`Rojo Explorer partially failed to read the project file at ${projectFilePath}` +
+									"\nSome explorer functionality may not be available" +
+									`\n${e}`
+							);
+							return;
+						}
+						if (destroyed) {
+							return;
+						}
+						treeProvider.update(workspacePath, sourcemap);
+					}
+				);
+			}
 		}
-	);
+	};
 
 	// Create callback for manually updating the sourcemap
 	const update = () => {
+		if (destroyed) {
+			return;
+		}
 		rojoSourcemapWatch(
 			workspacePath,
 			settings,
@@ -166,9 +211,26 @@ export const connectSourcemapUsingRojo = (
 	// Create callback for disconnecting (destroying)
 	// everything created for this workspace folder
 	const destroy = () => {
-		treeProvider.delete(workspacePath);
-		childProcess.kill();
+		if (!destroyed) {
+			destroyed = true;
+			updateProjectFile(null);
+			projectFileWatcher.dispose();
+			treeProvider.delete(workspacePath);
+		}
 	};
+
+	// Listen to the project file changing and read it once initially
+	const readProjectFile = async () => {
+		fs.readFile(projectFilePath, "utf8")
+			.then(updateProjectFile)
+			.catch((e) => {
+				vscode.window.showErrorMessage(
+					`Rojo Explorer failed to read the project file at ${projectFilePath}\n${e}`
+				);
+			});
+	};
+	projectFileWatcher.onDidChange(readProjectFile);
+	readProjectFile();
 
 	return [update, destroy];
 };
@@ -184,9 +246,11 @@ export const connectSourcemapUsingFile = (
 
 	// Create callback for updating sourcemap
 	const update = () => {
-		fs.readFile(sourcemapPath, "utf8").then((sourcemapJson) => {
-			treeProvider.update(workspacePath, parseSourcemap(sourcemapJson));
-		});
+		fs.readFile(sourcemapPath, "utf8")
+			.then(parseSourcemap)
+			.then((sourcemap) => {
+				treeProvider.update(workspacePath, sourcemap);
+			});
 	};
 
 	// Create callback for disconnecting (destroying)
@@ -201,4 +265,66 @@ export const connectSourcemapUsingFile = (
 	update();
 
 	return [update, destroy];
+};
+
+export const mergeProjectIntoSourcemap = async (
+	workspacePath: string,
+	project: ProjectRootNode,
+	sourcemap: SourcemapNode
+) => {
+	const rootAsNode = { [project.name]: project.tree };
+	const sourcemapAsRoot = {
+		className: "<<<ROOT>>>",
+		name: "<<<ROOT>>>",
+		children: [sourcemap],
+	};
+	await mergeProjectNodeIntoSourcemapNode(
+		workspacePath,
+		rootAsNode,
+		sourcemapAsRoot
+	);
+};
+
+export const mergeProjectNodeIntoSourcemapNode = async (
+	workspacePath: string,
+	projectNode: ProjectOrMetaFileNode,
+	sourcemapNode: SourcemapNode
+): Promise<void> => {
+	const nodePath = projectNode["$path"];
+	if (nodePath) {
+		const fullPath = path.join(workspacePath, nodePath);
+		try {
+			if ((await fs.stat(fullPath)).isDirectory()) {
+				sourcemapNode.folderPath = nodePath;
+			}
+		} catch {}
+	}
+	const innerPromises: Promise<void>[] = [];
+	if (sourcemapNode.children) {
+		for (const [projectNodeName, projectNodeInner] of Object.entries(
+			projectNode
+		)) {
+			if (!projectNodeName.startsWith("$")) {
+				let sourcemapNodeInner;
+				for (const child of sourcemapNode.children.values()) {
+					if (child.name === projectNodeName) {
+						sourcemapNodeInner = child;
+						break;
+					}
+				}
+				if (sourcemapNodeInner) {
+					innerPromises.push(
+						mergeProjectNodeIntoSourcemapNode(
+							workspacePath,
+							projectNodeInner,
+							sourcemapNodeInner
+						)
+					);
+				}
+			}
+		}
+	}
+	if (innerPromises.length > 0) {
+		await Promise.all(innerPromises);
+	}
 };
