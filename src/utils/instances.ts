@@ -11,15 +11,17 @@ export const createNewInstance = async (
 	filePath: string | null,
 	className: InsertableClassName,
 	instanceName: string
-) => {
+): Promise<vscode.Uri | null> => {
 	// Make sure we got a folder path
 	if (!folderPath && !filePath) {
 		vscode.window.showWarningMessage(
 			`Failed to insert new ${className} instance!` +
 				"\nThe selected instance had no folder or file path."
 		);
-		return;
+		return null;
 	}
+
+	await forceCloseMatchingTextDocuments(folderPath, filePath);
 
 	// If we got a file path that is not an init file, then we
 	// need to convert the file into a subfolder + init file
@@ -42,7 +44,7 @@ export const createNewInstance = async (
 					`Failed to insert new ${className} instance!` +
 						"\nThe selected instance had an invalid file extension."
 				);
-				return;
+				return null;
 			}
 		}
 	}
@@ -54,22 +56,26 @@ export const createNewInstance = async (
 			`Failed to insert new ${className} instance!` +
 				"\nThe selected instance had no folder on the filesystem."
 		);
-		return;
+		return null;
 	}
 
 	// Create the folder or instance file
 	if (className === "Folder") {
-		await fs.mkdir(path.join(folderPath, instanceName));
+		const newFolderPath = path.join(folderPath, instanceName);
+		await fs.mkdir(newFolderPath);
+		return vscode.Uri.file(newFolderPath);
 	} else {
-		let fileName;
+		let newFileName;
 		if (className === "Script") {
-			fileName = `${instanceName}.server.luau`;
+			newFileName = `${instanceName}.server.luau`;
 		} else if (className === "LocalScript") {
-			fileName = `${instanceName}.client.luau`;
+			newFileName = `${instanceName}.client.luau`;
 		} else {
-			fileName = `${instanceName}.luau`;
+			newFileName = `${instanceName}.luau`;
 		}
-		await fs.writeFile(path.join(folderPath, fileName), "");
+		const newFilePath = path.join(folderPath, newFileName);
+		await fs.writeFile(newFilePath, "");
+		return vscode.Uri.file(newFilePath);
 	}
 };
 
@@ -85,6 +91,8 @@ export const deleteExistingInstance = async (
 		);
 		return;
 	}
+
+	await forceCloseMatchingTextDocuments(folderPath, filePath);
 
 	// Init files should have both their folder & file paths deleted
 	if (folderPath && filePath && isInitFilePath(filePath)) {
@@ -192,12 +200,15 @@ export const promptNewInstanceCreation = (
 					return;
 				}
 				try {
-					await createNewInstance(
+					const createdPath = await createNewInstance(
 						folderPath,
 						filePath,
 						chosen.className,
 						instanceName
 					);
+					if (createdPath) {
+						forceShowTextDocument(createdPath);
+					}
 				} catch (e) {
 					vscode.window.showWarningMessage(
 						`Failed to insert new instance!` +
@@ -250,3 +261,62 @@ class InstanceInsertItem implements vscode.QuickPickItem {
 		}
 	}
 }
+
+const forceCloseMatchingTextDocuments = async (
+	folderPath: string | null,
+	filePath: string | null
+): Promise<[boolean, boolean]> => {
+	let wasClosed = false;
+	let hadFocus = false;
+	for (const doc of vscode.workspace.textDocuments) {
+		if (
+			(filePath && doc.uri.fsPath === filePath) ||
+			(folderPath && doc.uri.fsPath.startsWith(folderPath))
+		) {
+			const [res1, res2] = await forceCloseTextDocument(doc.uri);
+			wasClosed = wasClosed || res1;
+			hadFocus = hadFocus || res2;
+		}
+	}
+	return [wasClosed, hadFocus];
+};
+
+const forceCloseTextDocument = async (
+	uri: vscode.Uri
+): Promise<[boolean, boolean]> => {
+	// HACK: To properly close an editor that is opened we
+	// have to first force show it, force it to be active,
+	// and then close the currently active editor
+	let wasClosed = false;
+	let hadFocus = false;
+	for (const doc of vscode.workspace.textDocuments) {
+		if (doc.uri.fsPath === uri.fsPath) {
+			const textEditor = await vscode.window.showTextDocument(
+				doc,
+				undefined,
+				false
+			);
+			wasClosed = true;
+			hadFocus =
+				hadFocus ||
+				textEditor.document.uri.fsPath ===
+					vscode.window.activeTextEditor?.document.uri.fsPath;
+			try {
+				textEditor.hide();
+			} catch {
+				vscode.commands.executeCommand(
+					"workbench.action.closeActiveEditor",
+					textEditor.document.uri
+				);
+			}
+		}
+	}
+	return [wasClosed, hadFocus];
+};
+
+const forceShowTextDocument = async (uri: vscode.Uri) => {
+	if ((await fs.stat(uri.fsPath)).isFile()) {
+		const textDoc = await vscode.workspace.openTextDocument(uri);
+		await vscode.window.showTextDocument(textDoc);
+	}
+};

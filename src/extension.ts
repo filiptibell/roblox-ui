@@ -46,7 +46,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	// Create other providers for things such as settings, selection handling, ...
 	const settings = new SettingsProvider();
 	const selection = new SelectionProvider(treeView, treeProvider);
-	const commands = new CommandsProvider();
+	const commands = new CommandsProvider(treeView, treeProvider);
 	context.subscriptions.push(settings);
 	context.subscriptions.push(selection);
 	context.subscriptions.push(commands);

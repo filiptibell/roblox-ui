@@ -8,7 +8,7 @@ import {
 
 import { updateAllWorkspaces } from "../workspaces";
 
-import { RojoTreeItem } from "./tree";
+import { RojoTreeItem, RojoTreeProvider } from "./tree";
 
 export class CommandsProvider implements vscode.Disposable {
 	private commands: Map<string, (...args: any[]) => any> = new Map();
@@ -29,7 +29,10 @@ export class CommandsProvider implements vscode.Disposable {
 		this.disposables = new Array();
 	}
 
-	constructor() {
+	constructor(
+		treeView: vscode.TreeView<vscode.TreeItem>,
+		treeDataProvider: RojoTreeProvider
+	) {
 		this.register("refresh", updateAllWorkspaces);
 		this.register("insertObject", (item: RojoTreeItem) => {
 			promptNewInstanceCreation(item.getFolderPath(), item.getFilePath());
