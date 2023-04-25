@@ -2,7 +2,7 @@
 	"name": "rojo-viewer",
 	"displayName": "Rojo Viewer",
 	"description": "Explorer view similar to Roblox Studio for Rojo projects",
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"license": "MIT",
 	"publisher": "filiptibell",
 	"author": {
