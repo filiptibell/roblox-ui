@@ -42,7 +42,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	// Create the main tree view and data provider
 	// TODO: Create drag & drop provider here
 	const treeProvider = new RojoTreeProvider(settings, apiDump, apiReflection);
-	const treeView = vscode.window.createTreeView("rojoExplorer", {
+	const treeView = vscode.window.createTreeView("rojoViewer.explorer", {
 		treeDataProvider: treeProvider,
 	});
 	context.subscriptions.push(treeView);

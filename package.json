@@ -1,9 +1,19 @@
 {
-	"name": "rojo-explorer",
-	"displayName": "Rojo Explorer",
-	"description": "",
-	"repository": "https://github.com/filiptibell/rojo-explorer",
+	"name": "rojo-viewer",
+	"displayName": "Rojo Viewer",
+	"description": "Explorer view similar to Roblox Studio for Rojo projects",
 	"version": "0.0.1",
+	"license": "MIT",
+	"publisher": "filiptibell",
+	"author": {
+		"name": "Filip Tibell",
+		"email": "filip.tibell@gmail.com",
+		"url": "https://github.com/filiptibell/"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/filiptibell/rojo-viewer.git"
+	},
 	"engines": {
 		"vscode": "^1.77.0"
 	},
@@ -14,29 +24,29 @@
 	"main": "./out/extension.js",
 	"contributes": {
 		"configuration": {
-			"title": "Rojo Explorer",
+			"title": "Rojo Viewer",
 			"properties": {
-				"rojoExplorer.autogenerateSourcemap": {
+				"rojoViewer.autogenerateSourcemap": {
 					"type": "boolean",
 					"default": true,
 					"description": "Autogenerate sourcemap using the rojo project file\nTurn this setting off to watch a `sourcemap.json` file instead"
 				},
-				"rojoExplorer.includeNonScripts": {
+				"rojoViewer.includeNonScripts": {
 					"type": "boolean",
 					"default": false,
 					"description": "Include instances that are not scripts in the explorer"
 				},
-				"rojoExplorer.showClassNames": {
+				"rojoViewer.showClassNames": {
 					"type": "boolean",
 					"default": false,
 					"description": "Show class names next to instances"
 				},
-				"rojoExplorer.showFilePaths": {
+				"rojoViewer.showFilePaths": {
 					"type": "boolean",
 					"default": false,
 					"description": "Show file paths next to instances"
 				},
-				"rojoExplorer.rojoProjectFile": {
+				"rojoViewer.rojoProjectFile": {
 					"type": "string",
 					"default": "default.project.json",
 					"description": "Which project file to use for generating sourcemaps"
@@ -45,101 +55,101 @@
 		},
 		"commands": [
 			{
-				"command": "rojoExplorer.refresh",
+				"command": "rojoViewer.refresh",
 				"title": "Refresh",
 				"icon": "$(refresh)"
 			},
 			{
-				"command": "rojoExplorer.instanceCut",
+				"command": "rojoViewer.instanceCut",
 				"title": "Cut",
 				"icon": "$(file)"
 			},
 			{
-				"command": "rojoExplorer.instanceCopy",
+				"command": "rojoViewer.instanceCopy",
 				"title": "Copy",
 				"icon": "$(files)"
 			},
 			{
-				"command": "rojoExplorer.instancePaste",
+				"command": "rojoViewer.instancePaste",
 				"title": "Paste",
 				"icon": "$(file)"
 			},
 			{
-				"command": "rojoExplorer.instancePasteInto",
+				"command": "rojoViewer.instancePasteInto",
 				"title": "Paste Into",
 				"icon": "$(file)"
 			},
 			{
-				"command": "rojoExplorer.insertObject",
+				"command": "rojoViewer.insertObject",
 				"title": "Insert Object",
 				"icon": "$(file-add)"
 			},
 			{
-				"command": "rojoExplorer.insertService",
+				"command": "rojoViewer.insertService",
 				"title": "Insert Service",
 				"icon": "$(file-add)"
 			},
 			{
-				"command": "rojoExplorer.renameObject",
+				"command": "rojoViewer.renameObject",
 				"title": "Rename...",
 				"icon": "$(file-rename)"
 			},
 			{
-				"command": "rojoExplorer.deleteObject",
+				"command": "rojoViewer.deleteObject",
 				"title": "Delete",
 				"icon": "$(file-remove)"
 			},
 			{
-				"command": "rojoExplorer.openFile",
+				"command": "rojoViewer.openFile",
 				"title": "Open Project File",
 				"icon": "$(arrow-right)"
 			}
 		],
 		"keybindings": [
 			{
-				"command": "rojoExplorer.instanceCut",
+				"command": "rojoViewer.instanceCut",
 				"key": "ctrl+X",
 				"mac": "cmd+X",
 				"when": "viewItem =~ /canMove/"
 			},
 			{
-				"command": "rojoExplorer.instanceCopy",
+				"command": "rojoViewer.instanceCopy",
 				"key": "ctrl+C",
 				"mac": "cmd+C",
 				"when": "viewItem =~ /canMove/"
 			},
 			{
-				"command": "rojoExplorer.instancePaste",
+				"command": "rojoViewer.instancePaste",
 				"key": "ctrl+V",
 				"mac": "cmd+V",
 				"when": "viewItem =~ /canPaste/"
 			},
 			{
-				"command": "rojoExplorer.instancePasteInto",
+				"command": "rojoViewer.instancePasteInto",
 				"key": "shift+ctrl+V",
 				"mac": "shift+cmd+V",
 				"when": "viewItem =~ /canPasteInto/"
 			},
 			{
-				"command": "rojoExplorer.insertObject",
+				"command": "rojoViewer.insertObject",
 				"key": "shift+ctrl+I",
 				"mac": "shift+cmd+I",
 				"when": "viewItem =~ /canInsertObject/"
 			},
 			{
-				"command": "rojoExplorer.insertService",
+				"command": "rojoViewer.insertService",
 				"key": "shift+ctrl+I",
 				"mac": "shift+cmd+I",
 				"when": "viewItem =~ /canInsertService/"
 			},
 			{
-				"command": "rojoExplorer.renameObject",
+				"command": "rojoViewer.renameObject",
 				"key": "F2",
 				"mac": "enter",
 				"when": "viewItem =~ /instance/"
 			},
 			{
-				"command": "rojoExplorer.deleteObject",
+				"command": "rojoViewer.deleteObject",
 				"key": "backspace",
 				"mac": "cmd+backspace",
 				"when": "viewItem =~ /instance/"
@@ -148,65 +158,65 @@
 		"menus": {
 			"view/title": [
 				{
-					"command": "rojoExplorer.refresh",
-					"when": "view == rojoExplorer",
+					"command": "rojoViewer.refresh",
+					"when": "view == rojoViewer",
 					"group": "navigation"
 				}
 			],
 			"view/item/context": [
 				{
-					"command": "rojoExplorer.instanceCut",
-					"when": "view == rojoExplorer && viewItem =~ /canMove/",
+					"command": "rojoViewer.instanceCut",
+					"when": "view == rojoViewer && viewItem =~ /canMove/",
 					"group": "navigation@1"
 				},
 				{
-					"command": "rojoExplorer.instanceCopy",
-					"when": "view == rojoExplorer && viewItem =~ /canMove/",
+					"command": "rojoViewer.instanceCopy",
+					"when": "view == rojoViewer && viewItem =~ /canMove/",
 					"group": "navigation@2"
 				},
 				{
-					"command": "rojoExplorer.instancePaste",
-					"when": "view == rojoExplorer && viewItem =~ /canPaste/",
+					"command": "rojoViewer.instancePaste",
+					"when": "view == rojoViewer && viewItem =~ /canPaste/",
 					"group": "navigation@3"
 				},
 				{
-					"command": "rojoExplorer.instancePasteInto",
-					"when": "view == rojoExplorer && viewItem =~ /canPasteInto/",
+					"command": "rojoViewer.instancePasteInto",
+					"when": "view == rojoViewer && viewItem =~ /canPasteInto/",
 					"group": "navigation@4"
 				},
 				{
-					"command": "rojoExplorer.insertObject",
-					"when": "view == rojoExplorer && viewItem =~ /canInsertObject/",
+					"command": "rojoViewer.insertObject",
+					"when": "view == rojoViewer && viewItem =~ /canInsertObject/",
 					"group": "navigation_2@1"
 				},
 				{
-					"command": "rojoExplorer.insertService",
-					"when": "view == rojoExplorer && viewItem =~ /canInsertService/",
+					"command": "rojoViewer.insertService",
+					"when": "view == rojoViewer && viewItem =~ /canInsertService/",
 					"group": "navigation_2@2"
 				},
 				{
-					"command": "rojoExplorer.openFile",
-					"when": "view == rojoExplorer && viewItem =~ /projectFile/",
+					"command": "rojoViewer.openFile",
+					"when": "view == rojoViewer && viewItem =~ /projectFile/",
 					"group": "navigation_3@3"
 				},
 				{
-					"command": "rojoExplorer.renameObject",
-					"when": "view == rojoExplorer && viewItem =~ /instance/",
+					"command": "rojoViewer.renameObject",
+					"when": "view == rojoViewer && viewItem =~ /instance/",
 					"group": "navigation_4@1"
 				},
 				{
-					"command": "rojoExplorer.deleteObject",
-					"when": "view == rojoExplorer && viewItem =~ /instance/",
+					"command": "rojoViewer.deleteObject",
+					"when": "view == rojoViewer && viewItem =~ /instance/",
 					"group": "navigation_4@2"
 				},
 				{
-					"command": "rojoExplorer.insertObject",
-					"when": "view == rojoExplorer && (viewItem =~ /instance/ && viewItem =~ /canInsertObject/)",
+					"command": "rojoViewer.insertObject",
+					"when": "view == rojoViewer && (viewItem =~ /instance/ && viewItem =~ /canInsertObject/)",
 					"group": "inline@1"
 				},
 				{
-					"command": "rojoExplorer.insertService",
-					"when": "view == rojoExplorer && (viewItem =~ /projectFile/ && viewItem =~ /canInsertService/)",
+					"command": "rojoViewer.insertService",
+					"when": "view == rojoViewer && (viewItem =~ /projectFile/ && viewItem =~ /canInsertService/)",
 					"group": "inline@2"
 				}
 			]
@@ -214,24 +224,24 @@
 		"viewsContainers": {
 			"activitybar": [
 				{
-					"id": "rojo-explorer",
-					"title": "Rojo Explorer",
+					"id": "rojo-viewer",
+					"title": "Rojo Viewer",
 					"icon": "$(remote-explorer)"
 				}
 			]
 		},
 		"views": {
-			"rojo-explorer": [
+			"rojo-viewer": [
 				{
-					"id": "rojoExplorer",
-					"name": "Rojo Explorer",
+					"id": "rojoViewer.explorer",
+					"name": "Explorer",
 					"visibility": "visible"
 				}
 			]
 		},
 		"viewsWelcome": [
 			{
-				"view": "rojoExplorer",
+				"view": "rojoViewer.explorer",
 				"contents": "No workspace found"
 			}
 		]

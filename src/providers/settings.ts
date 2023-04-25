@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 
-const EXTENSION = "rojoExplorer";
+const EXTENSION = "rojoViewer";
 const DEFAULTS = {
 	autogenerateSourcemap: true,
 	includeNonScripts: false,
