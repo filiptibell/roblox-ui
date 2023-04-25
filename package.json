@@ -123,7 +123,7 @@
 				"command": "rojoViewer.instancePaste",
 				"key": "ctrl+V",
 				"mac": "cmd+V",
-				"when": "viewItem =~ /canPaste/"
+				"when": "viewItem =~ /canPasteSibling/"
 			},
 			{
 				"command": "rojoViewer.instancePasteInto",
@@ -177,7 +177,7 @@
 				},
 				{
 					"command": "rojoViewer.instancePaste",
-					"when": "view == rojoViewer.explorer && viewItem =~ /canPaste/",
+					"when": "view == rojoViewer.explorer && viewItem =~ /canPasteSibling/",
 					"group": "navigation@3"
 				},
 				{
