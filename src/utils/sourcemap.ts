@@ -5,6 +5,8 @@ import * as cp from "child_process";
 
 import * as fsSync from "fs";
 
+const anymatch = require("anymatch");
+
 import { SettingsProvider } from "../providers/settings";
 import { RojoTreeProvider } from "../providers/tree";
 
@@ -39,10 +41,11 @@ const pathExists = async (path: string) => {
 	});
 };
 
-const postprocessSourcemap = (
+const postprocessSourcemapNode = (
+	matcher: any | null,
 	node: SourcemapNode,
 	parent: SourcemapNode | void
-): SourcemapNode => {
+): SourcemapNode | null => {
 	// Init files have a guaranteed parent directory
 	if (!node.folderPath && node.filePaths) {
 		for (const filePath of node.filePaths.values()) {
@@ -51,6 +54,7 @@ const postprocessSourcemap = (
 			}
 		}
 	}
+
 	// Otherwise we look at the parent of this node and try to
 	// join its folder path with this sourcemap node folder name
 	if (!node.folderPath && node.className === "Folder") {
@@ -58,12 +62,47 @@ const postprocessSourcemap = (
 			node.folderPath = path.join(parent.folderPath, node.name);
 		}
 	}
+
+	// Check if we should keep this sourcemap node using the current glob sets,
+	// making sure to always keep at least the root node (node without parent)
+	if (parent && matcher) {
+		if (node.folderPath && matcher(node.folderPath)) {
+			return null;
+		} else if (node.filePaths) {
+			for (const filePath of node.filePaths.values()) {
+				if (matcher(filePath)) {
+					return null;
+				}
+			}
+		}
+	}
+
+	// Process children and remove them if ignore globs were matched
 	if (node.children) {
-		for (const child of node.children.values()) {
-			postprocessSourcemap(child, node);
+		const indicesToRemove = [];
+		for (const [index, child] of node.children.entries()) {
+			if (!postprocessSourcemapNode(matcher, child, node)) {
+				indicesToRemove.push(index);
+			}
+		}
+		for (let i = indicesToRemove.length - 1; i >= 0; i--) {
+			node.children.splice(indicesToRemove[i], 1);
 		}
 	}
 	return node;
+};
+
+const postprocessSourcemap = (
+	workspacePath: string,
+	settings: SettingsProvider,
+	sourcemap: SourcemapNode
+) => {
+	const ignoreGlobs = settings.get("ignoreGlobs");
+	if (ignoreGlobs && ignoreGlobs.length > 0) {
+		postprocessSourcemapNode(anymatch(ignoreGlobs), sourcemap);
+	} else {
+		postprocessSourcemapNode(null, sourcemap);
+	}
 };
 
 export const findPrimaryFilePath = (
@@ -172,7 +211,11 @@ export const connectSourcemapUsingRojo = (
 								sourcemap
 							);
 						}
-						postprocessSourcemap(sourcemap);
+						postprocessSourcemap(
+							workspacePath,
+							settings,
+							sourcemap
+						);
 						treeProvider.update(workspacePath, sourcemap);
 					}
 				);
@@ -247,7 +290,7 @@ export const connectSourcemapUsingFile = (
 		fs.readFile(sourcemapPath, "utf8")
 			.then(JSON.parse)
 			.then((sourcemap: SourcemapNode) => {
-				postprocessSourcemap(sourcemap);
+				postprocessSourcemap(workspacePath, settings, sourcemap);
 				treeProvider.update(workspacePath, sourcemap);
 			});
 	};

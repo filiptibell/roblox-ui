@@ -60,6 +60,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	// Listen for settings changing, if any of the settings that
 	// change behavior of the sourcemap or the sourcemap watch
 	// command change we have to re-initialize the workspace
+	settings.listen("ignoreGlobs", forceRefreshAll);
 	settings.listen("includeNonScripts", forceRefreshAll);
 	settings.listen("rojoProjectFile", forceRefreshAll);
 

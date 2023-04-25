@@ -320,11 +320,6 @@ export class RojoTreeItem extends vscode.TreeItem implements vscode.Disposable {
 		}
 		if (node.children) {
 			this.children = [...node.children]
-				.filter((child) => {
-					return (
-						child.className !== "Folder" || child.name !== "_Index"
-					);
-				})
 				.sort((left, right) => {
 					const leftOrder = getSourcemapNodeTreeOrder(
 						left,
