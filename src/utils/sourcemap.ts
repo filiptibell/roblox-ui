@@ -3,6 +3,8 @@ import * as path from "path";
 import * as fs from "fs/promises";
 import * as cp from "child_process";
 
+import * as fsSync from "fs";
+
 import { SettingsProvider } from "../providers/settings";
 import { RojoTreeProvider } from "../providers/tree";
 
@@ -23,6 +25,18 @@ export type SourcemapNode = {
 	folderPath?: string;
 	filePaths?: string[];
 	children?: SourcemapNode[];
+};
+
+const pathExists = async (path: string) => {
+	return new Promise((resolve, _) => {
+		fsSync.access(path, fsSync.constants.F_OK, (err) => {
+			if (err) {
+				resolve(false);
+			} else {
+				resolve(true);
+			}
+		});
+	});
 };
 
 const postprocessSourcemap = (
@@ -101,9 +115,6 @@ export const connectSourcemapUsingRojo = (
 	let destroyed: boolean = false;
 	let projectFileContents: string | null = null;
 	let currentChildProcess: cp.ChildProcessWithoutNullStreams | null = null;
-
-	// Set as loading right away to let the user know
-	treeProvider.setLoading(workspacePath);
 
 	// Create a file watcher for the project file
 	const projectFilePath = `${workspacePath}/${
@@ -198,17 +209,25 @@ export const connectSourcemapUsingRojo = (
 		}
 	};
 
-	// Listen to the project file changing and read it once initially
+	// Listen to the project file changing and also read it once initially
 	const readProjectFile = async () => {
-		fs.readFile(projectFilePath, "utf8")
-			.then(updateProjectFile)
-			.catch((e) => {
-				vscode.window.showErrorMessage(
-					`Failed to read the project file at ${projectFilePath}\n${e}`
-				);
-			});
+		if (await pathExists(projectFilePath)) {
+			treeProvider.setLoading(workspacePath);
+			fs.readFile(projectFilePath, "utf8")
+				.then(updateProjectFile)
+				.catch((e) => {
+					treeProvider.delete(workspacePath);
+					vscode.window.showErrorMessage(
+						`Failed to read the project file at ${projectFilePath}\n${e}`
+					);
+				});
+		} else {
+			treeProvider.delete(workspacePath);
+		}
 	};
+	projectFileWatcher.onDidCreate(readProjectFile);
 	projectFileWatcher.onDidChange(readProjectFile);
+	projectFileWatcher.onDidDelete(readProjectFile);
 	readProjectFile();
 
 	return [update, destroy];
