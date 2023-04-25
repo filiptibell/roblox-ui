@@ -62,22 +62,6 @@ export async function activate(context: vscode.ExtensionContext) {
 	settings.listen("rojoProjectFile", () => {
 		connectAllWorkspaces(settings, treeProvider);
 	});
-	settings.listen("showFilePaths", () => {
-		connectAllWorkspaces(settings, treeProvider);
-	});
-
-	// Listen for focus changing to sync selection with our tree view items
-	context.subscriptions.push(
-		vscode.window.onDidChangeActiveTextEditor((e) => {
-			if (e && treeView.visible) {
-				const filePath = e.document.uri.fsPath;
-				const fileItem = treeProvider.find(filePath);
-				if (fileItem) {
-					treeView.reveal(fileItem);
-				}
-			}
-		})
-	);
 
 	// Listen for workspace folders changing, and initialize current workspace folders
 	context.subscriptions.push(

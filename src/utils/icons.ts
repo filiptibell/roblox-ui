@@ -31,9 +31,7 @@ export const getClassIconPath = (
 		if (getClassIconExists(current)) {
 			return getFullClassIconFilePath(current);
 		} else {
-			const apiClass = apiDump.Classes.find((c) => {
-				return c.Name === current;
-			});
+			const apiClass = apiDump.Classes.get(current);
 			if (apiClass && apiClass.Superclass) {
 				current = apiClass.Superclass;
 			} else {

@@ -70,6 +70,11 @@
 				"icon": "$(file-add)"
 			},
 			{
+				"command": "rojoExplorer.insertService",
+				"title": "Insert Service",
+				"icon": "$(file-add)"
+			},
+			{
 				"command": "rojoExplorer.renameObject",
 				"title": "Rename...",
 				"icon": "$(file-rename)"
@@ -80,7 +85,7 @@
 				"icon": "$(file-remove)"
 			},
 			{
-				"command": "rojoExplorer.openProjectRoot",
+				"command": "rojoExplorer.openFile",
 				"title": "Open Project File",
 				"icon": "$(arrow-right)"
 			}
@@ -90,43 +95,49 @@
 				"command": "rojoExplorer.instanceCut",
 				"key": "ctrl+X",
 				"mac": "cmd+X",
-				"when": "(viewItem == scriptInstance || viewItem == folderInstance)"
+				"when": "viewItem =~ /canMove/"
 			},
 			{
 				"command": "rojoExplorer.instanceCopy",
 				"key": "ctrl+C",
 				"mac": "cmd+C",
-				"when": "(viewItem == scriptInstance || viewItem == folderInstance)"
+				"when": "viewItem =~ /canMove/"
 			},
 			{
 				"command": "rojoExplorer.instancePaste",
 				"key": "ctrl+V",
 				"mac": "cmd+V",
-				"when": "(viewItem == scriptInstance || viewItem == folderInstance)"
+				"when": "viewItem =~ /canPaste/"
 			},
 			{
 				"command": "rojoExplorer.instancePasteInto",
 				"key": "shift+ctrl+V",
 				"mac": "shift+cmd+V",
-				"when": "(viewItem == scriptInstance || viewItem == folderInstance)"
+				"when": "viewItem =~ /canPasteInto/"
 			},
 			{
 				"command": "rojoExplorer.insertObject",
 				"key": "shift+ctrl+I",
 				"mac": "shift+cmd+I",
-				"when": "(viewItem == scriptInstance || viewItem == folderInstance)"
+				"when": "viewItem =~ /canInsertObject/"
+			},
+			{
+				"command": "rojoExplorer.insertService",
+				"key": "shift+ctrl+I",
+				"mac": "shift+cmd+I",
+				"when": "viewItem =~ /canInsertService/"
 			},
 			{
 				"command": "rojoExplorer.renameObject",
 				"key": "F2",
 				"mac": "enter",
-				"when": "(viewItem == scriptInstance || viewItem == folderInstance)"
+				"when": "viewItem =~ /instance/"
 			},
 			{
 				"command": "rojoExplorer.deleteObject",
 				"key": "backspace",
 				"mac": "cmd+backspace",
-				"when": "(viewItem == scriptInstance || viewItem == folderInstance)"
+				"when": "viewItem =~ /instance/"
 			}
 		],
 		"menus": {
@@ -140,47 +151,57 @@
 			"view/item/context": [
 				{
 					"command": "rojoExplorer.instanceCut",
-					"when": "view == rojoExplorer && (viewItem == scriptInstance || viewItem == folderInstance)",
+					"when": "view == rojoExplorer && viewItem =~ /canMove/",
 					"group": "navigation@1"
 				},
 				{
 					"command": "rojoExplorer.instanceCopy",
-					"when": "view == rojoExplorer && (viewItem == scriptInstance || viewItem == folderInstance)",
+					"when": "view == rojoExplorer && viewItem =~ /canMove/",
 					"group": "navigation@2"
 				},
 				{
 					"command": "rojoExplorer.instancePaste",
-					"when": "view == rojoExplorer && (viewItem == scriptInstance || viewItem == folderInstance)",
+					"when": "view == rojoExplorer && viewItem =~ /canPaste/",
 					"group": "navigation@3"
 				},
 				{
 					"command": "rojoExplorer.instancePasteInto",
-					"when": "view == rojoExplorer && (viewItem == scriptInstance || viewItem == folderInstance)",
+					"when": "view == rojoExplorer && viewItem =~ /canPasteInto/",
 					"group": "navigation@4"
 				},
 				{
 					"command": "rojoExplorer.insertObject",
-					"when": "view == rojoExplorer && (viewItem == scriptInstance || viewItem == folderInstance)",
+					"when": "view == rojoExplorer && viewItem =~ /canInsertObject/",
 					"group": "navigation_2@1"
 				},
 				{
+					"command": "rojoExplorer.insertService",
+					"when": "view == rojoExplorer && viewItem =~ /canInsertService/",
+					"group": "navigation_2@2"
+				},
+				{
+					"command": "rojoExplorer.openFile",
+					"when": "view == rojoExplorer && viewItem =~ /projectFile/",
+					"group": "navigation_3@3"
+				},
+				{
 					"command": "rojoExplorer.renameObject",
-					"when": "view == rojoExplorer && (viewItem == scriptInstance || viewItem == folderInstance)",
-					"group": "navigation_3@1"
+					"when": "view == rojoExplorer && viewItem =~ /instance/",
+					"group": "navigation_4@1"
 				},
 				{
 					"command": "rojoExplorer.deleteObject",
-					"when": "view == rojoExplorer && (viewItem == scriptInstance || viewItem == folderInstance)",
-					"group": "navigation_3@2"
+					"when": "view == rojoExplorer && viewItem =~ /instance/",
+					"group": "navigation_4@2"
 				},
 				{
 					"command": "rojoExplorer.insertObject",
-					"when": "view == rojoExplorer && (viewItem == scriptInstance || viewItem == folderInstance)",
+					"when": "view == rojoExplorer && (viewItem =~ /instance/ && viewItem =~ /canInsertObject/)",
 					"group": "inline@1"
 				},
 				{
-					"command": "rojoExplorer.openProjectRoot",
-					"when": "view == rojoExplorer && viewItem == projectRoot",
+					"command": "rojoExplorer.insertService",
+					"when": "view == rojoExplorer && (viewItem =~ /projectFile/ && viewItem =~ /canInsertService/)",
 					"group": "inline@2"
 				}
 			]

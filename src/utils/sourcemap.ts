@@ -14,6 +14,7 @@ import {
 	mergeProjectIntoSourcemap,
 	cacheProjectFileSystemPaths,
 	rojoSourcemapWatch,
+	isBinaryFilePath,
 } from "./rojo";
 
 export type SourcemapNode = {
@@ -53,11 +54,14 @@ const postprocessSourcemap = (
 
 export const findPrimaryFilePath = (
 	workspacePath: string,
-	node: SourcemapNode
+	node: SourcemapNode,
+	allowBinaryFiles: boolean | void
 ): string | null => {
 	if (node.filePaths) {
 		if (node.filePaths.length === 1) {
-			return path.join(workspacePath, node.filePaths[0]);
+			if (allowBinaryFiles || !isBinaryFilePath(node.filePaths[0])) {
+				return path.join(workspacePath, node.filePaths[0]);
+			}
 		} else {
 			// TODO: Sort and find using ordering - init, lua, model, meta, project
 			const copied = node.filePaths.slice();

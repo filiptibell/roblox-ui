@@ -81,15 +81,15 @@ export type RobloxEnum = {
 };
 
 export type RobloxApiDump = {
-	Classes: Array<RobloxClass>;
-	Enums: Array<RobloxEnum>;
+	Classes: Map<string, RobloxClass>;
+	Enums: Map<string, RobloxEnum>;
 };
 
 export const parseApiDumpFromObject = async (
 	data: RobloxApiDump
 ): Promise<RobloxApiDump> => {
-	const classes = new Array<RobloxClass>();
-	const enums = new Array<RobloxEnum>();
+	const classes = new Map<string, RobloxClass>();
+	const enums = new Map<string, RobloxEnum>();
 	for (const dumpClass of Object.values(data.Classes)) {
 		if (dumpClass.Name && dumpClass.Superclass) {
 			if (!dumpClass.MemoryCategory) {
@@ -101,12 +101,12 @@ export const parseApiDumpFromObject = async (
 			if (!dumpClass.Tags) {
 				dumpClass.Tags = [];
 			}
-			classes.push(dumpClass);
+			classes.set(dumpClass.Name, dumpClass);
 		}
 	}
 	for (const dumpEnum of Object.values(data.Enums)) {
 		dumpEnum.NumItems = dumpEnum.Items.length;
-		enums.push(dumpEnum);
+		enums.set(dumpEnum.Name, dumpEnum);
 	}
 	return {
 		Classes: classes,

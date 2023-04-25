@@ -37,6 +37,10 @@ export class CommandsProvider implements vscode.Disposable {
 		this.register("insertObject", (item: RojoTreeItem) => {
 			promptNewInstanceCreation(item.getFolderPath(), item.getFilePath());
 		});
+		this.register("insertService", (item: RojoTreeItem) => {
+			// TODO: Implement this, use item.getFolderPath()
+			vscode.window.showInformationMessage("TODO");
+		});
 		this.register("renameObject", (item: RojoTreeItem) => {
 			promptRenameExistingInstance(
 				item.getFolderPath(),
@@ -46,7 +50,7 @@ export class CommandsProvider implements vscode.Disposable {
 		this.register("deleteObject", (item: RojoTreeItem) => {
 			deleteExistingInstance(item.getFolderPath(), item.getFilePath());
 		});
-		this.register("openProjectRoot", (item: RojoTreeItem) => {
+		this.register("openFile", (item: RojoTreeItem) => {
 			item.openFile();
 		});
 	}

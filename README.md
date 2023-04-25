@@ -19,14 +19,18 @@ Once the extension reaches a more usable state it will be published.
 #### Features
 
 -   Add customizable ignore globs for which instances to show (default to ignoring `**/Index/**`)
+-   Add support for inserting services if the root of the explorer is a DataModel
+-   Add support for adding arbitrary classes using `.model.json` files, improved Insert Object dialog
 -   Implement remaining file tree operations - copy/cut/paste/paste into
 -   Implement drag & drop functionality for the file tree
--   Implement support for Rojo's `.meta` files in rename/delete operations
--   Implement support for adding arbitrary classes using `.model.json` files
 
 #### Improvements
 
 -   Automatically download & store explorer icons in a cache instead of hardcoding
+
+#### Bugs
+
+-   Fix `.meta` files not being renamed together with main file in rename/delete operations
 
 ### Future Plans
 

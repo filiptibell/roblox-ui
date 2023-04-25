@@ -34,6 +34,10 @@ const ROJO_FILE_EXTENSIONS = [
 	"client.lua",
 	"luau",
 	"lua",
+	"rbxm",
+	"rbxmx",
+	"rbxl",
+	"rbxlx",
 ];
 
 const globalWatchSupportCache: Map<string, boolean> = new Map();
@@ -154,7 +158,20 @@ export const isProjectFilePath = (filePath: string): boolean => {
 	return filePath.endsWith(ROJO_PROJECT_EXTENSION);
 };
 
+export const isBinaryFilePath = (filePath: string): boolean => {
+	const fileExt = extractRojoFileExtension(filePath);
+	return (
+		fileExt === "rbxm" ||
+		fileExt === "rbxmx" ||
+		fileExt === "rbxl" ||
+		fileExt === "rbxlx"
+	);
+};
+
 export const isInitFilePath = (filePath: string): boolean => {
+	if (isBinaryFilePath(filePath)) {
+		return false;
+	}
 	const fileExt = extractRojoFileExtension(filePath);
 	if (fileExt) {
 		const fileName = path.basename(filePath, `.${fileExt}`);
@@ -175,12 +192,34 @@ export const cacheProjectFileSystemPaths = async (
 ) => {
 	const rootAsNode = { [project.name]: project.tree };
 	await cacheProjectFileSystemPathsForNode(workspacePath, rootAsNode);
+	fs.writeFile(
+		path.join(workspacePath, "test.json"),
+		JSON.stringify(rootAsNode)
+	);
 };
 
 const cacheProjectFileSystemPathsForNode = async (
 	workspacePath: string,
-	projectNode: ProjectOrMetaFileNode
+	projectNode: ProjectOrMetaFileNode,
+	parent: ProjectOrMetaFileNode | void
 ) => {
+	const children: Map<string, ProjectOrMetaFileNode> = new Map();
+	for (const [key, value] of Object.entries(projectNode)) {
+		if (!key.startsWith("$")) {
+			children.set(key, value);
+		}
+	}
+
+	await Promise.all(
+		[...children.values()].map((child) =>
+			cacheProjectFileSystemPathsForNode(
+				workspacePath,
+				child,
+				projectNode
+			)
+		)
+	);
+
 	const nodePath = projectNode["$path"];
 	if (nodePath && typeof nodePath === "string") {
 		try {
@@ -194,24 +233,42 @@ const cacheProjectFileSystemPathsForNode = async (
 			if (isDir) {
 				projectNode["$folderPath"] = nodePath;
 			}
-		} catch {}
-	}
-
-	const innerPromises: Promise<void>[] = [];
-	for (const [projectNodeName, projectNodeInner] of Object.entries(
-		projectNode
-	)) {
-		if (!projectNodeName.startsWith("$")) {
-			innerPromises.push(
-				cacheProjectFileSystemPathsForNode(
-					workspacePath,
-					projectNodeInner
-				)
-			);
+			return;
+		} catch {
+			return;
 		}
 	}
-	if (innerPromises.length > 0) {
-		await Promise.all(innerPromises);
+
+	// We are at the root of the project, try to figure out some kind of shared
+	// folder prefix based on the top level items, if we have a definite shared
+	// folder prefix then we can enable features such as inserting services
+	if (projectNode["$className"] === "DataModel") {
+		let sharedPrefix: string | undefined;
+		for (const child of children.values()) {
+			const parentPath = child["$folderPath"]
+				? path.join(child["$folderPath"], "..")
+				: undefined;
+			if (parentPath) {
+				if (sharedPrefix) {
+					if (!parentPath.startsWith(sharedPrefix)) {
+						sharedPrefix = undefined;
+						break;
+					}
+				} else {
+					sharedPrefix = parentPath;
+				}
+			}
+		}
+		if (sharedPrefix) {
+			try {
+				const fullPath = path.join(workspacePath, sharedPrefix);
+				const stats = await fs.stat(fullPath);
+				const isDir = stats.isDirectory();
+				if (isDir) {
+					projectNode["$folderPath"] = sharedPrefix;
+				}
+			} catch {}
+		}
 	}
 };
 
