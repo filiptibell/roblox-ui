@@ -18,6 +18,7 @@ Once the extension reaches a more usable state it will be published.
 
 #### Features
 
+-   Add customizable ignore globs for which instances to show (default to ignoring `**/Index/**`)
 -   Implement remaining file tree operations - copy/cut/paste/paste into
 -   Implement drag & drop functionality for the file tree
 -   Implement support for Rojo's `.meta` files in rename/delete operations
