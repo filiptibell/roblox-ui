@@ -2,7 +2,7 @@
 	"name": "rojo-viewer",
 	"displayName": "Rojo Viewer",
 	"description": "Explorer view similar to Roblox Studio for Rojo projects",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"license": "MIT",
 	"publisher": "filiptibell",
 	"author": {
@@ -159,64 +159,64 @@
 			"view/title": [
 				{
 					"command": "rojoViewer.refresh",
-					"when": "view == rojoViewer",
+					"when": "view == rojoViewer.explorer",
 					"group": "navigation"
 				}
 			],
 			"view/item/context": [
 				{
 					"command": "rojoViewer.instanceCut",
-					"when": "view == rojoViewer && viewItem =~ /canMove/",
+					"when": "view == rojoViewer.explorer && viewItem =~ /canMove/",
 					"group": "navigation@1"
 				},
 				{
 					"command": "rojoViewer.instanceCopy",
-					"when": "view == rojoViewer && viewItem =~ /canMove/",
+					"when": "view == rojoViewer.explorer && viewItem =~ /canMove/",
 					"group": "navigation@2"
 				},
 				{
 					"command": "rojoViewer.instancePaste",
-					"when": "view == rojoViewer && viewItem =~ /canPaste/",
+					"when": "view == rojoViewer.explorer && viewItem =~ /canPaste/",
 					"group": "navigation@3"
 				},
 				{
 					"command": "rojoViewer.instancePasteInto",
-					"when": "view == rojoViewer && viewItem =~ /canPasteInto/",
+					"when": "view == rojoViewer.explorer && viewItem =~ /canPasteInto/",
 					"group": "navigation@4"
 				},
 				{
 					"command": "rojoViewer.insertObject",
-					"when": "view == rojoViewer && viewItem =~ /canInsertObject/",
+					"when": "view == rojoViewer.explorer && viewItem =~ /canInsertObject/",
 					"group": "navigation_2@1"
 				},
 				{
 					"command": "rojoViewer.insertService",
-					"when": "view == rojoViewer && viewItem =~ /canInsertService/",
+					"when": "view == rojoViewer.explorer && viewItem =~ /canInsertService/",
 					"group": "navigation_2@2"
 				},
 				{
 					"command": "rojoViewer.openFile",
-					"when": "view == rojoViewer && viewItem =~ /projectFile/",
+					"when": "view == rojoViewer.explorer && viewItem =~ /projectFile/",
 					"group": "navigation_3@3"
 				},
 				{
 					"command": "rojoViewer.renameObject",
-					"when": "view == rojoViewer && viewItem =~ /instance/",
+					"when": "view == rojoViewer.explorer && viewItem =~ /instance/",
 					"group": "navigation_4@1"
 				},
 				{
 					"command": "rojoViewer.deleteObject",
-					"when": "view == rojoViewer && viewItem =~ /instance/",
+					"when": "view == rojoViewer.explorer && viewItem =~ /instance/",
 					"group": "navigation_4@2"
 				},
 				{
 					"command": "rojoViewer.insertObject",
-					"when": "view == rojoViewer && (viewItem =~ /instance/ && viewItem =~ /canInsertObject/)",
+					"when": "view == rojoViewer.explorer && (viewItem =~ /instance/ && viewItem =~ /canInsertObject/)",
 					"group": "inline@1"
 				},
 				{
 					"command": "rojoViewer.insertService",
-					"when": "view == rojoViewer && (viewItem =~ /projectFile/ && viewItem =~ /canInsertService/)",
+					"when": "view == rojoViewer.explorer && (viewItem =~ /projectFile/ && viewItem =~ /canInsertService/)",
 					"group": "inline@2"
 				}
 			]
@@ -224,14 +224,14 @@
 		"viewsContainers": {
 			"activitybar": [
 				{
-					"id": "rojo-viewer",
+					"id": "rojoViewer",
 					"title": "Rojo Viewer",
 					"icon": "$(remote-explorer)"
 				}
 			]
 		},
 		"views": {
-			"rojo-viewer": [
+			"rojoViewer": [
 				{
 					"id": "rojoViewer.explorer",
 					"name": "Explorer",
