@@ -1,10 +1,11 @@
 import * as vscode from "vscode";
 import * as cp from "child_process";
+import * as fs from "fs/promises";
 import * as path from "path";
 import * as semver from "semver";
 
 import { SettingsProvider } from "../providers/settings";
-import { SourcemapNode, parseSourcemap } from "./sourcemap";
+import { SourcemapNode } from "./sourcemap";
 
 export type ProjectRootNode = {
 	name: string;
@@ -12,10 +13,17 @@ export type ProjectRootNode = {
 };
 
 export type ProjectOrMetaFileNode = {
+	[key: string]: any | ProjectOrMetaFileNode;
 	["$ignoreUnknownInstances"]?: boolean;
 	["$className"]?: string;
 	["$path"]?: string;
-	[key: string]: any | ProjectOrMetaFileNode;
+	/**
+	 * Extension-only property
+	 *
+	 * Added by
+	 */
+	["$filePath"]?: string;
+	["$folderPath"]?: string;
 };
 
 const ROJO_PROJECT_EXTENSION = ".project.json";
@@ -98,7 +106,7 @@ export const rojoSourcemapWatch = (
 		}
 		stdout += data.toString("utf8");
 		try {
-			const sourcemap = parseSourcemap(stdout);
+			const sourcemap = JSON.parse(stdout);
 			stdout = "";
 			updateCallback(childProcess, sourcemap);
 		} catch {}
@@ -153,5 +161,129 @@ export const isInitFilePath = (filePath: string): boolean => {
 		return fileName === "init";
 	} else {
 		return false;
+	}
+};
+
+/**
+ * Caches file system paths from project nodes, also making sure they exist.
+ *
+ * Does not modify project nodes without a `"$path"` attribute set.
+ */
+export const cacheProjectFileSystemPaths = async (
+	workspacePath: string,
+	project: ProjectRootNode
+) => {
+	const rootAsNode = { [project.name]: project.tree };
+	await cacheProjectFileSystemPathsForNode(workspacePath, rootAsNode);
+};
+
+const cacheProjectFileSystemPathsForNode = async (
+	workspacePath: string,
+	projectNode: ProjectOrMetaFileNode
+) => {
+	const nodePath = projectNode["$path"];
+	if (nodePath && typeof nodePath === "string") {
+		try {
+			const fullPath = path.join(workspacePath, nodePath);
+			const stats = await fs.stat(fullPath);
+			const isFile = stats.isFile();
+			if (isFile) {
+				projectNode["$filePath"] = nodePath;
+			}
+			const isDir = stats.isDirectory();
+			if (isDir) {
+				projectNode["$folderPath"] = nodePath;
+			}
+		} catch {}
+	}
+
+	const innerPromises: Promise<void>[] = [];
+	for (const [projectNodeName, projectNodeInner] of Object.entries(
+		projectNode
+	)) {
+		if (!projectNodeName.startsWith("$")) {
+			innerPromises.push(
+				cacheProjectFileSystemPathsForNode(
+					workspacePath,
+					projectNodeInner
+				)
+			);
+		}
+	}
+	if (innerPromises.length > 0) {
+		await Promise.all(innerPromises);
+	}
+};
+
+/**
+ * Merges the given project file into the sourcemap.
+ *
+ * Does not modify the project file.
+ *
+ * This adds new `folderPath` properties to sourcemap nodes
+ * which point to known folders on the filesystem, which is
+ * something that the sourcemap does not contain by default.
+ *
+ * **NOTE:** Make sure to run `cacheProjectFileSystemPaths` on the
+ * project before applying this merge, otherwise this will be a no-op.
+ */
+export const mergeProjectIntoSourcemap = (
+	workspacePath: string,
+	project: ProjectRootNode,
+	sourcemap: SourcemapNode
+) => {
+	const rootAsNode = { [project.name]: project.tree };
+	const sourcemapAsRoot = {
+		className: "<<<ROOT>>>",
+		name: "<<<ROOT>>>",
+		children: [sourcemap],
+	};
+	mergeProjectNodeIntoSourcemapNode(
+		workspacePath,
+		rootAsNode,
+		sourcemapAsRoot
+	);
+};
+
+const mergeProjectNodeIntoSourcemapNode = (
+	workspacePath: string,
+	projectNode: ProjectOrMetaFileNode,
+	sourcemapNode: SourcemapNode
+) => {
+	const nodeFolderPath = projectNode["$folderPath"];
+	if (nodeFolderPath) {
+		sourcemapNode.folderPath = nodeFolderPath;
+	}
+	const nodeFilePath = projectNode["$filePath"];
+	if (nodeFilePath) {
+		if (sourcemapNode.filePaths) {
+			if (!sourcemapNode.filePaths.find((p) => p === nodeFilePath)) {
+				sourcemapNode.filePaths.push(nodeFilePath);
+			}
+		} else {
+			sourcemapNode.filePaths = [nodeFilePath];
+		}
+	}
+	if (sourcemapNode.children) {
+		for (const [projectNodeName, projectNodeInner] of Object.entries(
+			projectNode
+		)) {
+			if (!projectNodeName.startsWith("$")) {
+				let sourcemapNodeInner;
+				for (const child of sourcemapNode.children.values()) {
+					if (child.name === projectNodeName) {
+						sourcemapNodeInner = child;
+						break;
+					}
+				}
+				if (sourcemapNodeInner) {
+					mergeProjectNodeIntoSourcemapNode(
+						workspacePath,
+						projectNodeInner,
+						sourcemapNodeInner
+					);
+				}
+			}
+		}
 	}
 };

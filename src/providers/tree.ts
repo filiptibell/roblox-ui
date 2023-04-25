@@ -9,8 +9,7 @@ import {
 import { getClassIconPath } from "../utils/icons";
 import {
 	SourcemapNode,
-	findFilePath,
-	findFolderPath,
+	findPrimaryFilePath,
 	getSourcemapNodeTreeOrder,
 } from "../utils/sourcemap";
 
@@ -214,10 +213,10 @@ export class RojoTreeItem extends vscode.TreeItem {
 			? new vscode.ThemeIcon("loading~spin")
 			: this.iconPathReal;
 
-		const filePath = findFilePath(workspacePath, node);
-		const folderPath = filePath
-			? null
-			: findFolderPath(workspacePath, node);
+		const folderPath = node.folderPath
+			? path.join(workspacePath, node.folderPath)
+			: null;
+		const filePath = findPrimaryFilePath(workspacePath, node);
 		const fileIsScript = filePath
 			? !filePath.endsWith(".project.json")
 			: false;
