@@ -243,7 +243,7 @@
 		"viewsWelcome": [
 			{
 				"view": "rojoViewer.explorer",
-				"contents": "No workspace found"
+				"contents": "In order to use the explorer, a Rojo project file must exist in the current directory.\nYou can set a custom Rojo project file path to use in the extension settings.\n[Extension Settings](command:workbench.action.openSettings?%5B%22rojoViewer%22%5D)"
 			}
 		]
 	},
