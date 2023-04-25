@@ -18,7 +18,8 @@
 		"vscode": "^1.77.0"
 	},
 	"categories": [
-		"Other"
+		"Other",
+		"Visualization"
 	],
 	"activationEvents": [],
 	"main": "./out/extension.js",
