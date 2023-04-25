@@ -286,9 +286,6 @@ export class RojoTreeItem extends vscode.TreeItem implements vscode.Disposable {
 		}
 		if (this.filePath !== null || this.folderPath !== null) {
 			const info = treeProvider.apiDump.Classes.get(node.className);
-			vscode.window.showInformationMessage(
-				`${JSON.stringify(info?.Tags)}`
-			);
 			if (
 				!info ||
 				!(
