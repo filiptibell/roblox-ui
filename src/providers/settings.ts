@@ -3,6 +3,7 @@ import * as vscode from "vscode";
 const EXTENSION = "rojoViewer";
 const DEFAULTS = {
 	autogenerateSourcemap: true,
+	ignoreGlobs: ["**/_Index/**"],
 	includeNonScripts: false,
 	showClassNames: false,
 	showFilePaths: false,
