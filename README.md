@@ -1,9 +1,8 @@
-# Rojo Explorer
+# Rojo Viewer
 
-An extension that brings the Explorer view from Roblox Studio into Visual Studio Code.
+An extension that brings the Explorer view and more from Roblox Studio into Visual Studio Code.
 
-The extension is currently under development and as such is not yet published to the extension marketplace.  
-Once the extension reaches a more usable state it will be published.
+This extension is currently under development heavy development.
 
 ## Installation
 
@@ -19,6 +18,7 @@ Once the extension reaches a more usable state it will be published.
 #### Features
 
 -   Add customizable ignore globs for which instances to show (default to ignoring `**/Index/**`)
+-   Add support for showing a file picker (`rbxm` and `rbxmx`) and inserting them into instances
 -   Add support for inserting services if the root of the explorer is a DataModel
 -   Add support for adding arbitrary classes using `.model.json` files, improved Insert Object dialog
 -   Implement remaining file tree operations - copy/cut/paste/paste into

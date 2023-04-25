@@ -137,7 +137,7 @@ export const connectSourcemapUsingRojo = (
 					}
 				} catch (e) {
 					vscode.window.showWarningMessage(
-						`Rojo Explorer failed to read the project file at ${projectFilePath}` +
+						`Failed to read the project file at ${projectFilePath}` +
 							"\nSome explorer functionality may not be available" +
 							`\n${e}`
 					);
@@ -204,7 +204,7 @@ export const connectSourcemapUsingRojo = (
 			.then(updateProjectFile)
 			.catch((e) => {
 				vscode.window.showErrorMessage(
-					`Rojo Explorer failed to read the project file at ${projectFilePath}\n${e}`
+					`Failed to read the project file at ${projectFilePath}\n${e}`
 				);
 			});
 	};

@@ -32,7 +32,7 @@ export async function getRobloxApiVersion(
 				if (cached) {
 					vscode.window.showWarningMessage(
 						"Failed to fetch latest Roblox version!" +
-							"\nRojo Explorer will use a cached version, which may be out of date."
+							"\nA cached version will be used, which may be out of date."
 					);
 					resolve(cached);
 				} else {

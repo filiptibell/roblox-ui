@@ -15,7 +15,7 @@ export class CommandsProvider implements vscode.Disposable {
 	private disposables: Array<vscode.Disposable> = new Array();
 
 	private register(name: string, command: (...args: any[]) => any) {
-		const fullName = `rojoExplorer.${name}`;
+		const fullName = `rojoViewer.${name}`;
 		const disposable = vscode.commands.registerCommand(fullName, command);
 		this.disposables.push(disposable);
 	}

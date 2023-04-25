@@ -55,7 +55,7 @@ export const rojoSupportsSourcemapWatch = (cwd: string) => {
 	});
 	if (result.status !== null && result.status !== 0) {
 		vscode.window.showWarningMessage(
-			"Rojo Explorer failed to generate a sourcemap!" +
+			"Failed to generate a sourcemap!" +
 				"\nMake sure Rojo is installed and available in the current directory."
 		);
 		supported = false;
@@ -63,7 +63,7 @@ export const rojoSupportsSourcemapWatch = (cwd: string) => {
 		const version = result.stdout.toString("utf8").slice(5);
 		if (!semver.satisfies(version, "^7.3.0")) {
 			vscode.window.showWarningMessage(
-				"Rojo Explorer failed to generate a sourcemap!" +
+				"Failed to generate a sourcemap!" +
 					`\nRojo is installed with version ${version}` +
 					", but a minimum version of 7.3.0 is required."
 			);
@@ -128,13 +128,13 @@ export const rojoSourcemapWatch = (
 		if (code !== 0) {
 			if (stderr.length > 0) {
 				vscode.window.showErrorMessage(
-					"Rojo Explorer failed to generate a sourcemap!" +
+					"Failed to generate a sourcemap!" +
 						`\nRojo exited with code ${code}` +
 						`\nMessage:\n${stderr}`
 				);
 			} else {
 				vscode.window.showErrorMessage(
-					"Rojo Explorer failed to generate a sourcemap!" +
+					"Failed to generate a sourcemap!" +
 						`\nRojo exited with code ${code}`
 				);
 			}
@@ -192,10 +192,6 @@ export const cacheProjectFileSystemPaths = async (
 ) => {
 	const rootAsNode = { [project.name]: project.tree };
 	await cacheProjectFileSystemPathsForNode(workspacePath, rootAsNode);
-	fs.writeFile(
-		path.join(workspacePath, "test.json"),
-		JSON.stringify(rootAsNode)
-	);
 };
 
 const cacheProjectFileSystemPathsForNode = async (
