@@ -5,15 +5,16 @@ import * as cp from "child_process";
 
 import { SettingsProvider } from "../providers/settings";
 import { RojoTreeProvider } from "../providers/tree";
+
+import { RobloxReflectionMetadata } from "../web/robloxReflectionMetadata";
+
 import {
-	ProjectOrMetaFileNode,
 	ProjectRootNode,
-	extractRojoFileExtension,
 	isInitFilePath,
-	isProjectFilePath,
+	mergeProjectIntoSourcemap,
+	cacheProjectFileSystemPaths,
 	rojoSourcemapWatch,
 } from "./rojo";
-import { RobloxReflectionMetadata } from "../web/robloxReflectionMetadata";
 
 export type SourcemapNode = {
 	name: string;
@@ -21,27 +22,48 @@ export type SourcemapNode = {
 	folderPath?: string;
 	filePaths?: string[];
 	children?: SourcemapNode[];
-	parent?: SourcemapNode;
 };
 
-const sourcemapSetParents = (
+const postprocessSourcemap = (
 	node: SourcemapNode,
-	parent: SourcemapNode | undefined
-) => {
-	if (parent) {
-		node.parent = parent;
+	parent: SourcemapNode | void
+): SourcemapNode => {
+	// Init files have a guaranteed parent directory
+	if (!node.folderPath && node.filePaths) {
+		for (const filePath of node.filePaths.values()) {
+			if (isInitFilePath(filePath)) {
+				node.folderPath = path.dirname(filePath);
+			}
+		}
+	}
+	// Otherwise we look at the parent of this node and try to
+	// join its folder path with this sourcemap node folder name
+	if (!node.folderPath && node.className === "Folder") {
+		if (parent && parent.folderPath) {
+			node.folderPath = path.join(parent.folderPath, node.name);
+		}
 	}
 	if (node.children) {
 		for (const child of node.children.values()) {
-			sourcemapSetParents(child, node);
+			postprocessSourcemap(child, node);
 		}
 	}
+	return node;
 };
 
-export const parseSourcemap = (txt: string): SourcemapNode => {
-	const sourcemap = JSON.parse(txt);
-	sourcemapSetParents(sourcemap, undefined);
-	return sourcemap;
+export const findPrimaryFilePath = (
+	workspacePath: string,
+	node: SourcemapNode
+): string | null => {
+	if (node.filePaths) {
+		if (node.filePaths.length === 1) {
+			return path.join(workspacePath, node.filePaths[0]);
+		} else {
+			// TODO: Sort and find using ordering - init, lua, model, meta, project
+			const copied = node.filePaths.slice();
+		}
+	}
+	return null;
 };
 
 export const getSourcemapNodeTreeOrder = (
@@ -65,64 +87,6 @@ export const getSourcemapNodeTreeOrder = (
 	} else {
 		return 1;
 	}
-};
-
-export const findFilePath = (
-	workspaceRoot: string,
-	node: SourcemapNode
-): string | null => {
-	if (node.filePaths) {
-		const filePath = node.filePaths.find((filePath) => {
-			return (
-				isProjectFilePath(filePath) ||
-				extractRojoFileExtension(filePath) !== null
-			);
-		});
-		if (filePath) {
-			return path.join(workspaceRoot, filePath);
-		}
-	}
-	return null;
-};
-
-export const findFolderPath = (
-	workspaceRoot: string,
-	node: SourcemapNode
-): string | null => {
-	// Init files are easy, they have a guaranteed parent folder
-	const filePath = findFilePath(workspaceRoot, node);
-	if (filePath) {
-		if (isProjectFilePath(filePath)) {
-			return null;
-		} else if (isInitFilePath(filePath)) {
-			return path.join(workspaceRoot, path.dirname(filePath));
-		}
-	}
-	// Some instance may have a direct folder path tied
-	// to them, depending on how they were created
-	if (node.folderPath) {
-		return path.join(workspaceRoot, node.folderPath);
-	}
-	// Other folders are trickier, and the sourcemap does
-	// not contain information for them, so we need to try
-	// and use our root folders parsed from the project file
-	if (node.className === "Folder") {
-		const parts = [];
-		let current = node;
-		while (current && !current.folderPath) {
-			parts.push(current.name);
-			if (current.parent) {
-				current = current.parent;
-			} else {
-				break;
-			}
-		}
-		if (current.folderPath) {
-			parts.reverse();
-			return path.join(workspaceRoot, current.folderPath, ...parts);
-		}
-	}
-	return null;
 };
 
 export const connectSourcemapUsingRojo = (
@@ -157,32 +121,43 @@ export const connectSourcemapUsingRojo = (
 			// If we got a project file, spawn a new rojo process
 			// that will generate sourcemaps and watch for changes
 			if (projectFileContents && !destroyed) {
-				const projectFileNode: ProjectRootNode =
-					JSON.parse(projectFileContents);
+				// Parse the project file and get rid of file paths (not directories)
+				let projectFileNode: ProjectRootNode | undefined;
+				try {
+					projectFileNode = JSON.parse(projectFileContents);
+					if (projectFileNode) {
+						await cacheProjectFileSystemPaths(
+							workspacePath,
+							projectFileNode
+						);
+					}
+				} catch (e) {
+					vscode.window.showWarningMessage(
+						`Rojo Explorer failed to read the project file at ${projectFilePath}` +
+							"\nSome explorer functionality may not be available" +
+							`\n${e}`
+					);
+					return;
+				}
+				if (destroyed) {
+					return;
+				}
+				// Spawn the rojo process
 				currentChildProcess = rojoSourcemapWatch(
 					workspacePath,
 					settings,
 					() => {
 						treeProvider.setLoading(workspacePath);
 					},
-					async (_, sourcemap) => {
-						try {
-							await mergeProjectIntoSourcemap(
+					(_, sourcemap) => {
+						if (projectFileNode) {
+							mergeProjectIntoSourcemap(
 								workspacePath,
 								projectFileNode,
 								sourcemap
 							);
-						} catch (e) {
-							vscode.window.showWarningMessage(
-								`Rojo Explorer partially failed to read the project file at ${projectFilePath}` +
-									"\nSome explorer functionality may not be available" +
-									`\n${e}`
-							);
-							return;
 						}
-						if (destroyed) {
-							return;
-						}
+						postprocessSourcemap(sourcemap);
 						treeProvider.update(workspacePath, sourcemap);
 					}
 				);
@@ -247,8 +222,9 @@ export const connectSourcemapUsingFile = (
 	// Create callback for updating sourcemap
 	const update = () => {
 		fs.readFile(sourcemapPath, "utf8")
-			.then(parseSourcemap)
-			.then((sourcemap) => {
+			.then(JSON.parse)
+			.then((sourcemap: SourcemapNode) => {
+				postprocessSourcemap(sourcemap);
 				treeProvider.update(workspacePath, sourcemap);
 			});
 	};
@@ -265,66 +241,4 @@ export const connectSourcemapUsingFile = (
 	update();
 
 	return [update, destroy];
-};
-
-export const mergeProjectIntoSourcemap = async (
-	workspacePath: string,
-	project: ProjectRootNode,
-	sourcemap: SourcemapNode
-) => {
-	const rootAsNode = { [project.name]: project.tree };
-	const sourcemapAsRoot = {
-		className: "<<<ROOT>>>",
-		name: "<<<ROOT>>>",
-		children: [sourcemap],
-	};
-	await mergeProjectNodeIntoSourcemapNode(
-		workspacePath,
-		rootAsNode,
-		sourcemapAsRoot
-	);
-};
-
-export const mergeProjectNodeIntoSourcemapNode = async (
-	workspacePath: string,
-	projectNode: ProjectOrMetaFileNode,
-	sourcemapNode: SourcemapNode
-): Promise<void> => {
-	const nodePath = projectNode["$path"];
-	if (nodePath) {
-		const fullPath = path.join(workspacePath, nodePath);
-		try {
-			if ((await fs.stat(fullPath)).isDirectory()) {
-				sourcemapNode.folderPath = nodePath;
-			}
-		} catch {}
-	}
-	const innerPromises: Promise<void>[] = [];
-	if (sourcemapNode.children) {
-		for (const [projectNodeName, projectNodeInner] of Object.entries(
-			projectNode
-		)) {
-			if (!projectNodeName.startsWith("$")) {
-				let sourcemapNodeInner;
-				for (const child of sourcemapNode.children.values()) {
-					if (child.name === projectNodeName) {
-						sourcemapNodeInner = child;
-						break;
-					}
-				}
-				if (sourcemapNodeInner) {
-					innerPromises.push(
-						mergeProjectNodeIntoSourcemapNode(
-							workspacePath,
-							projectNodeInner,
-							sourcemapNodeInner
-						)
-					);
-				}
-			}
-		}
-	}
-	if (innerPromises.length > 0) {
-		await Promise.all(innerPromises);
-	}
 };
