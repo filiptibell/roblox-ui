@@ -38,10 +38,9 @@ The extension can also be compiled and installed locally:
 
 #### Features
 
--   Add customizable ignore globs for which instances to show (default to ignoring `**/Index/**`)
--   Add support for showing a file picker (`rbxm` and `rbxmx`) and inserting them into instances
 -   Add support for inserting services if the root of the explorer is a DataModel
 -   Add support for adding arbitrary classes using `.model.json` files, improved Insert Object dialog
+-   Add support for showing a file picker (`rbxm` and `rbxmx`) and inserting them into instances
 -   Implement remaining file tree operations - copy/cut/paste/paste into
 -   Implement drag & drop functionality for the file tree
 
@@ -57,8 +56,8 @@ The extension can also be compiled and installed locally:
 
 -   Integration with [Wally](https://github.com/UpliftGames/wally)
     -   Button for opening the wally manifest, similar to the one for the rojo manifest
-    -   Hovering over the root of a tree for info about version, description, ...
-    -   Special "package" icon for projects that are publishable and have a script as the root
+    -   Hover cards for wally link files displaying name, version, desc, and link to wally page
+    -   Special "package" icon for wally link files
 -   Properties panel
     -   Simple text view of properties
     -   Editing properties for simple `.model.json` or `.meta` files
