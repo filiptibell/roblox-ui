@@ -1,8 +1,21 @@
-# Rojo Viewer
+<!-- Disable lint that disallows html -->
+<!-- markdownlint-disable MD033 -->
+
+<h1 align="center">Rojo Viewer</h1>
+
+<div align="center">
+<a href="https://marketplace.visualstudio.com/items?itemName=filiptibell.rojo-viewer">
+<img src="https://vsmarketplacebadges.dev/version/filiptibell.rojo-viewer.png"/>
+</a>
+</div>
+
+<br/>
 
 An extension that brings the Explorer view and more from Roblox Studio into Visual Studio Code.
 
 This extension is currently under development heavy development.
+
+---
 
 ## Installation
 

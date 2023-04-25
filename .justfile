@@ -17,3 +17,11 @@ install: build
 	echo "🚀 Installing extension..."
 	code --install-extension "$EXTENSION" > /dev/null
 	echo "✅ Installed extension successfully!"
+
+[no-exit-message]
+publish-extension:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	echo "🛠️  Publishing extension..."
+	vsce publish > /dev/null
+	echo "✅ Published extension successfully!"
