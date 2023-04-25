@@ -6,6 +6,59 @@ import { extractRojoFileExtension, isInitFilePath } from "./rojo";
 
 type InsertableClassName = "Folder" | "ModuleScript" | "LocalScript" | "Script";
 
+const getInstanceFileName = (
+	className: InsertableClassName,
+	instanceName: string
+): string => {
+	if (className === "Script") {
+		return `${instanceName}.server.luau`;
+	} else if (className === "LocalScript") {
+		return `${instanceName}.client.luau`;
+	} else {
+		return `${instanceName}.luau`;
+	}
+};
+
+const canCreateInstanceFile = async (
+	folderPath: string | null,
+	filePath: string | null,
+	className: InsertableClassName,
+	instanceName: string
+): Promise<string | undefined> => {
+	if (!folderPath) {
+		if (!filePath) {
+			return "Missing file path (internal error)";
+		}
+		if (isInitFilePath(filePath)) {
+			folderPath = path.dirname(filePath);
+		} else {
+			const fileExt = extractRojoFileExtension(filePath);
+			if (fileExt) {
+				const dirName = path.dirname(filePath);
+				const subdirName = path.basename(filePath, `.${fileExt}`);
+				folderPath = path.join(dirName, subdirName);
+			} else {
+				return "Invalid file extension (internal error)";
+			}
+		}
+	}
+
+	if (className === "Folder") {
+		const newFolderPath = path.join(folderPath, instanceName);
+		if ((await fs.stat(newFolderPath)).isDirectory()) {
+			return `Folder already exists at '${newFolderPath}'`;
+		}
+	} else {
+		const newFileName = getInstanceFileName(className, instanceName);
+		const newFilePath = path.join(folderPath, newFileName);
+		if ((await fs.stat(newFilePath)).isFile()) {
+			return `File already exists at '${newFileName}'`;
+		}
+	}
+
+	return;
+};
+
 export const createNewInstance = async (
 	folderPath: string | null,
 	filePath: string | null,
@@ -65,14 +118,7 @@ export const createNewInstance = async (
 		await fs.mkdir(newFolderPath);
 		return vscode.Uri.file(newFolderPath);
 	} else {
-		let newFileName;
-		if (className === "Script") {
-			newFileName = `${instanceName}.server.luau`;
-		} else if (className === "LocalScript") {
-			newFileName = `${instanceName}.client.luau`;
-		} else {
-			newFileName = `${instanceName}.luau`;
-		}
+		const newFileName = getInstanceFileName(className, instanceName);
 		const newFilePath = path.join(folderPath, newFileName);
 		await fs.writeFile(newFilePath, "");
 		return vscode.Uri.file(newFilePath);
@@ -194,6 +240,14 @@ export const promptNewInstanceCreation = (
 			.showInputBox({
 				prompt: "Type in a name for the new instance",
 				value: chosen.className,
+				validateInput: async (value: string) => {
+					return await canCreateInstanceFile(
+						folderPath,
+						filePath,
+						chosen.className,
+						value
+					);
+				},
 			})
 			.then(async (instanceName) => {
 				if (!instanceName) {
