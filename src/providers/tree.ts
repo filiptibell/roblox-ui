@@ -220,7 +220,7 @@ export class RojoTreeItem extends vscode.TreeItem implements vscode.Disposable {
 			treeProvider.apiDump,
 			this.node.className
 		);
-		this.iconPath = this.isLoading
+		this.iconPath = isLoading
 			? new vscode.ThemeIcon("loading~spin")
 			: this.iconPathReal;
 
@@ -284,7 +284,7 @@ export class RojoTreeItem extends vscode.TreeItem implements vscode.Disposable {
 		} else if (folderPath) {
 			contextPartials.add("instance");
 		}
-		if (this.filePath !== null || this.folderPath !== null) {
+		if (parent && (filePath !== null || folderPath !== null)) {
 			const info = treeProvider.apiDump.Classes.get(node.className);
 			if (
 				!info ||
@@ -296,14 +296,10 @@ export class RojoTreeItem extends vscode.TreeItem implements vscode.Disposable {
 				contextPartials.add("canMove");
 			}
 		}
-		if (
-			this.parent !== null &&
-			this.parent.folderPath !== null &&
-			!node.folderPath
-		) {
-			contextPartials.add("canPaste");
+		if (parent && parent.folderPath !== null) {
+			contextPartials.add("canPasteSibling");
 		}
-		if (this.folderPath !== null) {
+		if (folderPath !== null) {
 			contextPartials.add("canPasteInto");
 			if (contextPartials.has("instance")) {
 				contextPartials.add("canInsertObject");
