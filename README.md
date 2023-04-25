@@ -13,7 +13,7 @@
 
 An extension that brings the Explorer view and more from Roblox Studio into Visual Studio Code.
 
-This extension is currently under development heavy development.
+This extension is currently under heavy development.
 
 ---
 
