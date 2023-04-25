@@ -53,15 +53,20 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(selection);
 	context.subscriptions.push(commands);
 
+	const forceRefreshAll = () => {
+		connectAllWorkspaces(settings, treeProvider);
+	};
+
 	// Listen for settings changing, if any of the settings that
 	// change behavior of the sourcemap or the sourcemap watch
 	// command change we have to re-initialize the workspace
-	settings.listen("includeNonScripts", () => {
-		connectAllWorkspaces(settings, treeProvider);
-	});
-	settings.listen("rojoProjectFile", () => {
-		connectAllWorkspaces(settings, treeProvider);
-	});
+	settings.listen("includeNonScripts", forceRefreshAll);
+	settings.listen("rojoProjectFile", forceRefreshAll);
+
+	// NOTE: We could move the listeners for these settings into the tree items
+	// themselves, but just reloading the workspaces is much much more efficient
+	settings.listen("showClassNames", forceRefreshAll);
+	settings.listen("showFilePaths", forceRefreshAll);
 
 	// Listen for workspace folders changing, and initialize current workspace folders
 	context.subscriptions.push(
@@ -74,7 +79,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			}
 		})
 	);
-	connectAllWorkspaces(settings, treeProvider);
+	forceRefreshAll();
 }
 
 export function deactivate() {

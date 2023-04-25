@@ -26,7 +26,7 @@ export class RojoTreeProvider
 		new Map();
 	private rootFilePaths: Map<string, Map<string, RojoTreeItem>> = new Map();
 
-	private _onDidChangeTreeData: vscode.EventEmitter<void | vscode.TreeItem> =
+	readonly _onDidChangeTreeData: vscode.EventEmitter<void | vscode.TreeItem> =
 		new vscode.EventEmitter();
 	readonly onDidChangeTreeData: vscode.Event<void | vscode.TreeItem> =
 		this._onDidChangeTreeData.event;
@@ -94,6 +94,10 @@ export class RojoTreeProvider
 	 */
 	public update(workspacePath: string, rootNode: SourcemapNode) {
 		this.tryInitGitRepo(workspacePath);
+		const previousItem = this.rootTreeItems.get(workspacePath);
+		if (previousItem) {
+			previousItem.dispose();
+		}
 		const workspaceItem = new RojoTreeItem(
 			this.settingsProvider,
 			this,
@@ -116,6 +120,10 @@ export class RojoTreeProvider
 		const disposable = this.gitDisposables.get(workspacePath);
 		if (disposable) {
 			disposable.dispose();
+		}
+		const previousItem = this.rootTreeItems.get(workspacePath);
+		if (previousItem) {
+			previousItem.dispose();
 		}
 		this.rootLoadStates.delete(workspacePath);
 		this.rootSourcemaps.delete(workspacePath);
@@ -164,25 +172,29 @@ export class RojoTreeProvider
 	}
 
 	dispose() {
-		const disposables = this.gitDisposables.entries();
-		for (const [key, disposable] of disposables) {
+		const gitDisposables = [...this.gitDisposables.entries()];
+		for (const [key, disposable] of gitDisposables) {
 			disposable.dispose();
 			this.gitDisposables.delete(key);
+		}
+		const itemDisposables = [...this.rootTreeItems.entries()];
+		for (const [key, disposable] of itemDisposables) {
+			disposable.dispose();
+			this.rootTreeItems.delete(key);
 		}
 	}
 }
 
-export class RojoTreeItem extends vscode.TreeItem {
+export class RojoTreeItem extends vscode.TreeItem implements vscode.Disposable {
 	private filePath: string | null;
 	private folderPath: string | null;
-	private fileIsScript: boolean;
 
-	private workspaceRoot: string;
 	private node: SourcemapNode;
 	private parent: RojoTreeItem | null = null;
 	private children: RojoTreeItem[] = [];
 
 	private iconPathReal: string;
+	private disposables: vscode.Disposable[] = [];
 	private isLoading: boolean = false;
 
 	constructor(
@@ -201,7 +213,6 @@ export class RojoTreeItem extends vscode.TreeItem {
 		);
 
 		this.setIsLoading(isLoading);
-		this.workspaceRoot = workspacePath;
 		this.node = node;
 		this.tooltip = node.className;
 
@@ -222,23 +233,39 @@ export class RojoTreeItem extends vscode.TreeItem {
 			: false;
 		this.filePath = filePath;
 		this.folderPath = folderPath;
-		this.fileIsScript = fileIsScript || false;
 		this.resourceUri = filePath
 			? vscode.Uri.file(filePath)
 			: folderPath
 			? vscode.Uri.file(folderPath)
 			: undefined;
 
-		if (settingsProvider.get("showFilePaths")) {
-			const fsPath = filePath
-				? filePath
-				: folderPath
-				? folderPath
-				: undefined;
-			if (fsPath) {
-				this.description = fsPath.slice(workspacePath.length + 1);
+		// Set description based on settings
+		const fsPathFull = filePath
+			? filePath
+			: folderPath
+			? folderPath
+			: undefined;
+		const fsPath = fsPathFull
+			? fsPathFull.slice(workspacePath.length + 1)
+			: undefined;
+		const updateDescription = () => {
+			const showClassNames = settingsProvider.get("showClassNames");
+			const showFilePaths = settingsProvider.get("showFilePaths");
+			if (showClassNames && showFilePaths) {
+				if (fsPath) {
+					this.description = `${node.className} - ${fsPath}`;
+				} else {
+					this.description = `${node.className}`;
+				}
+			} else if (showClassNames) {
+				this.description = node.className;
+			} else if (showFilePaths && fsPath) {
+				this.description = fsPath;
+			} else {
+				this.description = undefined;
 			}
-		}
+		};
+		updateDescription();
 
 		// Set context value for menu actions such as copy,
 		// paste, insert object, rename, ... to appear correctly
@@ -333,6 +360,17 @@ export class RojoTreeItem extends vscode.TreeItem {
 		}
 	}
 
+	dispose() {
+		for (const child of this.children) {
+			child.dispose();
+		}
+		for (const disposable of this.disposables) {
+			disposable.dispose();
+		}
+		this.children = [];
+		this.disposables = [];
+	}
+
 	/**
 	 * Set if this tree item is currently loading or not.
 	 *
@@ -423,7 +461,10 @@ export class RojoTreeItem extends vscode.TreeItem {
 	}
 }
 
-export class LoadingTreeItem extends vscode.TreeItem {
+export class LoadingTreeItem
+	extends vscode.TreeItem
+	implements vscode.Disposable
+{
 	constructor(workspacePath: string) {
 		let label;
 		try {
@@ -435,6 +476,8 @@ export class LoadingTreeItem extends vscode.TreeItem {
 		super(label);
 		this.iconPath = new vscode.ThemeIcon("loading~spin");
 	}
+
+	dispose() {}
 
 	public setIsLoading(_isLoading: boolean | undefined | null | void) {}
 }

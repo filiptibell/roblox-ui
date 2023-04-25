@@ -4,6 +4,7 @@ const EXTENSION = "rojoExplorer";
 const DEFAULTS = {
 	autogenerateSourcemap: true,
 	includeNonScripts: false,
+	showClassNames: false,
 	showFilePaths: false,
 	rojoProjectFile: "default.project.json",
 };

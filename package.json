@@ -26,10 +26,15 @@
 					"default": false,
 					"description": "Include instances that are not scripts in the explorer"
 				},
+				"rojoExplorer.showClassNames": {
+					"type": "boolean",
+					"default": false,
+					"description": "Show class names next to instances"
+				},
 				"rojoExplorer.showFilePaths": {
 					"type": "boolean",
 					"default": false,
-					"description": "Show file paths next to instance names"
+					"description": "Show file paths next to instances"
 				},
 				"rojoExplorer.rojoProjectFile": {
 					"type": "string",
