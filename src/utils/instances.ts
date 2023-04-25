@@ -2,6 +2,8 @@ import * as vscode from "vscode";
 import * as fs from "fs/promises";
 import * as path from "path";
 
+import * as fsSync from "fs";
+
 import { extractRojoFileExtension, isInitFilePath } from "./rojo";
 
 type InsertableClassName = "Folder" | "ModuleScript" | "LocalScript" | "Script";
@@ -17,6 +19,18 @@ const getInstanceFileName = (
 	} else {
 		return `${instanceName}.luau`;
 	}
+};
+
+const pathExists = async (path: string) => {
+	return new Promise((resolve, _) => {
+		fsSync.access(path, fsSync.constants.F_OK, (err) => {
+			if (err) {
+				resolve(false);
+			} else {
+				resolve(true);
+			}
+		});
+	});
 };
 
 const canCreateInstanceFile = async (
@@ -45,12 +59,18 @@ const canCreateInstanceFile = async (
 
 	if (className === "Folder") {
 		const newFolderPath = path.join(folderPath, instanceName);
+		if (!(await pathExists(newFolderPath))) {
+			return;
+		}
 		if ((await fs.stat(newFolderPath)).isDirectory()) {
 			return `Folder already exists at '${newFolderPath}'`;
 		}
 	} else {
 		const newFileName = getInstanceFileName(className, instanceName);
 		const newFilePath = path.join(folderPath, newFileName);
+		if (!(await pathExists(newFilePath))) {
+			return;
+		}
 		if ((await fs.stat(newFilePath)).isFile()) {
 			return `File already exists at '${newFileName}'`;
 		}
@@ -241,12 +261,16 @@ export const promptNewInstanceCreation = (
 				prompt: "Type in a name for the new instance",
 				value: chosen.className,
 				validateInput: async (value: string) => {
-					return await canCreateInstanceFile(
-						folderPath,
-						filePath,
-						chosen.className,
-						value
-					);
+					try {
+						return await canCreateInstanceFile(
+							folderPath,
+							filePath,
+							chosen.className,
+							value
+						);
+					} catch (e) {
+						return `Internal error: ${e}`;
+					}
 				},
 			})
 			.then(async (instanceName) => {

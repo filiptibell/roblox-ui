@@ -240,6 +240,9 @@ export class RojoTreeItem extends vscode.TreeItem {
 			}
 		}
 
+		// Set context value for menu actions such as copy,
+		// paste, insert object, rename, ... to appear correctly
+		const contextPartials = new Set();
 		if (filePath) {
 			if (fileIsScript) {
 				this.command = {
@@ -247,14 +250,51 @@ export class RojoTreeItem extends vscode.TreeItem {
 					command: "vscode.open",
 					arguments: [vscode.Uri.file(filePath)],
 				};
-				this.contextValue = "scriptInstance";
+				contextPartials.add("instance");
 			} else {
-				this.contextValue = "projectRoot";
+				contextPartials.add("projectFile");
 			}
 		} else if (folderPath) {
-			this.contextValue = "folderInstance";
+			contextPartials.add("instance");
 		}
+		if (this.filePath !== null || this.folderPath !== null) {
+			const info = treeProvider.apiDump.Classes.get(node.className);
+			vscode.window.showInformationMessage(
+				`${JSON.stringify(info?.Tags)}`
+			);
+			if (
+				!info ||
+				!(
+					info.Name === "DataModel" ||
+					info.Tags.find((tag) => tag === "Service")
+				)
+			) {
+				contextPartials.add("canMove");
+			}
+		}
+		if (
+			this.parent !== null &&
+			this.parent.folderPath !== null &&
+			!node.folderPath
+		) {
+			contextPartials.add("canPaste");
+		}
+		if (this.folderPath !== null) {
+			contextPartials.add("canPasteInto");
+			if (contextPartials.has("instance")) {
+				contextPartials.add("canInsertObject");
+			} else if (contextPartials.has("projectFile")) {
+				// DataModel nodes that have a folderPath are safe
+				// to add services into, the folder path is a confirmed
+				// shared prefix folder where all current services exist
+				if (node.className === "DataModel" && node.folderPath) {
+					contextPartials.add("canInsertService");
+				}
+			}
+		}
+		this.contextValue = Array.from(contextPartials.values()).join(";");
 
+		// Set parent reference and create child tree items
 		if (parent) {
 			this.parent = parent;
 		}
@@ -380,34 +420,6 @@ export class RojoTreeItem extends vscode.TreeItem {
 	 */
 	public getChildren(): RojoTreeItem[] {
 		return [...this.children];
-	}
-
-	/**
-	 * @returns `true` if the tree item can be copied, `false` otherwise.
-	 */
-	public canMove(): boolean {
-		return (
-			(this.filePath !== null || this.folderPath !== null) &&
-			!this.node.folderPath
-		);
-	}
-
-	/**
-	 * @returns `true` if the tree item can have other tree items pasted next to it, `false` otherwise.
-	 */
-	public canPaste(): boolean {
-		return (
-			this.parent !== null &&
-			this.parent.folderPath !== null &&
-			!this.node.folderPath
-		);
-	}
-
-	/**
-	 * @returns `true` if the tree item can have other tree items pasted into it, `false` otherwise.
-	 */
-	public canPasteInto(): boolean {
-		return this.folderPath !== null;
 	}
 }
 

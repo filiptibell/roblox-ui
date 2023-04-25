@@ -9,10 +9,26 @@ export class SelectionProvider implements vscode.Disposable {
 		treeView: vscode.TreeView<vscode.TreeItem>,
 		treeDataProvider: RojoTreeProvider
 	) {
-		// Reveal instances in the explorer when editors for them become visible
+		// Listen for focus changing to sync selection with our tree view items
+		this.disposables.push(
+			vscode.window.onDidChangeActiveTextEditor((e) => {
+				if (e && treeView.visible) {
+					const filePath = e.document.uri.fsPath;
+					const fileItem = treeDataProvider.find(filePath);
+					if (fileItem) {
+						treeView.reveal(fileItem);
+					}
+				}
+			})
+		);
+
+		// Reveal & select instances in the explorer when editors for them become visible
 		let visibleEditors: Map<string, vscode.TextEditor> = new Map();
 		this.disposables.push(
 			vscode.window.onDidChangeVisibleTextEditors((editors) => {
+				if (!treeView.visible) {
+					return;
+				}
 				const newEditors = new Map();
 				for (const editor of editors) {
 					const editorPath = editor.document.uri.fsPath;
@@ -28,46 +44,6 @@ export class SelectionProvider implements vscode.Disposable {
 					}
 				}
 				visibleEditors = newEditors;
-			})
-		);
-
-		// Update actions context (copy, paste, insert) when the explorer selection changes
-		this.disposables.push(
-			treeView.onDidChangeSelection((event) => {
-				const selected: Array<any> = Array.from(event.selection);
-
-				let canMove = false;
-				let canPaste = false;
-				let canPasteInto = false;
-				try {
-					canMove = selected.every((item) => item.canMove());
-					canPaste = selected.every((item) => item.canPaste());
-					canPasteInto = selected.every((item) =>
-						item.canPasteInto()
-					);
-				} catch {}
-
-				vscode.commands.executeCommand("setContext", "canCut", canMove);
-				vscode.commands.executeCommand(
-					"setContext",
-					"canCopy",
-					canMove
-				);
-				vscode.commands.executeCommand(
-					"setContext",
-					"canPaste",
-					canPaste
-				);
-				vscode.commands.executeCommand(
-					"setContext",
-					"canPasteInto",
-					canPasteInto
-				);
-				vscode.commands.executeCommand(
-					"setContext",
-					"canInsert",
-					canPasteInto
-				);
 			})
 		);
 	}
