@@ -7,7 +7,7 @@ import {
 	disconnectWorkspace,
 } from "./workspaces";
 
-import { RojoTreeProvider } from "./providers/tree";
+import { RojoTreeProvider } from "./providers/explorer";
 import { SettingsProvider } from "./providers/settings";
 import { SelectionProvider } from "./providers/selection";
 import { CommandsProvider } from "./providers/commands";

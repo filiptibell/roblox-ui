@@ -8,7 +8,7 @@ import * as fsSync from "fs";
 const anymatch = require("anymatch");
 
 import { SettingsProvider } from "../providers/settings";
-import { RojoTreeProvider } from "../providers/tree";
+import { RojoTreeProvider } from "../providers/explorer";
 
 import { RobloxReflectionMetadata } from "../web/robloxReflectionMetadata";
 
@@ -191,19 +191,16 @@ export const connectSourcemapUsingRojo = (
 							"\nSome explorer functionality may not be available" +
 							`\n${e}`
 					);
-					return;
 				}
 				if (destroyed) {
 					return;
 				}
 				// Spawn the rojo process
-				currentChildProcess = rojoSourcemapWatch(
-					workspacePath,
-					settings,
-					() => {
-						treeProvider.setLoading(workspacePath);
-					},
-					(_, sourcemap) => {
+				const callbacks = {
+					loading: (_: any) => treeProvider.setLoading(workspacePath),
+					errored: (_: any, errorMessage: string) =>
+						treeProvider.setError(workspacePath, errorMessage),
+					update: (_: any, sourcemap: SourcemapNode) => {
 						if (projectFileNode) {
 							mergeProjectIntoSourcemap(
 								workspacePath,
@@ -217,7 +214,12 @@ export const connectSourcemapUsingRojo = (
 							sourcemap
 						);
 						treeProvider.update(workspacePath, sourcemap);
-					}
+					},
+				};
+				currentChildProcess = rojoSourcemapWatch(
+					workspacePath,
+					settings,
+					callbacks
 				);
 			}
 		}
@@ -228,17 +230,14 @@ export const connectSourcemapUsingRojo = (
 		if (destroyed) {
 			return;
 		}
-		rojoSourcemapWatch(
-			workspacePath,
-			settings,
-			() => {
-				treeProvider.setLoading(workspacePath);
-			},
-			(childProcess, sourcemap) => {
+		rojoSourcemapWatch(workspacePath, settings, {
+			loading: () => treeProvider.setLoading(workspacePath),
+			errored: () => {},
+			update: (childProcess, sourcemap) => {
 				treeProvider.update(workspacePath, sourcemap);
 				childProcess.kill();
-			}
-		);
+			},
+		});
 	};
 
 	// Create callback for disconnecting (destroying)

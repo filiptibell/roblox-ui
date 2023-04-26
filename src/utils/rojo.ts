@@ -80,11 +80,17 @@ export const rojoSupportsSourcemapWatch = (cwd: string) => {
 export const rojoSourcemapWatch = (
 	workspacePath: string,
 	settings: SettingsProvider,
-	loadingCallback: (child: cp.ChildProcessWithoutNullStreams) => any,
-	updateCallback: (
-		child: cp.ChildProcessWithoutNullStreams,
-		sourcemap: SourcemapNode
-	) => any
+	callbacks: {
+		loading: (child: cp.ChildProcessWithoutNullStreams) => any;
+		errored: (
+			child: cp.ChildProcessWithoutNullStreams,
+			errorMessage: string
+		) => any;
+		update: (
+			child: cp.ChildProcessWithoutNullStreams,
+			sourcemap: SourcemapNode
+		) => any;
+	}
 ): cp.ChildProcessWithoutNullStreams => {
 	const updateArgs = [
 		"sourcemap",
@@ -103,16 +109,16 @@ export const rojoSourcemapWatch = (
 	// keep track of stdout since data may be received in pieces and incomplete json
 	// When we have complete parseable json we will update + clear the current stdout
 	let stdout = "";
-	loadingCallback(childProcess);
+	callbacks.loading(childProcess);
 	childProcess.stdout.on("data", (data: Buffer) => {
 		if (stdout === "") {
-			loadingCallback(childProcess);
+			callbacks.loading(childProcess);
 		}
 		stdout += data.toString("utf8");
 		try {
 			const sourcemap = JSON.parse(stdout);
 			stdout = "";
-			updateCallback(childProcess, sourcemap);
+			callbacks.update(childProcess, sourcemap);
 		} catch {}
 	});
 
@@ -126,18 +132,16 @@ export const rojoSourcemapWatch = (
 			return;
 		}
 		if (code !== 0) {
-			if (stderr.length > 0) {
-				vscode.window.showErrorMessage(
-					"Failed to generate a sourcemap!" +
-						`\nRojo exited with code ${code}` +
-						`\nMessage:\n${stderr}`
-				);
-			} else {
-				vscode.window.showErrorMessage(
-					"Failed to generate a sourcemap!" +
-						`\nRojo exited with code ${code}`
-				);
-			}
+			const errorMessage =
+				stderr.length > 0
+					? "Failed to generate a sourcemap!" +
+					  `\n\nRojo exited with code ${code}` +
+					  "\n\nMessage:" +
+					  `\n\n${stderr}`
+					: "Failed to generate a sourcemap!" +
+					  `\n\nRojo exited with code ${code}`;
+			vscode.window.showErrorMessage(errorMessage);
+			callbacks.errored(childProcess, `${stderr ?? ""}`);
 		}
 	});
 

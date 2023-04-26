@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 
-import { RojoTreeProvider } from "./tree";
+import { RojoTreeProvider } from "./explorer";
 
 export class SelectionProvider implements vscode.Disposable {
 	private disposables: Array<vscode.Disposable> = new Array();
