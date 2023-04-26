@@ -45,10 +45,10 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(treeView);
 
 	// Create other providers for things such as selection handling, ...
+	const commands = new CommandsProvider(context, treeView, treeProvider);
 	const selection = new SelectionProvider(treeView, treeProvider);
-	const commands = new CommandsProvider(treeView, treeProvider);
-	context.subscriptions.push(selection);
 	context.subscriptions.push(commands);
+	context.subscriptions.push(selection);
 
 	const forceRefreshAll = () => {
 		connectAllWorkspaces(settings, treeProvider);
