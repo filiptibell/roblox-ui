@@ -52,7 +52,7 @@ export class CommandsProvider implements vscode.Disposable {
 		this.register("deleteObject", (item: RojoTreeItem) => {
 			deleteExistingInstance(item.getFolderPath(), item.getFilePath());
 		});
-		this.register("openFile", (item: RojoTreeItem) => {
+		this.register("openProjectFile", (item: RojoTreeItem) => {
 			item.openFile();
 		});
 		this.register("clearRobloxCache", () => {
