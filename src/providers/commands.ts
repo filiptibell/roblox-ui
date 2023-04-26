@@ -9,6 +9,7 @@ import {
 import { updateAllWorkspaces } from "../workspaces";
 
 import { RojoTreeItem, RojoTreeProvider } from "./explorer";
+import { clearRobloxCache } from "../web/roblox";
 
 export class CommandsProvider implements vscode.Disposable {
 	private commands: Map<string, (...args: any[]) => any> = new Map();
@@ -30,6 +31,7 @@ export class CommandsProvider implements vscode.Disposable {
 	}
 
 	constructor(
+		context: vscode.ExtensionContext,
 		treeView: vscode.TreeView<vscode.TreeItem>,
 		treeDataProvider: RojoTreeProvider
 	) {
@@ -52,6 +54,9 @@ export class CommandsProvider implements vscode.Disposable {
 		});
 		this.register("openFile", (item: RojoTreeItem) => {
 			item.openFile();
+		});
+		this.register("clearRobloxCache", () => {
+			clearRobloxCache(context, true);
 		});
 	}
 }

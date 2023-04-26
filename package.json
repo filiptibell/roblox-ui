@@ -64,7 +64,12 @@
 		"commands": [
 			{
 				"command": "rojoViewer.refresh",
-				"title": "Refresh",
+				"title": "Rojo Viewer: Refresh",
+				"icon": "$(refresh)"
+			},
+			{
+				"command": "rojoViewer.clearRobloxCache",
+				"title": "Rojo Viewer: Clear Roblox Cache",
 				"icon": "$(refresh)"
 			},
 			{

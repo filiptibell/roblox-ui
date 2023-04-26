@@ -113,3 +113,34 @@ export const parseApiDumpFromObject = async (
 		Enums: enums,
 	};
 };
+
+export const serializeApiDump = (apiDump: RobloxApiDump): object => {
+	return {
+		Classes: [...apiDump.Classes.entries()],
+		Enums: [...apiDump.Enums.entries()],
+	};
+};
+
+export const deserializeApiDump = (serialized: unknown): RobloxApiDump => {
+	if (typeof serialized === "object" && serialized !== null) {
+		if ("Classes" in serialized && "Enums" in serialized) {
+			if (
+				Array.isArray(serialized.Classes) &&
+				Array.isArray(serialized.Enums)
+			) {
+				return {
+					Classes: new Map(serialized["Classes"]),
+					Enums: new Map(serialized["Enums"]),
+				};
+			} else {
+				throw new Error(
+					"Serialized API dump did not contain set arrays"
+				);
+			}
+		} else {
+			throw new Error("Serialized API dump was missing values");
+		}
+	} else {
+		throw new Error("Serialized API dump was not an object");
+	}
+};

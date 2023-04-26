@@ -118,6 +118,43 @@ export const parseReflectionMetadataFromRobloxStudioZip = async (
 	});
 };
 
+export const serializeReflection = (
+	reflection: RobloxReflectionMetadata
+): object => {
+	return {
+		Classes: [...reflection.Classes.entries()],
+		Enums: [...reflection.Enums.entries()],
+	};
+};
+
+export const deserializeReflection = (
+	serialized: unknown
+): RobloxReflectionMetadata => {
+	if (typeof serialized === "object" && serialized !== null) {
+		if ("Classes" in serialized && "Enums" in serialized) {
+			if (
+				Array.isArray(serialized.Classes) &&
+				Array.isArray(serialized.Enums)
+			) {
+				return {
+					Classes: new Map(serialized["Classes"]),
+					Enums: new Map(serialized["Enums"]),
+				};
+			} else {
+				throw new Error(
+					"Serialized reflection metadata did not contain set arrays"
+				);
+			}
+		} else {
+			throw new Error(
+				"Serialized reflection metadata was missing values"
+			);
+		}
+	} else {
+		throw new Error("Serialized reflection metadata was not an object");
+	}
+};
+
 const transformPropertyValue = (
 	valueType: string,
 	valueName: string,
