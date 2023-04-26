@@ -12,36 +12,33 @@ import { SettingsProvider } from "./providers/settings";
 import { SelectionProvider } from "./providers/selection";
 import { CommandsProvider } from "./providers/commands";
 
-import {
-	getRobloxApiDump,
-	getRobloxApiReflection,
-	getRobloxApiVersion,
-} from "./web/roblox";
+import { initRobloxCache } from "./web/roblox";
 
 export async function activate(context: vscode.ExtensionContext) {
 	// Fetch api dump and reflection metadata, if the user does not
 	// have an internet connection the very first time they activate
 	// the extension this may fail but will otherwise fall back to a
 	// cached version and warn the user about the potential desync
-	let apiVersion;
-	let apiDump;
-	let apiReflection;
-	try {
-		apiVersion = await getRobloxApiVersion(context);
-		apiDump = await getRobloxApiDump(context, apiVersion);
-		apiReflection = await getRobloxApiReflection(context, apiVersion);
-	} catch (err) {
-		vscode.window.showErrorMessage(`${err}`);
+	const cache = await initRobloxCache(context);
+	if (
+		!cache.cachedVersion ||
+		!cache.cachedApiDump ||
+		!cache.cachedReflection
+	) {
 		return;
 	}
 
-	// Create settings provider which lots of other stuff has to use first
+	// Create settings provider first, since it is used by other providers
 	const settings = new SettingsProvider();
 	context.subscriptions.push(settings);
 
-	// Create the main tree view and data provider
+	// Create the main tree view and data providers
 	// TODO: Create drag & drop provider here
-	const treeProvider = new RojoTreeProvider(settings, apiDump, apiReflection);
+	const treeProvider = new RojoTreeProvider(
+		settings,
+		cache.cachedApiDump,
+		cache.cachedReflection
+	);
 	const treeView = vscode.window.createTreeView("rojoViewer.explorer", {
 		treeDataProvider: treeProvider,
 	});
