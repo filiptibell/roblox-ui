@@ -18,6 +18,7 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 	private filePaths: Map<string, RojoTreeItem> = new Map();
 
 	private errorMessage: string | undefined;
+	private loadingPath: string | undefined;
 	private sourcemap: SourcemapNode | undefined;
 	private treeItem: RojoTreeItem | undefined;
 
@@ -55,13 +56,16 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 				}
 			}
 			if (this.isLoading) {
-				const loadingProps = getLoadingProps(this.workspacePath);
+				const loadingProps = getLoadingProps(
+					this.workspacePath,
+					this.loadingPath
+				);
 				if (loadingProps.iconPath) {
 					newProps.iconPath = loadingProps.iconPath;
 				}
 			}
 		} else if (this.isLoading) {
-			newProps = getLoadingProps(this.workspacePath);
+			newProps = getLoadingProps(this.workspacePath, this.loadingPath);
 		}
 		let changed = false;
 		for (const [key, value] of Object.entries(newProps)) {
@@ -76,11 +80,12 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 		}
 	}
 
-	public setLoading() {
-		if (!this.isLoading) {
+	public setLoading(loadingPath: string | undefined) {
+		if (!this.isLoading || this.loadingPath !== loadingPath) {
 			this.isLoading = true;
-			this.errorMessage = undefined;
-			this.treeItem = undefined;
+			this.loadingPath = loadingPath;
+			this.clearTree();
+			this.clearError();
 			this.updateInternalData();
 		}
 	}
@@ -88,6 +93,7 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 	public clearLoading() {
 		if (this.isLoading) {
 			this.isLoading = false;
+			this.loadingPath = undefined;
 			this.updateInternalData();
 		}
 	}
@@ -95,8 +101,8 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 	public setError(errorMessage: string) {
 		if (this.errorMessage !== errorMessage) {
 			this.errorMessage = errorMessage;
-			this.isLoading = false;
-			this.treeItem = undefined;
+			this.clearTree();
+			this.clearLoading();
 			this.updateInternalData();
 		}
 	}
@@ -108,11 +114,18 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 		}
 	}
 
-	public update(rootNode: SourcemapNode) {
+	public updateTree(rootNode: SourcemapNode) {
 		this.isLoading = false;
 		this.errorMessage = undefined;
 		this.sourcemap = rootNode;
 		this.updateInternalData();
+	}
+
+	public clearTree() {
+		if (this.treeItem) {
+			this.treeItem = undefined;
+			this.updateInternalData();
+		}
 	}
 
 	public find(filePath: string): RojoTreeItem | null {

@@ -56,13 +56,13 @@ export class RojoTreeProvider
 	 *
 	 * This will display a loading spinner in the tree view.
 	 */
-	public setLoading(workspacePath: string) {
+	public setLoading(workspacePath: string, loadingPath: string | undefined) {
 		let root = this.findRoot(workspacePath);
 		if (root) {
-			root.setLoading();
+			root.setLoading(loadingPath);
 		} else {
 			root = this.createRoot(workspacePath);
-			root.setLoading();
+			root.setLoading(loadingPath);
 			this._onDidChangeTreeData.fire();
 		}
 	}
@@ -113,10 +113,10 @@ export class RojoTreeProvider
 	public update(workspacePath: string, rootNode: SourcemapNode) {
 		let root = this.findRoot(workspacePath);
 		if (root) {
-			root.update(rootNode);
+			root.updateTree(rootNode);
 		} else {
 			root = this.createRoot(workspacePath);
-			root.update(rootNode);
+			root.updateTree(rootNode);
 			this._onDidChangeTreeData.fire();
 		}
 	}

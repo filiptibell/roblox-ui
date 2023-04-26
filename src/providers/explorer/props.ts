@@ -18,13 +18,17 @@ export const getNullProps = (): TreeItemPropChanges => {
 	};
 };
 
-export const getLoadingProps = (workspacePath: string): TreeItemPropChanges => {
+export const getLoadingProps = (
+	workspacePath: string,
+	loadingPath: string | undefined
+): TreeItemPropChanges => {
 	const wpath = path.parse(workspacePath);
 	return {
 		...getNullProps(),
 		label: "Workspace loading...",
 		description: wpath ? wpath.name : null,
 		iconPath: new vscode.ThemeIcon("loading~spin"),
+		tooltip: loadingPath ? new vscode.MarkdownString(loadingPath) : null,
 	};
 };
 

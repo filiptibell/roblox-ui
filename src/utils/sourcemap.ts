@@ -197,7 +197,8 @@ export const connectSourcemapUsingRojo = (
 				}
 				// Spawn the rojo process
 				const callbacks = {
-					loading: (_: any) => treeProvider.setLoading(workspacePath),
+					loading: (_: any) =>
+						treeProvider.setLoading(workspacePath, projectFilePath),
 					errored: (_: any, errorMessage: string) =>
 						treeProvider.setError(workspacePath, errorMessage),
 					update: (_: any, sourcemap: SourcemapNode) => {
@@ -231,7 +232,8 @@ export const connectSourcemapUsingRojo = (
 			return;
 		}
 		rojoSourcemapWatch(workspacePath, settings, {
-			loading: () => treeProvider.setLoading(workspacePath),
+			loading: () =>
+				treeProvider.setLoading(workspacePath, projectFilePath),
 			errored: () => {},
 			update: (childProcess, sourcemap) => {
 				treeProvider.update(workspacePath, sourcemap);
@@ -254,7 +256,7 @@ export const connectSourcemapUsingRojo = (
 	// Listen to the project file changing and also read it once initially
 	const readProjectFile = async () => {
 		if (await pathExists(projectFilePath)) {
-			treeProvider.setLoading(workspacePath);
+			treeProvider.setLoading(workspacePath, projectFilePath);
 			fs.readFile(projectFilePath, "utf8")
 				.then(updateProjectFile)
 				.catch((e) => {
@@ -286,11 +288,16 @@ export const connectSourcemapUsingFile = (
 
 	// Create callback for updating sourcemap
 	const update = () => {
+		treeProvider.setLoading(workspacePath, sourcemapPath);
 		fs.readFile(sourcemapPath, "utf8")
 			.then(JSON.parse)
 			.then((sourcemap: SourcemapNode) => {
 				postprocessSourcemap(workspacePath, settings, sourcemap);
 				treeProvider.update(workspacePath, sourcemap);
+			})
+			.catch((err) => {
+				const errorMessage = `${err ?? ""}`;
+				treeProvider.setError(workspacePath, errorMessage);
 			});
 	};
 
