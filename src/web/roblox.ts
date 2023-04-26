@@ -8,6 +8,9 @@ import {
 	parseReflectionMetadataFromRobloxStudioZip,
 } from "./robloxReflectionMetadata";
 
+export { RobloxApiDump } from "./robloxApiDump";
+export { RobloxReflectionMetadata } from "./robloxReflectionMetadata";
+
 const URL_VERSION = "https://setup.rbxcdn.com/versionQTStudio";
 const URL_API_DUMP = "https://setup.rbxcdn.com/%V-API-Dump.json";
 const URL_STUDIO = "https://setup.rbxcdn.com/%V-RobloxStudio.zip";

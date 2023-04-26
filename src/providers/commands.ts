@@ -8,7 +8,7 @@ import {
 
 import { updateAllWorkspaces } from "../workspaces";
 
-import { RojoTreeItem, RojoTreeProvider } from "./tree";
+import { RojoTreeItem, RojoTreeProvider } from "./explorer";
 
 export class CommandsProvider implements vscode.Disposable {
 	private commands: Map<string, (...args: any[]) => any> = new Map();

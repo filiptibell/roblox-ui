@@ -1,8 +1,6 @@
 import * as vscode from "vscode";
-import * as fs from "fs/promises";
-import * as cp from "child_process";
 
-import { RojoTreeProvider } from "./providers/tree";
+import { RojoTreeProvider } from "./providers/explorer";
 import { SettingsProvider } from "./providers/settings";
 import { rojoSupportsSourcemapWatch } from "./utils/rojo";
 import {
