@@ -111,9 +111,7 @@ export const rojoSourcemapWatch = (
 	let stdout = "";
 	callbacks.loading(childProcess);
 	childProcess.stdout.on("data", (data: Buffer) => {
-		if (stdout === "") {
-			callbacks.loading(childProcess);
-		}
+		callbacks.loading(childProcess);
 		stdout += data.toString("utf8");
 		try {
 			const sourcemap = JSON.parse(stdout);

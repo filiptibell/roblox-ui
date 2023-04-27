@@ -89,7 +89,7 @@ export const createNewInstance = async (
 	if (!folderPath && !filePath) {
 		vscode.window.showWarningMessage(
 			`Failed to insert new ${className} instance!` +
-				"\nThe selected instance had no folder or file path."
+				"\n\nThe selected instance had no folder or file path."
 		);
 		return null;
 	}
@@ -115,21 +115,11 @@ export const createNewInstance = async (
 			} else {
 				vscode.window.showWarningMessage(
 					`Failed to insert new ${className} instance!` +
-						"\nThe selected instance had an invalid file extension."
+						"\n\nThe selected instance had an invalid file extension."
 				);
 				return null;
 			}
 		}
-	}
-
-	// Make sure the folder path is actually a directory
-	const stats = await fs.stat(folderPath);
-	if (!stats.isDirectory()) {
-		vscode.window.showWarningMessage(
-			`Failed to insert new ${className} instance!` +
-				"\nThe selected instance had no folder on the filesystem."
-		);
-		return null;
 	}
 
 	// Create the folder or instance file
@@ -153,7 +143,7 @@ export const deleteExistingInstance = async (
 	if (!folderPath && !filePath) {
 		vscode.window.showWarningMessage(
 			`Failed to delete instance!` +
-				"\nThe selected instance had no folder or file path."
+				"\n\nThe selected instance had no folder or file path."
 		);
 		return;
 	}
@@ -187,7 +177,7 @@ export const deleteExistingInstance = async (
 
 	vscode.window.showWarningMessage(
 		`Failed to delete instance!` +
-			"\nThe selected instance had an unknown path kind."
+			"\n\nThe selected instance had an unknown path kind."
 	);
 };
 
@@ -200,7 +190,7 @@ export const renameExistingInstance = async (
 	if (!folderPath && !filePath) {
 		vscode.window.showWarningMessage(
 			`Failed to rename instance!` +
-				"\nThe selected instance had no folder or file path."
+				"\n\nThe selected instance had no folder or file path."
 		);
 		return;
 	}
@@ -230,7 +220,7 @@ export const renameExistingInstance = async (
 		} else {
 			vscode.window.showWarningMessage(
 				`Failed to rename instance!` +
-					"\nThe selected instance had an unknown path file extension."
+					"\n\nThe selected instance had an unknown path file extension."
 			);
 		}
 		return;
@@ -238,7 +228,7 @@ export const renameExistingInstance = async (
 
 	vscode.window.showWarningMessage(
 		`Failed to rename instance!` +
-			"\nThe selected instance had an unknown path kind."
+			"\n\nThe selected instance had an unknown path kind."
 	);
 };
 
@@ -284,13 +274,13 @@ export const promptNewInstanceCreation = (
 						chosen.className,
 						instanceName
 					);
-					if (createdPath) {
+					if (createdPath && chosen.className !== "Folder") {
 						forceShowTextDocument(createdPath);
 					}
 				} catch (e) {
 					vscode.window.showWarningMessage(
 						`Failed to insert new instance!` +
-							`\nError message:\n${e}`
+							`\n\nError message:\n\n${e}`
 					);
 				}
 			});
@@ -319,7 +309,7 @@ export const promptRenameExistingInstance = (
 				);
 			} catch (e) {
 				vscode.window.showWarningMessage(
-					`Failed to rename instance!` + `\nError message:\n${e}`
+					`Failed to rename instance!` + `\n\nError message:\n\n${e}`
 				);
 			}
 		});
