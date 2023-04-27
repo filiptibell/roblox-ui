@@ -264,6 +264,7 @@ export const connectSourcemapUsingRojo = (
 					if (projectFileNode) {
 						await cacheProjectFileSystemPaths(
 							workspacePath,
+							projectFilePath,
 							projectFileNode
 						);
 					}

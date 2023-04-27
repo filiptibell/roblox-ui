@@ -56,13 +56,13 @@ export class RojoTreeProvider
 	 *
 	 * This will display a loading spinner in the tree view.
 	 */
-	public setLoading(workspacePath: string, loadingPath: string | undefined) {
+	public setLoading(workspacePath: string, projectPath: string | undefined) {
 		let root = this.findRoot(workspacePath);
 		if (root) {
-			root.setLoading(loadingPath);
+			root.setLoading(projectPath);
 		} else {
 			root = this.createRoot(workspacePath);
-			root.setLoading(loadingPath);
+			root.setLoading(projectPath);
 			this._onDidChangeTreeData.fire();
 		}
 	}

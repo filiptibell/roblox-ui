@@ -50,6 +50,7 @@ The extension can also be compiled and installed locally:
 
 #### Bugs
 
+-   Fix paste action not being available in context menu
 -   Fix open file / insert object ordering in context menu not being consistent with regular file explorer
 -   Fix `.meta` files not being renamed together with main file in rename/delete operations
 
