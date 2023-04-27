@@ -113,11 +113,12 @@ export const rojoSourcemapWatch = (
 	childProcess.stdout.on("data", (data: Buffer) => {
 		callbacks.loading(childProcess);
 		stdout += data.toString("utf8");
-		try {
+		// Sourcemap to stdout always ends with a newline
+		if (stdout.endsWith("\n")) {
 			const sourcemap = JSON.parse(stdout);
 			stdout = "";
 			callbacks.update(childProcess, sourcemap);
-		} catch {}
+		}
 	});
 
 	// Listen for error messages and the child process closing
