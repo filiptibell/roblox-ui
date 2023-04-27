@@ -2,12 +2,12 @@ import * as vscode from "vscode";
 
 const EXTENSION = "rojoViewer";
 const DEFAULTS = {
-	autogenerateSourcemap: true,
-	ignoreGlobs: ["**/_Index/**"],
-	includeNonScripts: false,
-	showClassNames: false,
-	showFilePaths: false,
-	rojoProjectFile: "default.project.json",
+	["sourcemap.autogenerate"]: true,
+	["sourcemap.ignoreGlobs"]: ["**/_Index/**"],
+	["sourcemap.includeNonScripts"]: false,
+	["sourcemap.rojoProjectFile"]: "default.project.json",
+	["explorer.showClassNames"]: false,
+	["explorer.showFilePaths"]: false,
 };
 
 type Settings = typeof DEFAULTS;
