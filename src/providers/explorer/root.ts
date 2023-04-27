@@ -41,7 +41,8 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 
 	private async refreshTreeItem() {
 		let newProps: TreeItemPropChanges = {};
-		let changed = false;
+		let rootChanged = false;
+		let childrenChanged = false;
 		if (this.errorMessage) {
 			newProps = getErroredProps(this.workspacePath, this.errorMessage);
 		} else if (
@@ -53,15 +54,11 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 				newProps = getNullProps();
 				let treeItem = this.treeItem;
 				try {
-					if (treeItem) {
-						if (await treeItem.update(this.sourcemap)) {
-							changed = true;
-						}
-					} else {
+					if (!treeItem) {
 						treeItem = new RojoTreeItem(this, this.eventEmitter);
-						await treeItem.update(this.sourcemap);
-						this.treeItem = treeItem;
 					}
+					childrenChanged = await treeItem.update(this.sourcemap);
+					this.treeItem = treeItem;
 				} catch (err) {
 					this.setError(`${err}`);
 					await this.refreshTreeItem();
@@ -91,10 +88,24 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 			const untyped = this as any;
 			if (untyped[key] !== value) {
 				untyped[key] = value;
-				changed = true;
+				rootChanged = true;
 			}
 		}
-		if (changed) {
+		if (childrenChanged) {
+			const smapChildren = this.sourcemap!.children;
+			const newCollapsibleState =
+				smapChildren && smapChildren.length > 0
+					? this.collapsibleState ===
+					  vscode.TreeItemCollapsibleState.Expanded
+						? vscode.TreeItemCollapsibleState.Expanded
+						: vscode.TreeItemCollapsibleState.Collapsed
+					: vscode.TreeItemCollapsibleState.None;
+			if (this.collapsibleState !== newCollapsibleState) {
+				this.collapsibleState = newCollapsibleState;
+				rootChanged = true;
+			}
+		}
+		if (rootChanged || childrenChanged) {
 			this.eventEmitter.fire(this);
 		}
 	}

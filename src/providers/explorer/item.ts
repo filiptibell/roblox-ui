@@ -53,7 +53,7 @@ export class RojoTreeItem extends vscode.TreeItem {
 
 		const previousChildren = this.node?.children;
 		const currentChildren = node?.children;
-		if (previousChildren && currentChildren && this.children) {
+		if (previousChildren && currentChildren) {
 			// Check for children being removed
 			if (previousChildren.length > currentChildren.length) {
 				for (
@@ -61,15 +61,14 @@ export class RojoTreeItem extends vscode.TreeItem {
 					index > currentChildren.length;
 					index--
 				) {
-					this.children.splice(index - 1, 1);
+					this.children!.splice(index - 1, 1);
 				}
 				childrenChanged = true;
 			}
 			// Check for children being changed or added
-			const added = [];
 			const promises = [];
 			for (const [index, childNode] of currentChildren.entries()) {
-				const childItem = this.children[index];
+				const childItem = this.children![index];
 				if (childItem) {
 					// Child may have changed, update it
 					promises.push(childItem.update(childNode));
@@ -80,19 +79,18 @@ export class RojoTreeItem extends vscode.TreeItem {
 						this.eventEmitter,
 						this
 					);
-					added.push(newItem);
 					promises.push(newItem.update(childNode));
+					this.children!.push(newItem);
+					childrenChanged = true;
 				}
 			}
 			await Promise.all(promises);
-			if (added.length > 0) {
-				for (const child of added.values()) {
-					this.children.push(child);
-				}
-				childrenChanged = true;
-			}
-		} else if (currentChildren && !this.children) {
-			// No children yet, create initial children
+		} else if (previousChildren) {
+			// All children were removed
+			this.children = [];
+			childrenChanged = true;
+		} else if (currentChildren) {
+			// All children were added
 			const promises = [];
 			const items = [];
 			if (currentChildren) {
@@ -109,10 +107,6 @@ export class RojoTreeItem extends vscode.TreeItem {
 			await Promise.all(promises);
 			this.children = items;
 			childrenChanged = true;
-		} else if (previousChildren) {
-			// All children were removed
-			this.children = [];
-			childrenChanged = true;
 		}
 
 		if (itemChanged) {
@@ -124,12 +118,18 @@ export class RojoTreeItem extends vscode.TreeItem {
 				: undefined;
 		}
 		if (childrenChanged) {
-			this.collapsibleState =
-				this.children && this.children.length > 0
-					? this.collapsibleState
+			const newCollapsibleState =
+				this.children!.length > 0
+					? this.collapsibleState ===
+					  vscode.TreeItemCollapsibleState.Expanded
+						? vscode.TreeItemCollapsibleState.Expanded
+						: vscode.TreeItemCollapsibleState.Collapsed
 					: vscode.TreeItemCollapsibleState.None;
+			if (this.collapsibleState !== newCollapsibleState) {
+				this.collapsibleState = newCollapsibleState;
+				itemChanged = true;
+			}
 		}
-
 		if (itemChanged || childrenChanged) {
 			this.eventEmitter.fire(this);
 		}
