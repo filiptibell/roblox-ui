@@ -123,6 +123,12 @@ export class RojoTreeItem extends vscode.TreeItem {
 				  ) ?? undefined
 				: undefined;
 		}
+		if (childrenChanged) {
+			this.collapsibleState =
+				this.children && this.children.length > 0
+					? this.collapsibleState
+					: vscode.TreeItemCollapsibleState.None;
+		}
 
 		if (itemChanged || childrenChanged) {
 			this.eventEmitter.fire(this);
@@ -223,6 +229,10 @@ const treeItemSortFunction = (left: RojoTreeItem, right: RojoTreeItem) => {
 	return labelLeft && labelRight ? labelLeft.localeCompare(labelRight) : 0;
 };
 
+// NOTE: We reuse the same array here when file paths
+// are missing to avoid allocation during the below
+// path checks unless it is absolutely necessary
+const EMPTY_PATHS_ARRAY: string[] = [];
 const nodesAreDifferent = (
 	previous: SourcemapNode | undefined,
 	current: SourcemapNode | undefined
@@ -231,6 +241,32 @@ const nodesAreDifferent = (
 		previous?.folderPath !== current?.folderPath ||
 		previous?.className !== current?.className ||
 		previous?.name !== current?.name;
-	// TODO: Check file paths
+	if (!propChanged) {
+		if (
+			(previous && previous.filePaths) ||
+			(current && current.filePaths)
+		) {
+			const previousPaths = previous?.filePaths ?? EMPTY_PATHS_ARRAY;
+			const currentPaths = current?.filePaths ?? EMPTY_PATHS_ARRAY;
+			if (previousPaths.length !== currentPaths.length) {
+				return true;
+			} else if (previousPaths.length === 1) {
+				return previousPaths[0] === currentPaths[0];
+			} else {
+				const previousSet = new Set(previousPaths);
+				const currentSet = new Set(currentPaths);
+				for (const current of currentSet) {
+					if (!previousSet.has(current)) {
+						return true;
+					}
+				}
+				for (const previous of previousSet) {
+					if (!currentSet.has(previous)) {
+						return true;
+					}
+				}
+			}
+		}
+	}
 	return propChanged;
 };

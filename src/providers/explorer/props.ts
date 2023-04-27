@@ -155,14 +155,5 @@ export const getNodeItemProps = async (
 		? vscode.Uri.file(folderPath)
 		: undefined;
 
-	// Set collapsible state depending on if we have children or not
-	newProps.collapsibleState =
-		node.children && node.children.length > 0
-			? current.collapsibleState ===
-			  vscode.TreeItemCollapsibleState.Expanded
-				? vscode.TreeItemCollapsibleState.Expanded
-				: vscode.TreeItemCollapsibleState.Collapsed
-			: vscode.TreeItemCollapsibleState.None;
-
 	return newProps;
 };
