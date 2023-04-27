@@ -133,6 +133,101 @@ export const getSourcemapNodeTreeOrder = (
 	return null;
 };
 
+export const cloneSourcemapNode = (
+	node: SourcemapNode,
+	deep: boolean | void
+): SourcemapNode => {
+	const filePaths = node.filePaths ? [...node.filePaths] : undefined;
+	const children = node.children ? [...node.children] : undefined;
+	if (deep && children) {
+		for (const [index, child] of children.entries()) {
+			children[index] = cloneSourcemapNode(child, true);
+		}
+	}
+	return {
+		name: node.name,
+		className: node.className,
+		folderPath: node.folderPath,
+		filePaths,
+		children,
+	};
+};
+
+// NOTE: We reuse the same arrays here when file paths
+// are missing to avoid allocation during the below
+// path checks unless it is absolutely necessary
+const EMPTY_PATHS_ARRAY: string[] = [];
+const EMPTY_CHILDREN_ARRAY: SourcemapNode[] = [];
+export const areSourcemapNodesEqual = (
+	previous: SourcemapNode | undefined,
+	current: SourcemapNode | undefined,
+	deep: boolean | void
+): boolean => {
+	if (
+		previous?.folderPath !== current?.folderPath ||
+		previous?.className !== current?.className ||
+		previous?.name !== current?.name
+	) {
+		return false;
+	}
+	if ((previous && previous.filePaths) || (current && current.filePaths)) {
+		const previousPaths = previous?.filePaths ?? EMPTY_PATHS_ARRAY;
+		const currentPaths = current?.filePaths ?? EMPTY_PATHS_ARRAY;
+		if (previousPaths.length !== currentPaths.length) {
+			return false;
+		} else if (previousPaths.length === 1) {
+			if (previousPaths[0] !== currentPaths[0]) {
+				return false;
+			}
+		} else {
+			const previousSet = new Set(previousPaths);
+			const currentSet = new Set(currentPaths);
+			for (const current of currentSet) {
+				if (!previousSet.has(current)) {
+					return false;
+				}
+			}
+			for (const previous of previousSet) {
+				if (!currentSet.has(previous)) {
+					return false;
+				}
+			}
+		}
+	}
+	if (
+		deep &&
+		((previous && previous.children) || (current && current.children))
+	) {
+		const previousChildren = previous?.children ?? EMPTY_CHILDREN_ARRAY;
+		const currentChildren = current?.children ?? EMPTY_CHILDREN_ARRAY;
+		if (previousChildren.length !== currentChildren.length) {
+			return false;
+		} else if (previousChildren.length === 1) {
+			if (
+				!areSourcemapNodesEqual(previousChildren[0], currentChildren[0])
+			) {
+				return false;
+			}
+		} else {
+			const indices = new Set([...previousChildren.keys()]);
+			for (const index of currentChildren.keys()) {
+				indices.add(index);
+			}
+			for (const index of indices.values()) {
+				if (
+					!areSourcemapNodesEqual(
+						previousChildren[index],
+						currentChildren[index]
+					)
+				) {
+					return false;
+				}
+			}
+		}
+	}
+	return true;
+};
+
 export const connectSourcemapUsingRojo = (
 	workspacePath: string,
 	settings: SettingsProvider,

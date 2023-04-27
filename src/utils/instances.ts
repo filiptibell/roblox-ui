@@ -8,6 +8,19 @@ import { extractRojoFileExtension, isInitFilePath } from "./rojo";
 
 type InsertableClassName = "Folder" | "ModuleScript" | "LocalScript" | "Script";
 
+export type CreationResult = {
+	name: string;
+	className: string;
+	folderPath: string | undefined;
+	filePaths: string[] | undefined;
+};
+
+export type RenameResult = {
+	name: string | undefined;
+	folderPath: string | undefined;
+	filePaths: string[] | undefined;
+};
+
 const getInstanceFileName = (
 	className: InsertableClassName,
 	instanceName: string
@@ -84,20 +97,21 @@ export const createNewInstance = async (
 	filePath: string | null,
 	className: InsertableClassName,
 	instanceName: string
-): Promise<vscode.Uri | null> => {
+): Promise<[boolean, CreationResult | undefined]> => {
 	// Make sure we got a folder path
 	if (!folderPath && !filePath) {
 		vscode.window.showWarningMessage(
 			`Failed to insert new ${className} instance!` +
 				"\n\nThe selected instance had no folder or file path."
 		);
-		return null;
+		return [false, undefined];
 	}
 
 	await forceCloseMatchingTextDocuments(folderPath, filePath);
 
 	// If we got a file path that is not an init file, then we
 	// need to convert the file into a subfolder + init file
+	let isInitFile = false;
 	if (!folderPath) {
 		if (!filePath) {
 			throw new Error("Unreachable");
@@ -112,12 +126,13 @@ export const createNewInstance = async (
 				folderPath = path.join(dirName, subdirName);
 				await fs.mkdir(folderPath);
 				await fs.rename(filePath, `${folderPath}/init.${fileExt}`);
+				isInitFile = true;
 			} else {
 				vscode.window.showWarningMessage(
 					`Failed to insert new ${className} instance!` +
 						"\n\nThe selected instance had an invalid file extension."
 				);
-				return null;
+				return [false, undefined];
 			}
 		}
 	}
@@ -126,26 +141,42 @@ export const createNewInstance = async (
 	if (className === "Folder") {
 		const newFolderPath = path.join(folderPath, instanceName);
 		await fs.mkdir(newFolderPath);
-		return vscode.Uri.file(newFolderPath);
+		return [
+			true,
+			{
+				name: instanceName,
+				className,
+				folderPath,
+				filePaths: undefined,
+			},
+		];
 	} else {
 		const newFileName = getInstanceFileName(className, instanceName);
 		const newFilePath = path.join(folderPath, newFileName);
 		await fs.writeFile(newFilePath, "");
-		return vscode.Uri.file(newFilePath);
+		return [
+			true,
+			{
+				name: instanceName,
+				className,
+				folderPath: isInitFile ? folderPath : undefined,
+				filePaths: [newFilePath],
+			},
+		];
 	}
 };
 
 export const deleteExistingInstance = async (
 	folderPath: string | null,
 	filePath: string | null
-) => {
+): Promise<boolean> => {
 	// Make sure we got a folder path
 	if (!folderPath && !filePath) {
 		vscode.window.showWarningMessage(
 			`Failed to delete instance!` +
 				"\n\nThe selected instance had no folder or file path."
 		);
-		return;
+		return false;
 	}
 
 	await forceCloseMatchingTextDocuments(folderPath, filePath);
@@ -155,7 +186,7 @@ export const deleteExistingInstance = async (
 		await fs.rm(folderPath, {
 			recursive: true,
 		});
-		return;
+		return true;
 	}
 
 	// Folders should also be deleted recursively
@@ -163,7 +194,7 @@ export const deleteExistingInstance = async (
 		await fs.rm(folderPath, {
 			recursive: true,
 		});
-		return;
+		return true;
 	}
 
 	// Files should just be deleted as they are
@@ -172,41 +203,56 @@ export const deleteExistingInstance = async (
 	// any children, try to remove the usage of init files and make it a plain file instead
 	if (filePath) {
 		await fs.rm(filePath);
-		return;
+		return true;
 	}
 
 	vscode.window.showWarningMessage(
 		`Failed to delete instance!` +
 			"\n\nThe selected instance had an unknown path kind."
 	);
+	return false;
 };
 
 export const renameExistingInstance = async (
 	folderPath: string | null,
 	filePath: string | null,
 	instanceName: string
-) => {
+): Promise<[boolean, RenameResult | undefined]> => {
 	// Make sure we got a folder path
 	if (!folderPath && !filePath) {
 		vscode.window.showWarningMessage(
 			`Failed to rename instance!` +
 				"\n\nThe selected instance had no folder or file path."
 		);
-		return;
+		return [false, undefined];
 	}
 
 	// Init files should have their parent folder renamed
 	if (folderPath && filePath && isInitFilePath(filePath)) {
 		const newFolderPath = path.join(folderPath, "..", instanceName);
 		await fs.rename(folderPath, newFolderPath);
-		return;
+		return [
+			true,
+			{
+				name: instanceName,
+				folderPath: newFolderPath,
+				filePaths: undefined,
+			},
+		];
 	}
 
 	// Folders should also be renamed the same way
 	if (folderPath && !filePath) {
 		const newFolderPath = path.join(folderPath, "..", instanceName);
 		await fs.rename(folderPath, newFolderPath);
-		return;
+		return [
+			true,
+			{
+				name: instanceName,
+				folderPath: newFolderPath,
+				filePaths: undefined,
+			},
+		];
 	}
 
 	// Files should just be renamed as they are
@@ -217,102 +263,127 @@ export const renameExistingInstance = async (
 			const fileDir = path.dirname(filePath);
 			const fileName = `${instanceName}.${fileExt}`;
 			await fs.rename(filePath, path.join(fileDir, fileName));
+			return [
+				true,
+				{
+					name: instanceName,
+					folderPath: undefined,
+					filePaths: [filePath],
+				},
+			];
 		} else {
 			vscode.window.showWarningMessage(
 				`Failed to rename instance!` +
 					"\n\nThe selected instance had an unknown path file extension."
 			);
+			return [false, undefined];
 		}
-		return;
 	}
 
 	vscode.window.showWarningMessage(
 		`Failed to rename instance!` +
 			"\n\nThe selected instance had an unknown path kind."
 	);
+	return [false, undefined];
 };
 
-export const promptNewInstanceCreation = (
+export const promptNewInstanceCreation = async (
 	folderPath: string | null,
-	filePath: string | null
-) => {
+	filePath: string | null,
+	insertService: boolean | void
+): Promise<[boolean, CreationResult | undefined]> => {
+	// TODO: Better classes to pick from
+	if (insertService) {
+		vscode.window.showInformationMessage("TODO");
+		return [false, undefined];
+	}
 	const items = [
 		new InstanceInsertItem("Folder"),
 		new InstanceInsertItem("ModuleScript"),
 		new InstanceInsertItem("LocalScript"),
 		new InstanceInsertItem("Script"),
 	];
-	vscode.window.showQuickPick(items).then((chosen) => {
-		if (!chosen) {
-			return;
-		}
-		vscode.window
-			.showInputBox({
-				prompt: "Type in a name for the new instance",
-				value: chosen.className,
-				validateInput: async (value: string) => {
-					try {
-						return await canCreateInstanceFile(
-							folderPath,
-							filePath,
-							chosen.className,
-							value
-						);
-					} catch (e) {
-						return `Internal error: ${e}`;
-					}
-				},
-			})
-			.then(async (instanceName) => {
-				if (!instanceName) {
-					return;
-				}
-				try {
-					const createdPath = await createNewInstance(
-						folderPath,
-						filePath,
-						chosen.className,
-						instanceName
-					);
-					if (createdPath && chosen.className !== "Folder") {
-						forceShowTextDocument(createdPath);
-					}
-				} catch (e) {
-					vscode.window.showWarningMessage(
-						`Failed to insert new instance!` +
-							`\n\nError message:\n\n${e}`
-					);
-				}
-			});
+	return new Promise((resolve, reject) => {
+		vscode.window.showQuickPick(items).then((chosen) => {
+			if (chosen) {
+				vscode.window
+					.showInputBox({
+						prompt: "Type in a name for the new instance",
+						value: chosen.className,
+						validateInput: async (value: string) => {
+							try {
+								return await canCreateInstanceFile(
+									folderPath,
+									filePath,
+									chosen.className,
+									value
+								);
+							} catch (e) {
+								return `Internal error: ${e}`;
+							}
+						},
+					})
+					.then(async (instanceName) => {
+						if (instanceName) {
+							try {
+								resolve(
+									await createNewInstance(
+										folderPath,
+										filePath,
+										chosen.className,
+										instanceName
+									)
+								);
+							} catch (e) {
+								vscode.window.showWarningMessage(
+									`Failed to insert new instance!` +
+										`\n\nError message:\n\n${e}`
+								);
+								reject(e);
+							}
+						} else {
+							resolve([false, undefined]);
+						}
+					});
+			} else {
+				resolve([false, undefined]);
+			}
+		});
 	});
 };
 
-export const promptRenameExistingInstance = (
+export const promptRenameExistingInstance = async (
 	folderPath: string | null,
 	filePath: string | null
-) => {
-	const instanceName = "";
-	vscode.window
-		.showInputBox({
-			prompt: "Type in a new name for the instance",
-			value: instanceName,
-		})
-		.then(async (instanceName) => {
-			if (!instanceName) {
-				return;
-			}
-			try {
-				await renameExistingInstance(
-					folderPath,
-					filePath,
-					instanceName
-				);
-			} catch (e) {
-				vscode.window.showWarningMessage(
-					`Failed to rename instance!` + `\n\nError message:\n\n${e}`
-				);
-			}
-		});
+): Promise<[boolean, RenameResult | undefined]> => {
+	return new Promise((resolve, reject) => {
+		vscode.window
+			.showInputBox({
+				prompt: "Type in a new name for the instance",
+				value: "",
+			})
+			.then(async (instanceName) => {
+				if (instanceName) {
+					try {
+						resolve(
+							await renameExistingInstance(
+								folderPath,
+								filePath,
+								instanceName
+							)
+						);
+					} catch (e) {
+						vscode.window.showWarningMessage(
+							`Failed to rename instance!` +
+								`\n\nError message:\n\n${e}`
+						);
+						reject(e);
+					}
+				} else {
+					resolve([false, undefined]);
+				}
+			});
+	});
 };
 
 class InstanceInsertItem implements vscode.QuickPickItem {
