@@ -67,7 +67,7 @@ export const getNodeItemProps = async (
 	const filePath = filePathRel
 		? path.join(root.workspacePath, filePathRel)
 		: null;
-	const fileIsScript = filePath ? !filePath.endsWith(".project.json") : false;
+	const fileIsScript = filePath && !filePath.endsWith(".project.json");
 
 	// Set name and icon
 	newProps.label = node.name;
@@ -100,34 +100,23 @@ export const getNodeItemProps = async (
 	// Set context value for menu actions such as copy,
 	// paste, insert object, rename, ... to appear correctly
 	const contextPartials = new Set();
+
 	if (filePath) {
-		if (fileIsScript) {
+		if (!parent) {
+			contextPartials.add("projectFile");
+		} else if (fileIsScript) {
 			newProps.command = {
 				title: "Open file",
 				command: "vscode.open",
 				arguments: [vscode.Uri.file(filePath)],
 			};
 			contextPartials.add("instance");
-		} else {
-			contextPartials.add("projectFile");
 		}
-	} else if (folderPath) {
+	} else if (folderPath && !!parent) {
 		contextPartials.add("instance");
 	}
-	if (parent && (filePath !== null || folderPath !== null)) {
-		const info = root.apiDump.Classes.get(node.className);
-		if (
-			!info ||
-			!(
-				info.Name === "DataModel" ||
-				info.Tags.find((tag) => tag === "Service")
-			)
-		) {
-			contextPartials.add("canMove");
-		}
-	}
-	const parentNode = parent ? parent.getNode() : null;
-	if (parentNode && parentNode.folderPath !== null) {
+
+	if (!!parent?.getFolderPath()) {
 		contextPartials.add("canPasteSibling");
 	}
 	if (folderPath !== null) {
@@ -143,6 +132,15 @@ export const getNodeItemProps = async (
 			}
 		}
 	}
+
+	const info = root.apiDump.Classes.get(node.className);
+	const isService = info?.Tags.find((tag) => tag === "Service") !== undefined;
+	if (isService) {
+		contextPartials.delete("instance");
+	} else if (parent && (filePath !== null || folderPath !== null)) {
+		contextPartials.add("canMove");
+	}
+
 	newProps.contextValue = Array.from(contextPartials.values()).join(";");
 
 	// TODO: Wally integration, read wally file for package(s)

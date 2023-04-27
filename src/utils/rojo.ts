@@ -193,10 +193,15 @@ export const isInitFilePath = (filePath: string): boolean => {
  */
 export const cacheProjectFileSystemPaths = async (
 	workspacePath: string,
+	projectPath: string,
 	project: ProjectRootNode
 ) => {
 	const rootAsNode = { [project.name]: project.tree };
 	await cacheProjectFileSystemPathsForNode(workspacePath, rootAsNode);
+	if (!project.tree["$filePath"]) {
+		project.tree["$filePath"] = projectPath;
+		project.tree["$folderPath"] = undefined;
+	}
 };
 
 const cacheProjectFileSystemPathsForNode = async (
@@ -260,7 +265,12 @@ const cacheProjectFileSystemPathsForNode = async (
 				}
 			}
 		}
-		if (sharedPrefix) {
+		if (
+			sharedPrefix &&
+			sharedPrefix !== "." &&
+			sharedPrefix !== "./" &&
+			sharedPrefix !== "/"
+		) {
 			try {
 				const fullPath = path.join(workspacePath, sharedPrefix);
 				const stats = await fs.stat(fullPath);

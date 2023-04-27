@@ -17,7 +17,7 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 	private isLoading: boolean = true;
 
 	private errorMessage: string | undefined;
-	private loadingPath: string | undefined;
+	private projectPath: string | undefined;
 	private treeItem: RojoTreeItem | undefined;
 
 	private sourcemap: SourcemapNode | undefined;
@@ -35,7 +35,6 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 	) {
 		super("<<<ROOT>>>");
 		this.id = workspacePath;
-		this.resourceUri = vscode.Uri.file(workspacePath);
 		this.refreshTreeItem();
 	}
 
@@ -43,6 +42,7 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 		let newProps: TreeItemPropChanges = {};
 		let rootChanged = false;
 		let childrenChanged = false;
+
 		if (this.errorMessage) {
 			newProps = getErroredProps(this.workspacePath, this.errorMessage);
 		} else if (
@@ -75,15 +75,16 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 			if (this.isLoading) {
 				const loadingProps = getLoadingProps(
 					this.workspacePath,
-					this.loadingPath
+					this.projectPath
 				);
 				if (loadingProps.iconPath) {
 					newProps.iconPath = loadingProps.iconPath;
 				}
 			}
 		} else if (this.isLoading) {
-			newProps = getLoadingProps(this.workspacePath, this.loadingPath);
+			newProps = getLoadingProps(this.workspacePath, this.projectPath);
 		}
+
 		for (const [key, value] of Object.entries(newProps)) {
 			const untyped = this as any;
 			if (untyped[key] !== value) {
@@ -91,6 +92,7 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 				rootChanged = true;
 			}
 		}
+
 		if (childrenChanged) {
 			const smapChildren = this.sourcemap!.children;
 			const newCollapsibleState =
@@ -105,15 +107,30 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 				rootChanged = true;
 			}
 		}
+
+		if (!this.resourceUri && this.projectPath) {
+			this.resourceUri = vscode.Uri.file(this.projectPath);
+			rootChanged = true;
+		}
+		if (this.contextValue) {
+			if (this.projectPath && !this.contextValue.match("projectFile")) {
+				this.contextValue += ";projectFile";
+				rootChanged = true;
+			}
+		} else if (this.projectPath) {
+			this.contextValue = "projectFile";
+			rootChanged = true;
+		}
+
 		if (rootChanged || childrenChanged) {
 			this.eventEmitter.fire(this);
 		}
 	}
 
-	public async setLoading(loadingPath: string | undefined) {
-		if (!this.isLoading || this.loadingPath !== loadingPath) {
+	public async setLoading(projectPath: string | undefined) {
+		if (!this.isLoading || this.projectPath !== projectPath) {
 			this.isLoading = true;
-			this.loadingPath = loadingPath;
+			this.projectPath = projectPath;
 			this.clearError();
 			await this.refreshTreeItem();
 		}
@@ -122,7 +139,7 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 	public async clearLoading() {
 		if (this.isLoading) {
 			this.isLoading = false;
-			this.loadingPath = undefined;
+			this.projectPath = undefined;
 			await this.refreshTreeItem();
 		}
 	}
@@ -157,6 +174,18 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 			this.sourcemap = undefined;
 			this.sourcemapChangePending = true;
 			await this.refreshTreeItem();
+		}
+	}
+
+	openFile(): boolean {
+		if (this.projectPath) {
+			vscode.commands.executeCommand(
+				"vscode.open",
+				vscode.Uri.file(this.projectPath)
+			);
+			return true;
+		} else {
+			return false;
 		}
 	}
 
