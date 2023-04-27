@@ -75,11 +75,11 @@ export const getNodeItemProps = async (
 
 	// Set description based on settings
 	const descriptionPartials: string[] = [];
-	const showClassNames = root.settingsProvider.get("showClassNames");
+	const showClassNames = root.settingsProvider.get("explorer.showClassNames");
 	if (showClassNames) {
 		descriptionPartials.push(node.className);
 	}
-	const showFilePaths = root.settingsProvider.get("showFilePaths");
+	const showFilePaths = root.settingsProvider.get("explorer.showFilePaths");
 	if (showFilePaths) {
 		const fsPathFull = filePath
 			? filePath

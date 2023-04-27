@@ -57,14 +57,15 @@ export async function activate(context: vscode.ExtensionContext) {
 	// Listen for settings changing, if any of the settings that
 	// change behavior of the sourcemap or the sourcemap watch
 	// command change we have to re-initialize the workspace
-	settings.listen("ignoreGlobs", forceRefreshAll);
-	settings.listen("includeNonScripts", forceRefreshAll);
-	settings.listen("rojoProjectFile", forceRefreshAll);
+	settings.listen("sourcemap.autogenerate", forceRefreshAll);
+	settings.listen("sourcemap.ignoreGlobs", forceRefreshAll);
+	settings.listen("sourcemap.includeNonScripts", forceRefreshAll);
+	settings.listen("sourcemap.rojoProjectFile", forceRefreshAll);
 
 	// NOTE: We could move the listeners for these settings into the tree items
 	// themselves, but just reloading the workspaces is much much more efficient
-	settings.listen("showClassNames", forceRefreshAll);
-	settings.listen("showFilePaths", forceRefreshAll);
+	settings.listen("explorer.showClassNames", forceRefreshAll);
+	settings.listen("explorer.showFilePaths", forceRefreshAll);
 
 	// Listen for workspace folders changing, and initialize current workspace folders
 	context.subscriptions.push(

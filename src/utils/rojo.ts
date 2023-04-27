@@ -95,8 +95,10 @@ export const rojoSourcemapWatch = (
 	const updateArgs = [
 		"sourcemap",
 		"--watch",
-		settings.get("rojoProjectFile") || "default.project.json",
-		settings.get("includeNonScripts") ? "--include-non-scripts" : "",
+		settings.get("sourcemap.rojoProjectFile") || "default.project.json",
+		settings.get("sourcemap.includeNonScripts")
+			? "--include-non-scripts"
+			: "",
 	];
 
 	const childProcess = cp.spawn("rojo", updateArgs, {

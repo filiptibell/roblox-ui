@@ -27,35 +27,35 @@
 		"configuration": {
 			"title": "Rojo Viewer",
 			"properties": {
-				"rojoViewer.autogenerateSourcemap": {
+				"rojoViewer.sourcemap.autogenerate": {
 					"type": "boolean",
 					"default": true,
-					"description": "Autogenerate sourcemap using the rojo project file\nTurn this setting off to watch a `sourcemap.json` file instead"
+					"markdownDescription": "Autogenerate sourcemap using the rojo project file.\n\nTurn this setting off to watch a `sourcemap.json` file instead."
 				},
-				"rojoViewer.ignoreGlobs": {
+				"rojoViewer.sourcemap.ignoreGlobs": {
 					"type": "array",
 					"default": [],
-					"description": "Glob patterns of file paths to hide from the explorer.\nEven if a file path is ignored by this setting it will be able to be opened by other means."
+					"markdownDescription": "Glob patterns of file paths to hide from the explorer."
 				},
-				"rojoViewer.includeNonScripts": {
+				"rojoViewer.sourcemap.includeNonScripts": {
 					"type": "boolean",
-					"default": false,
-					"description": "If instances that are not scripts should be included in the explorer.\nThis may have a large performance impact and as such is disabled by default."
+					"default": true,
+					"markdownDescription": "If instances that are not scripts should be included in the explorer."
 				},
-				"rojoViewer.showClassNames": {
-					"type": "boolean",
-					"default": false,
-					"description": "Show class names next to instances in the explorer."
-				},
-				"rojoViewer.showFilePaths": {
-					"type": "boolean",
-					"default": false,
-					"description": "Show file paths next to instances in the explorer."
-				},
-				"rojoViewer.rojoProjectFile": {
+				"rojoViewer.sourcemap.rojoProjectFile": {
 					"type": "string",
 					"default": "default.project.json",
-					"description": "Which project file to use for generating sourcemaps."
+					"markdownDescription": "Which project file to use for generating sourcemaps."
+				},
+				"rojoViewer.explorer.showClassNames": {
+					"type": "boolean",
+					"default": false,
+					"markdownDescription": "Show class names next to instances in the explorer."
+				},
+				"rojoViewer.explorer.showFilePaths": {
+					"type": "boolean",
+					"default": false,
+					"markdownDescription": "Show file paths next to instances in the explorer."
 				}
 			}
 		},

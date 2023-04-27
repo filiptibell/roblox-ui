@@ -97,7 +97,7 @@ const postprocessSourcemap = (
 	settings: SettingsProvider,
 	sourcemap: SourcemapNode
 ) => {
-	const ignoreGlobs = settings.get("ignoreGlobs");
+	const ignoreGlobs = settings.get("sourcemap.ignoreGlobs");
 	if (ignoreGlobs && ignoreGlobs.length > 0) {
 		postprocessSourcemapNode(anymatch(ignoreGlobs), sourcemap);
 	} else {
@@ -239,7 +239,7 @@ export const connectSourcemapUsingRojo = (
 
 	// Create a file watcher for the project file
 	const projectFilePath = `${workspacePath}/${
-		settings.get("rojoProjectFile") || "default.project.json"
+		settings.get("sourcemap.rojoProjectFile") || "default.project.json"
 	}`;
 	const projectFileWatcher =
 		vscode.workspace.createFileSystemWatcher(projectFilePath);

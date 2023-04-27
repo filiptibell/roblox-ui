@@ -34,7 +34,7 @@ export const connectWorkspace = (
 
 	// Check for autogeneration setting, and ensure sourcemap
 	// with watching is supported if we want to autogenerate
-	let autogenerate = settings.get("autogenerateSourcemap");
+	let autogenerate = settings.get("sourcemap.autogenerate");
 	if (autogenerate) {
 		if (!rojoSupportsSourcemapWatch(workspacePath)) {
 			autogenerate = false;
