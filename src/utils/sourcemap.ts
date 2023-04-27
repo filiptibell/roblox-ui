@@ -85,8 +85,8 @@ const postprocessSourcemapNode = (
 				indicesToRemove.push(index);
 			}
 		}
-		for (let i = indicesToRemove.length - 1; i >= 0; i--) {
-			node.children.splice(indicesToRemove[i], 1);
+		for (const index of indicesToRemove.reverse()) {
+			node.children.splice(index, 1);
 		}
 	}
 	return node;
@@ -106,14 +106,13 @@ const postprocessSourcemap = (
 };
 
 export const findPrimaryFilePath = (
-	workspacePath: string,
 	node: SourcemapNode,
 	allowBinaryFiles: boolean | void
 ): string | null => {
 	if (node.filePaths) {
 		if (node.filePaths.length === 1) {
 			if (allowBinaryFiles || !isBinaryFilePath(node.filePaths[0])) {
-				return path.join(workspacePath, node.filePaths[0]);
+				return node.filePaths[0];
 			}
 		} else {
 			// TODO: Sort and find using ordering - init, lua, model, meta, project
@@ -125,25 +124,13 @@ export const findPrimaryFilePath = (
 
 export const getSourcemapNodeTreeOrder = (
 	node: SourcemapNode,
-	reflectionMetadata: RobloxReflectionMetadata | undefined | null | void
-): number => {
-	if (reflectionMetadata) {
-		const metadata = reflectionMetadata.Classes.get(node.className);
-		if (metadata && metadata.ExplorerOrder) {
-			return metadata.ExplorerOrder;
-		}
+	reflectionMetadata: RobloxReflectionMetadata
+): number | null => {
+	const metadata = reflectionMetadata.Classes.get(node.className);
+	if (metadata && metadata.ExplorerOrder) {
+		return metadata.ExplorerOrder;
 	}
-	if (
-		node.className === "Script" ||
-		node.className === "LocalScript" ||
-		node.className === "ModuleScript"
-	) {
-		return 3;
-	} else if (node.className === "Folder") {
-		return 2;
-	} else {
-		return 1;
-	}
+	return null;
 };
 
 export const connectSourcemapUsingRojo = (

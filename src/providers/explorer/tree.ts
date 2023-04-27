@@ -116,7 +116,9 @@ export class RojoTreeProvider
 			root.updateTree(rootNode);
 		} else {
 			root = this.createRoot(workspacePath);
-			root.updateTree(rootNode);
+			root.updateTree(rootNode).then(() => {
+				this._onDidChangeTreeData.fire();
+			});
 			this._onDidChangeTreeData.fire();
 		}
 	}
@@ -132,21 +134,6 @@ export class RojoTreeProvider
 		}
 	}
 
-	/**
-	 * Find a workspace tree item from the given file path.
-	 *
-	 * This will search all currently known workspace paths.
-	 */
-	public find(filePath: string): RojoTreeItem | null {
-		for (const root of this.roots.values()) {
-			const item = root.find(filePath);
-			if (item) {
-				return item;
-			}
-		}
-		return null;
-	}
-
 	getTreeItem(item: RojoTreeItem): vscode.TreeItem {
 		return item;
 	}
@@ -155,13 +142,13 @@ export class RojoTreeProvider
 		return item.getParent();
 	}
 
-	getChildren(item?: RojoTreeItem): vscode.TreeItem[] {
+	async getChildren(item?: RojoTreeItem): Promise<vscode.TreeItem[]> {
 		if (!item) {
 			return [...this.roots.keys()]
 				.sort()
 				.map((path) => this.findRoot(path)!);
 		} else {
-			return item.getChildren();
+			return await item.getChildren();
 		}
 	}
 

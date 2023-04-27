@@ -15,12 +15,13 @@ import {
 
 export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 	private isLoading: boolean = true;
-	private filePaths: Map<string, RojoTreeItem> = new Map();
 
 	private errorMessage: string | undefined;
 	private loadingPath: string | undefined;
-	private sourcemap: SourcemapNode | undefined;
 	private treeItem: RojoTreeItem | undefined;
+
+	private sourcemap: SourcemapNode | undefined;
+	private sourcemapChangePending: boolean = false;
 
 	dispose() {}
 
@@ -35,24 +36,43 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 		super("<<<ROOT>>>");
 		this.id = workspacePath;
 		this.resourceUri = vscode.Uri.file(workspacePath);
-		this.updateInternalData();
+		this.refreshTreeItem();
 	}
 
-	private updateInternalData() {
+	private async refreshTreeItem() {
 		let newProps: TreeItemPropChanges = {};
+		let changed = false;
 		if (this.errorMessage) {
 			newProps = getErroredProps(this.workspacePath, this.errorMessage);
-		} else if (this.sourcemap) {
-			newProps = getNullProps();
-			// TODO: Granular tree updates
-			const treeItem = new RojoTreeItem(this, this.sourcemap);
-			this.filePaths = treeItem.gatherFilePaths();
-			this.treeItem = treeItem;
-			for (const key of Object.keys(newProps)) {
-				const untyped = newProps as any;
-				const value = (treeItem as any)[key];
-				if (value !== undefined && value !== untyped[key]) {
-					untyped[key] = value;
+		} else if (
+			(this.sourcemap && this.sourcemapChangePending) ||
+			this.treeItem
+		) {
+			if (this.sourcemapChangePending) {
+				this.sourcemapChangePending = false;
+				newProps = getNullProps();
+				let treeItem = this.treeItem;
+				try {
+					if (treeItem) {
+						if (await treeItem.update(this.sourcemap)) {
+							changed = true;
+						}
+					} else {
+						treeItem = new RojoTreeItem(this, this.eventEmitter);
+						await treeItem.update(this.sourcemap);
+						this.treeItem = treeItem;
+					}
+				} catch (err) {
+					this.setError(`${err}`);
+					await this.refreshTreeItem();
+					return;
+				}
+				for (const key of Object.keys(newProps)) {
+					const untyped = newProps as any;
+					const value = (treeItem as any)[key];
+					if (value !== undefined && value !== untyped[key]) {
+						untyped[key] = value;
+					}
 				}
 			}
 			if (this.isLoading) {
@@ -67,7 +87,6 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 		} else if (this.isLoading) {
 			newProps = getLoadingProps(this.workspacePath, this.loadingPath);
 		}
-		let changed = false;
 		for (const [key, value] of Object.entries(newProps)) {
 			const untyped = this as any;
 			if (untyped[key] !== value) {
@@ -80,60 +99,53 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 		}
 	}
 
-	public setLoading(loadingPath: string | undefined) {
+	public async setLoading(loadingPath: string | undefined) {
 		if (!this.isLoading || this.loadingPath !== loadingPath) {
 			this.isLoading = true;
 			this.loadingPath = loadingPath;
-			this.clearTree();
 			this.clearError();
-			this.updateInternalData();
+			await this.refreshTreeItem();
 		}
 	}
 
-	public clearLoading() {
+	public async clearLoading() {
 		if (this.isLoading) {
 			this.isLoading = false;
 			this.loadingPath = undefined;
-			this.updateInternalData();
+			await this.refreshTreeItem();
 		}
 	}
 
-	public setError(errorMessage: string) {
+	public async setError(errorMessage: string) {
 		if (this.errorMessage !== errorMessage) {
 			this.errorMessage = errorMessage;
 			this.clearTree();
 			this.clearLoading();
-			this.updateInternalData();
+			await this.refreshTreeItem();
 		}
 	}
 
-	public clearError() {
+	public async clearError() {
 		if (this.errorMessage) {
 			this.errorMessage = undefined;
-			this.updateInternalData();
+			await this.refreshTreeItem();
 		}
 	}
 
-	public updateTree(rootNode: SourcemapNode) {
+	public async updateTree(rootNode: SourcemapNode) {
 		this.isLoading = false;
 		this.errorMessage = undefined;
 		this.sourcemap = rootNode;
-		this.updateInternalData();
+		this.sourcemapChangePending = true;
+		await this.refreshTreeItem();
 	}
 
-	public clearTree() {
+	public async clearTree() {
 		if (this.treeItem) {
 			this.treeItem = undefined;
-			this.updateInternalData();
-		}
-	}
-
-	public find(filePath: string): RojoTreeItem | null {
-		const treeItem = this.filePaths.get(filePath);
-		if (treeItem) {
-			return treeItem;
-		} else {
-			return null;
+			this.sourcemap = undefined;
+			this.sourcemapChangePending = true;
+			await this.refreshTreeItem();
 		}
 	}
 
@@ -145,9 +157,9 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 		return undefined;
 	}
 
-	getChildren(): vscode.TreeItem[] {
+	async getChildren(): Promise<vscode.TreeItem[]> {
 		if (this.treeItem) {
-			return this.treeItem.getChildren();
+			return await this.treeItem.getChildren();
 		} else {
 			return [];
 		}

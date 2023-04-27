@@ -1,7 +1,6 @@
 import * as vscode from "vscode";
 import * as path from "path";
 
-import { getClassIconPath } from "../../utils/icons";
 import {
 	SourcemapNode,
 	findPrimaryFilePath,
@@ -9,196 +8,129 @@ import {
 } from "../../utils/sourcemap";
 
 import { RojoTreeRoot } from "./root";
+import { getNodeItemProps } from "./props";
+import { getNullProps } from "./props";
+
+const LOADING_ICON = new vscode.ThemeIcon("loading~spin");
 
 export class RojoTreeItem extends vscode.TreeItem {
-	private filePath: string | null;
-	private folderPath: string | null;
-
-	private node: SourcemapNode;
-	private parent: RojoTreeItem | null = null;
-	private children: RojoTreeItem[] = [];
-
-	private iconPathReal: string;
-	private isLoading: boolean = false;
+	private order: number | undefined;
+	private node: SourcemapNode | undefined;
+	private children: RojoTreeItem[] | undefined;
 
 	constructor(
-		root: RojoTreeRoot,
-		node: SourcemapNode,
-		parent: RojoTreeItem | undefined | null | void,
-		isLoading: boolean | undefined | null | void
+		public readonly root: RojoTreeRoot,
+		private readonly eventEmitter: vscode.EventEmitter<void | vscode.TreeItem>,
+		private readonly parent: RojoTreeItem | undefined | null | void
 	) {
-		super(
-			node.name,
-			node.children
-				? vscode.TreeItemCollapsibleState.Collapsed
-				: vscode.TreeItemCollapsibleState.None
-		);
+		super("Loading");
+		this.iconPath = LOADING_ICON;
+	}
 
-		this.setIsLoading(isLoading);
-		this.node = node;
-		this.tooltip = node.className;
+	/**
+	 * Updates the tree item with a new sourcemap node.
+	 */
+	public async update(node: SourcemapNode | undefined): Promise<boolean> {
+		let itemChanged = false;
+		let childrenChanged = false;
 
-		this.iconPathReal = getClassIconPath(root.apiDump, this.node.className);
-		this.iconPath = isLoading
-			? new vscode.ThemeIcon("loading~spin")
-			: this.iconPathReal;
-
-		const folderPath = node.folderPath
-			? path.join(root.workspacePath, node.folderPath)
-			: null;
-		const filePath = findPrimaryFilePath(root.workspacePath, node);
-		const fileIsScript = filePath
-			? !filePath.endsWith(".project.json")
-			: false;
-		this.filePath = filePath;
-		this.folderPath = folderPath;
-		this.resourceUri = filePath
-			? vscode.Uri.file(filePath)
-			: folderPath
-			? vscode.Uri.file(folderPath)
-			: undefined;
-		this.id = this.resourceUri ? this.resourceUri.fsPath : undefined;
-
-		// Set description based on settings
-		const fsPathFull = filePath
-			? filePath
-			: folderPath
-			? folderPath
-			: undefined;
-		const fsPath = fsPathFull
-			? fsPathFull.slice(root.workspacePath.length + 1)
-			: undefined;
-		const updateDescription = () => {
-			const showClassNames = root.settingsProvider.get("showClassNames");
-			const showFilePaths = root.settingsProvider.get("showFilePaths");
-			if (showClassNames && showFilePaths) {
-				if (fsPath) {
-					this.description = `${node.className} - ${fsPath}`;
-				} else {
-					this.description = `${node.className}`;
-				}
-			} else if (showClassNames) {
-				this.description = node.className;
-			} else if (showFilePaths && fsPath) {
-				this.description = fsPath;
-			} else {
-				this.description = undefined;
-			}
-		};
-		updateDescription();
-
-		// Set context value for menu actions such as copy,
-		// paste, insert object, rename, ... to appear correctly
-		const contextPartials = new Set();
-		if (filePath) {
-			if (fileIsScript) {
-				this.command = {
-					title: "Open file",
-					command: "vscode.open",
-					arguments: [vscode.Uri.file(filePath)],
-				};
-				contextPartials.add("instance");
-			} else {
-				contextPartials.add("projectFile");
-			}
-		} else if (folderPath) {
-			contextPartials.add("instance");
-		}
-		if (parent && (filePath !== null || folderPath !== null)) {
-			const info = root.apiDump.Classes.get(node.className);
-			if (
-				!info ||
-				!(
-					info.Name === "DataModel" ||
-					info.Tags.find((tag) => tag === "Service")
-				)
-			) {
-				contextPartials.add("canMove");
-			}
-		}
-		if (parent && parent.folderPath !== null) {
-			contextPartials.add("canPasteSibling");
-		}
-		if (folderPath !== null) {
-			contextPartials.add("canPasteInto");
-			if (contextPartials.has("instance")) {
-				contextPartials.add("canInsertObject");
-			} else if (contextPartials.has("projectFile")) {
-				// DataModel nodes that have a folderPath are safe
-				// to add services into, the folder path is a confirmed
-				// shared prefix folder where all current services exist
-				if (node.className === "DataModel" && node.folderPath) {
-					contextPartials.add("canInsertService");
-				}
-			}
-		}
-		this.contextValue = Array.from(contextPartials.values()).join(";");
-
-		// Set parent reference and create child tree items
-		if (parent) {
-			this.parent = parent;
-		}
-		if (node.children) {
-			this.children = [...node.children]
-				.sort((left, right) => {
-					const leftOrder = getSourcemapNodeTreeOrder(
-						left,
-						root.reflectionMetadata
-					);
-					const rightOrder = getSourcemapNodeTreeOrder(
-						right,
-						root.reflectionMetadata
-					);
-					if (leftOrder !== rightOrder) {
-						return leftOrder - rightOrder;
+		if (nodesAreDifferent(this.node, node)) {
+			const untyped = this as any;
+			const newProps = node
+				? await getNodeItemProps(this.root, node, this, this.parent)
+				: getNullProps();
+			for (const [key, value] of Object.entries(newProps)) {
+				if (untyped[key] !== value) {
+					if (value === null) {
+						untyped[key] = undefined;
 					} else {
-						return left.name.localeCompare(right.name);
+						untyped[key] = value;
 					}
-				})
-				.map((child) => new RojoTreeItem(root, child, this));
-		}
-	}
-
-	/**
-	 * Set if this tree item is currently loading or not.
-	 *
-	 * When the tree item is loading, it will show a spinning loading indicator.
-	 */
-	public setIsLoading(
-		isLoadingArg: boolean | undefined | null | void
-	): boolean {
-		const isLoading = isLoadingArg ? true : false;
-		if (this.isLoading !== isLoading) {
-			this.isLoading = isLoading;
-			this.iconPath = this.isLoading
-				? new vscode.ThemeIcon("loading~spin")
-				: this.iconPathReal;
-			return true;
-		} else {
-			return false;
-		}
-	}
-
-	/**
-	 * Gathers a map of file path -> tree items.
-	 *
-	 * This will include the tree item it is called on.
-	 */
-	public gatherFilePaths(
-		map: Map<string, RojoTreeItem> | void
-	): Map<string, RojoTreeItem> {
-		if (map === undefined) {
-			map = new Map();
-		}
-		if (this.filePath) {
-			map.set(this.filePath, this);
-		}
-		if (this.children) {
-			for (const child of this.children.values()) {
-				child.gatherFilePaths(map);
+					itemChanged = true;
+				}
 			}
 		}
-		return map;
+
+		const previousChildren = this.node?.children;
+		const currentChildren = node?.children;
+		if (previousChildren && currentChildren && this.children) {
+			// Check for children being removed
+			if (previousChildren.length > currentChildren.length) {
+				for (
+					let index = previousChildren.length;
+					index > currentChildren.length;
+					index--
+				) {
+					this.children.splice(index - 1, 1);
+				}
+				childrenChanged = true;
+			}
+			// Check for children being changed or added
+			const added = [];
+			const promises = [];
+			for (const [index, childNode] of currentChildren.entries()) {
+				const childItem = this.children[index];
+				if (childItem) {
+					// Child may have changed, update it
+					promises.push(childItem.update(childNode));
+				} else {
+					// Child was added, create and update it
+					const newItem = new RojoTreeItem(
+						this.root,
+						this.eventEmitter,
+						this
+					);
+					added.push(newItem);
+					promises.push(newItem.update(childNode));
+				}
+			}
+			await Promise.all(promises);
+			if (added.length > 0) {
+				for (const child of added.values()) {
+					this.children.push(child);
+				}
+				childrenChanged = true;
+			}
+		} else if (currentChildren && !this.children) {
+			// No children yet, create initial children
+			const promises = [];
+			const items = [];
+			if (currentChildren) {
+				for (const child of currentChildren) {
+					const item = new RojoTreeItem(
+						this.root,
+						this.eventEmitter,
+						this
+					);
+					items.push(item);
+					promises.push(item.update(child));
+				}
+			}
+			await Promise.all(promises);
+			this.children = items;
+			childrenChanged = true;
+		} else if (previousChildren) {
+			// All children were removed
+			this.children = [];
+			childrenChanged = true;
+		}
+
+		if (itemChanged) {
+			this.order = node
+				? getSourcemapNodeTreeOrder(
+						node,
+						this.root.reflectionMetadata
+				  ) ?? undefined
+				: undefined;
+		}
+
+		if (itemChanged || childrenChanged) {
+			this.eventEmitter.fire(this);
+		}
+
+		this.node = node;
+
+		return childrenChanged;
 	}
 
 	/**
@@ -207,10 +139,11 @@ export class RojoTreeItem extends vscode.TreeItem {
 	 * @returns `true` if the file was opened, `false` otherwise.
 	 */
 	public openFile(): boolean {
-		if (this.filePath) {
+		const filePath = this.getFilePath();
+		if (filePath) {
 			vscode.commands.executeCommand(
 				"vscode.open",
-				vscode.Uri.file(this.filePath)
+				vscode.Uri.file(filePath)
 			);
 			return true;
 		} else {
@@ -222,21 +155,41 @@ export class RojoTreeItem extends vscode.TreeItem {
 	 * Gets the file path associated with this tree item.
 	 */
 	public getFilePath(): string | null {
-		return this.filePath;
+		const filePath = this.node ? findPrimaryFilePath(this.node) : null;
+		return filePath ? path.join(this.root.workspacePath, filePath) : null;
 	}
 
 	/**
 	 * Gets the folder path associated with this tree item.
 	 */
 	public getFolderPath(): string | null {
-		return this.folderPath;
+		const folderPath = this.node?.folderPath;
+		return folderPath
+			? path.join(this.root.workspacePath, folderPath)
+			: null;
 	}
 
 	/**
 	 * Gets the parent tree item for this tree item, if any.
 	 */
 	public getParent(): RojoTreeItem | null {
-		return this.parent;
+		return this.parent ? this.parent : null;
+	}
+
+	/**
+	 * Gets the sourcemap node for this tree item, if any.
+	 *
+	 * WARNING: Modifying this sourcemap node can have unintended side effects.
+	 */
+	public getNode(): SourcemapNode | null {
+		return this.node ? this.node : null;
+	}
+
+	/**
+	 * Gets the explorer order for this tree item, if any.
+	 */
+	public getOrder(): number | null {
+		return this.order ? this.order : null;
 	}
 
 	/**
@@ -244,7 +197,40 @@ export class RojoTreeItem extends vscode.TreeItem {
 	 *
 	 * This list of children is unique and can be mutated freely.
 	 */
-	public getChildren(): RojoTreeItem[] {
-		return [...this.children];
+	public async getChildren(): Promise<RojoTreeItem[]> {
+		if (this.node) {
+			if (!this.children) {
+				await this.update(this.node);
+			}
+			const children = this.children ? [...this.children] : [];
+			return children.sort(treeItemSortFunction);
+		} else {
+			return [];
+		}
 	}
 }
+
+const treeItemSortFunction = (left: RojoTreeItem, right: RojoTreeItem) => {
+	const orderLeft = left.getOrder();
+	const orderRight = right.getOrder();
+	if (orderLeft !== null && orderRight !== null) {
+		if (orderLeft !== orderRight) {
+			return orderLeft - orderRight;
+		}
+	}
+	const labelLeft = left.label?.toString();
+	const labelRight = right.label?.toString();
+	return labelLeft && labelRight ? labelLeft.localeCompare(labelRight) : 0;
+};
+
+const nodesAreDifferent = (
+	previous: SourcemapNode | undefined,
+	current: SourcemapNode | undefined
+): boolean => {
+	const propChanged =
+		previous?.folderPath !== current?.folderPath ||
+		previous?.className !== current?.className ||
+		previous?.name !== current?.name;
+	// TODO: Check file paths
+	return propChanged;
+};

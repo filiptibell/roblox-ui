@@ -34,10 +34,8 @@
 				},
 				"rojoViewer.ignoreGlobs": {
 					"type": "array",
-					"default": [
-						"**/_Index/**"
-					],
-					"description": "Glob patterns of file paths to hide from the explorer.\nEven if a file path is ignored by this setting it will be able to be opened by other means.\nBy default, this setting ignores the internal packages directory for Wally packages for performance reasons."
+					"default": [],
+					"description": "Glob patterns of file paths to hide from the explorer.\nEven if a file path is ignored by this setting it will be able to be opened by other means."
 				},
 				"rojoViewer.includeNonScripts": {
 					"type": "boolean",
