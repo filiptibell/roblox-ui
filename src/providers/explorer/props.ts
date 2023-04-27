@@ -18,7 +18,6 @@ export const getNullProps = (): TreeItemPropChanges => {
 		description: null,
 		tooltip: null,
 		command: null,
-		collapsibleState: null,
 		contextValue: null,
 		accessibilityInformation: null,
 	};
