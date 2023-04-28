@@ -41,7 +41,7 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 		this.refreshTreeItem();
 	}
 
-	private async refreshTreeItem() {
+	private async refreshTreeItem(forced: boolean | void) {
 		let newProps: TreeItemPropChanges = {};
 		let rootChanged = false;
 		let childrenChanged = false;
@@ -60,7 +60,10 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 					if (!treeItem) {
 						treeItem = new RojoTreeItem(this, this.eventEmitter);
 					}
-					childrenChanged = await treeItem.update(this.sourcemap);
+					childrenChanged = await treeItem.update(
+						this.sourcemap,
+						forced
+					);
 					this.treeItem = treeItem;
 				} catch (err) {
 					this.setError(`${err}`);
@@ -163,12 +166,11 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 		}
 	}
 
-	public async updateTree(rootNode: SourcemapNode) {
+	public async updateTree(rootNode: SourcemapNode, forced: boolean | void) {
 		this.isLoading = false;
-		this.errorMessage = undefined;
 		this.sourcemap = rootNode;
 		this.sourcemapChangePending = true;
-		await this.refreshTreeItem();
+		await this.refreshTreeItem(forced);
 	}
 
 	public async clearTree() {

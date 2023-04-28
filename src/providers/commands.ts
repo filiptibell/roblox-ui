@@ -6,7 +6,7 @@ import {
 	promptRenameExistingInstance,
 } from "../utils/instances";
 
-import { updateAllWorkspaces } from "../workspaces";
+import { reloadAllWorkspaces } from "../workspaces";
 
 import { RojoTreeItem, RojoTreeProvider } from "./explorer";
 import { clearRobloxCache } from "../web/roblox";
@@ -40,7 +40,7 @@ export class CommandsProvider implements vscode.Disposable {
 		treeView: vscode.TreeView<vscode.TreeItem>,
 		treeDataProvider: RojoTreeProvider
 	) {
-		this.register("refresh", updateAllWorkspaces);
+		this.register("refresh", reloadAllWorkspaces);
 		this.register("openProjectFile", (item: RojoTreeItem) => {
 			item.openFile();
 		});

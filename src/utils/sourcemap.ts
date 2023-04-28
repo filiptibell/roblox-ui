@@ -232,7 +232,7 @@ export const connectSourcemapUsingRojo = (
 	workspacePath: string,
 	settings: SettingsProvider,
 	treeProvider: RojoTreeProvider
-): [Function, Function] => {
+): [() => boolean, () => void, () => void] => {
 	let destroyed: boolean = false;
 	let projectFileContents: string | null = null;
 	let currentChildProcess: cp.ChildProcessWithoutNullStreams | null = null;
@@ -246,6 +246,7 @@ export const connectSourcemapUsingRojo = (
 
 	// Create the callback that will watch
 	// and generate a sourcemap for our tree
+	let lastSourcemap: SourcemapNode | undefined;
 	const updateProjectFile = async (contents: string | null) => {
 		if (projectFileContents !== contents) {
 			projectFileContents = contents;
@@ -297,6 +298,8 @@ export const connectSourcemapUsingRojo = (
 							settings,
 							sourcemap
 						);
+						lastSourcemap = sourcemap;
+						treeProvider.clearError(workspacePath);
 						treeProvider.update(workspacePath, sourcemap);
 					},
 				};
@@ -309,8 +312,16 @@ export const connectSourcemapUsingRojo = (
 		}
 	};
 
-	// Create callback for manually updating the sourcemap
-	const update = () => {
+	// Create callback for manually refreshing and reloading the sourcemap
+	const refresh = () => {
+		if (lastSourcemap) {
+			treeProvider.update(workspacePath, lastSourcemap, true);
+			return true;
+		} else {
+			return false;
+		}
+	};
+	const reload = () => {
 		if (destroyed) {
 			return;
 		}
@@ -357,25 +368,36 @@ export const connectSourcemapUsingRojo = (
 	projectFileWatcher.onDidDelete(readProjectFile);
 	readProjectFile();
 
-	return [update, destroy];
+	return [refresh, reload, destroy];
 };
 
 export const connectSourcemapUsingFile = (
 	workspacePath: string,
 	settings: SettingsProvider,
 	treeProvider: RojoTreeProvider
-): [Function, Function] => {
+): [() => boolean, () => void, () => void] => {
 	// Create a file watcher for the sourcemap
 	const sourcemapPath = `${workspacePath}/sourcemap.json`;
 	const fileWatcher = vscode.workspace.createFileSystemWatcher(sourcemapPath);
 
-	// Create callback for updating sourcemap
-	const update = () => {
+	// Create callback for refreshing & reloading sourcemap
+	let lastSourcemap: SourcemapNode | undefined;
+	const refresh = () => {
+		if (lastSourcemap) {
+			treeProvider.update(workspacePath, lastSourcemap, true);
+			return true;
+		} else {
+			return false;
+		}
+	};
+	const reload = () => {
 		treeProvider.setLoading(workspacePath, sourcemapPath);
 		fs.readFile(sourcemapPath, "utf8")
 			.then(JSON.parse)
 			.then((sourcemap: SourcemapNode) => {
 				postprocessSourcemap(workspacePath, settings, sourcemap);
+				lastSourcemap = sourcemap;
+				treeProvider.clearError(workspacePath);
 				treeProvider.update(workspacePath, sourcemap);
 			})
 			.catch((err) => {
@@ -392,8 +414,8 @@ export const connectSourcemapUsingFile = (
 	};
 
 	// Start watching the sourcemap for changes and update once initially
-	fileWatcher.onDidChange(update);
-	update();
+	fileWatcher.onDidChange(reload);
+	reload();
 
-	return [update, destroy];
+	return [refresh, reload, destroy];
 };
