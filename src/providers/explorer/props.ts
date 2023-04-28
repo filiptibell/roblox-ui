@@ -6,6 +6,7 @@ import { getClassIconPath } from "../../utils/icons";
 
 import { RojoTreeRoot } from "./root";
 import { RojoTreeItem } from "./item";
+import { IconsProvider } from "../icons";
 
 export type TreeItemPropChanges = {
 	[K in keyof vscode.TreeItem]: vscode.TreeItem[K] | null;
@@ -71,7 +72,10 @@ export const getNodeItemProps = async (
 
 	// Set name and icon
 	newProps.label = node.name;
-	newProps.iconPath = getClassIconPath(root.apiDump, node.className);
+	newProps.iconPath = await root.iconsProvider.getPackIcon(
+		root.settingsProvider.get("explorer.iconPack"),
+		node.className
+	);
 
 	// Set description based on settings
 	const descriptionPartials: string[] = [];

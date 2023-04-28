@@ -2,7 +2,9 @@ import * as vscode from "vscode";
 
 import { SourcemapNode } from "../../utils/sourcemap";
 import { RobloxApiDump, RobloxReflectionMetadata } from "../../web/roblox";
+
 import { SettingsProvider } from "../settings";
+import { IconsProvider } from "../icons";
 
 import { RojoTreeProvider } from "./tree";
 import { RojoTreeItem } from "./item";
@@ -28,6 +30,7 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 	constructor(
 		public readonly workspacePath: string,
 		public readonly settingsProvider: SettingsProvider,
+		public readonly iconsProvider: IconsProvider,
 		public readonly treeProvider: RojoTreeProvider,
 		public readonly apiDump: RobloxApiDump,
 		public readonly reflectionMetadata: RobloxReflectionMetadata,
