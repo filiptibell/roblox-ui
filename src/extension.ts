@@ -13,8 +13,18 @@ import { SelectionProvider } from "./providers/selection";
 import { CommandsProvider } from "./providers/commands";
 
 import { initRobloxCache } from "./web/roblox";
+import { downloadIconPack } from "./web/icons";
 
 export async function activate(context: vscode.ExtensionContext) {
+	// Create settings provider first, since it is used by other providers
+	const settings = new SettingsProvider();
+	context.subscriptions.push(settings);
+
+	// Start pre-downloading the icon pack that the user has set
+	// and download new icon packs if the user changes the setting
+	downloadIconPack(settings.get("explorer.iconPack"));
+	settings.listen("explorer.iconPack", downloadIconPack);
+
 	// Fetch api dump and reflection metadata, if the user does not
 	// have an internet connection the very first time they activate
 	// the extension this may fail but will otherwise fall back to a
@@ -27,10 +37,6 @@ export async function activate(context: vscode.ExtensionContext) {
 	) {
 		return;
 	}
-
-	// Create settings provider first, since it is used by other providers
-	const settings = new SettingsProvider();
-	context.subscriptions.push(settings);
 
 	// Create the main tree view and data providers
 	// TODO: Create drag & drop provider here
@@ -66,6 +72,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	// themselves, but just reloading the workspaces is much much more efficient
 	settings.listen("explorer.showClassNames", forceRefreshAll);
 	settings.listen("explorer.showFilePaths", forceRefreshAll);
+	settings.listen("explorer.iconPack", forceRefreshAll);
 
 	// Listen for workspace folders changing, and initialize current workspace folders
 	context.subscriptions.push(

@@ -33,12 +33,38 @@ type Palettes = {
 
 const DEFAULT_PALETTE: PaletteId = "platinum";
 
-export const download = async () => {
+export const download = async (progressCallback: (progress: number) => any) => {
+	let progressPalettes = 0;
+	let progressIconData = 0;
+	let progressIconsSvg = 0;
+	const updateProgress = () => {
+		progressCallback(
+			(progressPalettes + progressIconData + progressIconsSvg) / 3
+		);
+	};
+
 	const [palettes, iconData, iconsSvg]: [Palettes, IconData, string] =
 		await Promise.all([
-			downloadWithProgress(PACK_PALETTES_URL, () => {}, "json"),
-			downloadWithProgress(PACK_ICON_DATA_URL, () => {}, "json"),
-			downloadWithProgress(PACK_ICONS_SVG_URL, () => {}),
+			downloadWithProgress(
+				PACK_PALETTES_URL,
+				(progress) => {
+					progressPalettes = progress;
+					updateProgress();
+				},
+				"json"
+			),
+			downloadWithProgress(
+				PACK_ICON_DATA_URL,
+				(progress) => {
+					progressIconData = progress;
+					updateProgress();
+				},
+				"json"
+			),
+			downloadWithProgress(PACK_ICONS_SVG_URL, (progress) => {
+				progressIconsSvg = progress;
+				updateProgress();
+			}),
 		]);
 
 	// Parse icon data into map of instance name => index
