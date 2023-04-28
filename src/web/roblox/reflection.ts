@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-const AdmZip = require("adm-zip");
 const xml2js = require("xml2js");
+
+import { readZipFileAsBuffer } from "../../utils/zip";
 
 type Dictionary<T> = {
 	[key: string]: T;
@@ -87,11 +88,10 @@ export const parseReflectionMetadataFromRobloxStudioZip = async (
 	buf: Buffer
 ): Promise<RobloxReflectionMetadata> => {
 	// Get file buffer from zipped data
-	const data = getFileWithNameInZipBuffer(buf, FILENAME_METADATA);
-	const str = data.toString("utf8");
+	const data = await readZipFileAsBuffer(buf, FILENAME_METADATA);
 	// Parse xml string into js object
 	return new Promise((resolve, reject) => {
-		xml2js.parseString(str, (err: any, obj: any) => {
+		xml2js.parseString(data, (err: any, obj: any) => {
 			if (err) {
 				reject(err);
 			} else {
@@ -203,17 +203,6 @@ const transformXmlToJs = (
 		}
 	}
 	return result;
-};
-
-const getFileWithNameInZipBuffer = (buffer: Buffer, filename: string) => {
-	const zipper = new AdmZip(buffer);
-	const entries = zipper.getEntries();
-	for (const entry of entries) {
-		if (entry.entryName === filename) {
-			return entry.getData();
-		}
-	}
-	return null;
 };
 
 const getReflectionItemNameFromClass = (itemType: string): string => {
