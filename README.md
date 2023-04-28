@@ -74,7 +74,7 @@ The extension can also be compiled and installed locally:
 -   The [Classic] (also known as Silk) icon pack used in the extension was created by famfamfam and is licensed under [CC BY 4.0]
 -   The [Vanilla] version 2.1 icon pack used in the extension was created by Elttob and is licensed under [CC BY-NC 4.0]
 
-[Classic]: https://github.com/Elttob/Vanilla
+[Classic]: https://github.com/legacy-icons/famfamfam-silk
 [Vanilla]: https://github.com/Elttob/Vanilla
 [CC BY 4.0]: https://creativecommons.org/licenses/by/4.0/
 [CC BY-NC 4.0]: https://creativecommons.org/licenses/by-nc/4.0/
