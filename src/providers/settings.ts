@@ -1,5 +1,7 @@
 import * as vscode from "vscode";
 
+import { IconPack } from "../web/icons";
+
 const EXTENSION = "rojoViewer";
 const DEFAULTS = {
 	["sourcemap.autogenerate"]: true,
@@ -8,6 +10,7 @@ const DEFAULTS = {
 	["sourcemap.rojoProjectFile"]: "default.project.json",
 	["explorer.showClassNames"]: false,
 	["explorer.showFilePaths"]: false,
+	["explorer.iconPack"]: "Vanilla 2.1" as IconPack,
 };
 
 type Settings = typeof DEFAULTS;

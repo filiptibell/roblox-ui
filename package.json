@@ -56,6 +56,18 @@
 					"type": "boolean",
 					"default": false,
 					"markdownDescription": "Show file paths next to instances in the explorer."
+				},
+				"rojoViewer.explorer.iconPack": {
+					"enum": [
+						"Classic",
+						"Vanilla 2.1"
+					],
+					"markdownEnumDescriptions": [
+						"The [Classic](https://github.com/legacy-icons/famfamfam-silk) (also known as Silk) icon pack, created by famfamfam.\n\n Licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)",
+						"The [Vanilla](https://github.com/Elttob/Vanilla) version 2.1 icon pack, created by Elttob.\n\nLicensed under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/)"
+					],
+					"default": "Vanilla 2.1",
+					"markdownDescription": "Icon pack used for instances in the explorer."
 				}
 			}
 		},

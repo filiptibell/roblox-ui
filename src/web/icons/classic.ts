@@ -17,12 +17,15 @@ export const download = async () => {
 	const filePaths = fileNames.map((name) => `RobloxCustom/standard/${name}`);
 	const fileContents = await readZipFileAsBufferMany(zip, filePaths);
 
-	const icons = new Map<string, Buffer>();
+	const icons = new Map<string, { light: Buffer; dark: Buffer }>();
 	for (const [index, fileName] of fileNames.entries()) {
 		const icon = fileContents[index];
 		const ext = path.extname(fileName);
 		if (icon && ext) {
-			icons.set(fileName, icon);
+			icons.set(fileName, {
+				light: icon,
+				dark: icon,
+			});
 		}
 	}
 	return icons;
