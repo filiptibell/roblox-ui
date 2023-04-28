@@ -112,15 +112,19 @@ export class RojoTreeProvider
 	 *
 	 * This will create a new sub-tree, or update an existing tree, if found.
 	 *
-	 * This will also automatically clear any loading or errored states.
+	 * This will also automatically clear any loading states, but not error states.
 	 */
-	public update(workspacePath: string, rootNode: SourcemapNode) {
+	public update(
+		workspacePath: string,
+		rootNode: SourcemapNode,
+		forced: boolean | void
+	) {
 		let root = this.findRoot(workspacePath);
 		if (root) {
-			root.updateTree(rootNode);
+			root.updateTree(rootNode, forced);
 		} else {
 			root = this.createRoot(workspacePath);
-			root.updateTree(rootNode).then(() => {
+			root.updateTree(rootNode, forced).then(() => {
 				this._onDidChangeTreeData.fire();
 			});
 			this._onDidChangeTreeData.fire();

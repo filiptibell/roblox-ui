@@ -5,6 +5,8 @@ import {
 	connectWorkspace,
 	disconnectAllWorkspaces,
 	disconnectWorkspace,
+	refreshAllWorkspaces,
+	reloadAllWorkspaces,
 } from "./workspaces";
 
 import { RojoTreeProvider } from "./providers/explorer";
@@ -66,23 +68,19 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(commands);
 	context.subscriptions.push(selection);
 
-	const forceRefreshAll = () => {
-		connectAllWorkspaces(settings, treeProvider);
-	};
-
 	// Listen for settings changing, if any of the settings that
 	// change behavior of the sourcemap or the sourcemap watch
 	// command change we have to re-initialize the workspace
-	settings.listen("sourcemap.autogenerate", forceRefreshAll);
-	settings.listen("sourcemap.ignoreGlobs", forceRefreshAll);
-	settings.listen("sourcemap.includeNonScripts", forceRefreshAll);
-	settings.listen("sourcemap.rojoProjectFile", forceRefreshAll);
+	settings.listen("sourcemap.autogenerate", reloadAllWorkspaces);
+	settings.listen("sourcemap.ignoreGlobs", reloadAllWorkspaces);
+	settings.listen("sourcemap.includeNonScripts", reloadAllWorkspaces);
+	settings.listen("sourcemap.rojoProjectFile", reloadAllWorkspaces);
 
-	// NOTE: We could move the listeners for these settings into the tree items
-	// themselves, but just reloading the workspaces is much much more efficient
-	settings.listen("explorer.showClassNames", forceRefreshAll);
-	settings.listen("explorer.showFilePaths", forceRefreshAll);
-	settings.listen("explorer.iconPack", forceRefreshAll);
+	// For some settings we don't need a complete reload of the project,
+	// sourcemap, and tree, we just need a refresh of any existing tree
+	settings.listen("explorer.showClassNames", refreshAllWorkspaces);
+	settings.listen("explorer.showFilePaths", refreshAllWorkspaces);
+	settings.listen("explorer.iconPack", refreshAllWorkspaces);
 
 	// Listen for workspace folders changing, and initialize current workspace folders
 	context.subscriptions.push(
@@ -95,7 +93,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			}
 		})
 	);
-	forceRefreshAll();
+	connectAllWorkspaces(settings, treeProvider);
 }
 
 export function deactivate() {

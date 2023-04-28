@@ -8,20 +8,35 @@ import {
 	connectSourcemapUsingRojo,
 } from "./utils/sourcemap";
 
+const workspaceRefreshers: Map<string, Function> = new Map();
+const workspaceReloaders: Map<string, Function> = new Map();
 const workspaceDestructors: Map<string, Function> = new Map();
-const workspaceUpdaters: Map<string, Function> = new Map();
 
-export const updateWorkspace = (folder: vscode.WorkspaceFolder) => {
-	const update = workspaceUpdaters.get(folder.uri.fsPath);
+export const refreshWorkspace = (folder: vscode.WorkspaceFolder) => {
+	const update = workspaceRefreshers.get(folder.uri.fsPath);
 	if (update) {
 		update();
 	}
 };
 
-export const updateAllWorkspaces = () => {
+export const refreshAllWorkspaces = () => {
 	const workspaceFolders = vscode.workspace.workspaceFolders;
 	if (workspaceFolders) {
-		workspaceFolders.forEach(updateWorkspace);
+		workspaceFolders.forEach(refreshWorkspace);
+	}
+};
+
+export const reloadWorkspace = (folder: vscode.WorkspaceFolder) => {
+	const update = workspaceReloaders.get(folder.uri.fsPath);
+	if (update) {
+		update();
+	}
+};
+
+export const reloadAllWorkspaces = () => {
+	const workspaceFolders = vscode.workspace.workspaceFolders;
+	if (workspaceFolders) {
+		workspaceFolders.forEach(reloadWorkspace);
 	}
 };
 
@@ -44,22 +59,24 @@ export const connectWorkspace = (
 	if (autogenerate) {
 		// Autogeneration is enabled and available, we can
 		// watch for changes using the rojo sourcemap cli command
-		const [update, destroy] = connectSourcemapUsingRojo(
+		const [refresh, reload, destroy] = connectSourcemapUsingRojo(
 			workspacePath,
 			settings,
 			treeProvider
 		);
-		workspaceUpdaters.set(workspacePath, update);
+		workspaceRefreshers.set(workspacePath, refresh);
+		workspaceReloaders.set(workspacePath, reload);
 		workspaceDestructors.set(workspacePath, destroy);
 	} else {
 		// Autogeneration is either disabled or not available, so we will
 		// instead watch the sourcemap.json file in this workspace folder
-		const [update, destroy] = connectSourcemapUsingFile(
+		const [refresh, reload, destroy] = connectSourcemapUsingFile(
 			workspacePath,
 			settings,
 			treeProvider
 		);
-		workspaceUpdaters.set(workspacePath, update);
+		workspaceRefreshers.set(workspacePath, refresh);
+		workspaceReloaders.set(workspacePath, reload);
 		workspaceDestructors.set(workspacePath, destroy);
 	}
 };

@@ -18,6 +18,7 @@ export class RojoTreeItem extends vscode.TreeItem {
 	private order: number | undefined;
 	private node: SourcemapNode | undefined;
 	private children: RojoTreeItem[] | undefined;
+	private childrenDesired: boolean = false;
 
 	constructor(
 		public readonly root: RojoTreeRoot,
@@ -31,11 +32,14 @@ export class RojoTreeItem extends vscode.TreeItem {
 	/**
 	 * Updates the tree item with a new sourcemap node.
 	 */
-	public async update(node: SourcemapNode | undefined): Promise<boolean> {
+	public async update(
+		node: SourcemapNode | undefined,
+		forced: boolean | void
+	): Promise<boolean> {
 		let itemChanged = false;
 		let childrenChanged = false;
 
-		if (!areSourcemapNodesEqual(this.node, node)) {
+		if (forced || !areSourcemapNodesEqual(this.node, node)) {
 			const untyped = this as any;
 			const newProps = node
 				? await getNodeItemProps(this.root, node, this, this.parent)
@@ -55,46 +59,54 @@ export class RojoTreeItem extends vscode.TreeItem {
 		const previousChildren = this.node?.children;
 		const currentChildren = node?.children;
 		if (previousChildren && currentChildren) {
-			// Check for children being removed
-			if (previousChildren.length > currentChildren.length) {
-				for (
-					let index = previousChildren.length;
-					index > currentChildren.length;
-					index--
-				) {
-					this.children!.splice(index - 1, 1);
+			// Children were added, changed, and/or removed
+			if (this.childrenDesired) {
+				let children = this.children;
+				if (!children) {
+					children = [];
+					this.children = children;
 				}
-				childrenChanged = true;
-			}
-			// Check for children being changed or added
-			const promises = [];
-			for (const [index, childNode] of currentChildren.entries()) {
-				const childItem = this.children![index];
-				if (childItem) {
-					// Child may have changed, update it
-					promises.push(childItem.update(childNode));
-				} else {
-					// Child was added, create and update it
-					const newItem = new RojoTreeItem(
-						this.root,
-						this.eventEmitter,
-						this
-					);
-					promises.push(newItem.update(childNode));
-					this.children!.push(newItem);
+				// Check for children being removed
+				if (previousChildren.length > currentChildren.length) {
+					for (
+						let index = previousChildren.length;
+						index > currentChildren.length;
+						index--
+					) {
+						children.splice(index - 1, 1);
+					}
 					childrenChanged = true;
 				}
+				// Check for children being changed or added
+				const promises = [];
+				for (const [index, childNode] of currentChildren.entries()) {
+					const childItem = children[index];
+					if (childItem) {
+						// Child may have changed, update it
+						promises.push(childItem.update(childNode, forced));
+					} else {
+						// Child was added, create and update it
+						const newItem = new RojoTreeItem(
+							this.root,
+							this.eventEmitter,
+							this
+						);
+						promises.push(newItem.update(childNode, forced));
+						children.push(newItem);
+						childrenChanged = true;
+					}
+				}
+				await Promise.all(promises);
 			}
-			await Promise.all(promises);
 		} else if (previousChildren) {
 			// All children were removed
 			this.children = [];
 			childrenChanged = true;
 		} else if (currentChildren) {
 			// All children were added
-			const promises = [];
-			const items = [];
-			if (currentChildren) {
+			if (this.childrenDesired) {
+				const promises = [];
+				const items = [];
 				for (const child of currentChildren) {
 					const item = new RojoTreeItem(
 						this.root,
@@ -102,12 +114,12 @@ export class RojoTreeItem extends vscode.TreeItem {
 						this
 					);
 					items.push(item);
-					promises.push(item.update(child));
+					promises.push(item.update(child, forced));
 				}
+				await Promise.all(promises);
+				this.children = items;
+				childrenChanged = true;
 			}
-			await Promise.all(promises);
-			this.children = items;
-			childrenChanged = true;
 		}
 
 		if (itemChanged) {
@@ -118,9 +130,9 @@ export class RojoTreeItem extends vscode.TreeItem {
 				  ) ?? undefined
 				: undefined;
 		}
-		if (childrenChanged) {
+		if (childrenChanged || !this.childrenDesired) {
 			const newCollapsibleState =
-				this.children!.length > 0
+				currentChildren !== undefined && currentChildren.length > 0
 					? this.collapsibleState ===
 					  vscode.TreeItemCollapsibleState.Expanded
 						? vscode.TreeItemCollapsibleState.Expanded
@@ -128,6 +140,7 @@ export class RojoTreeItem extends vscode.TreeItem {
 					: vscode.TreeItemCollapsibleState.None;
 			if (this.collapsibleState !== newCollapsibleState) {
 				this.collapsibleState = newCollapsibleState;
+				childrenChanged = true;
 				itemChanged = true;
 			}
 		}
@@ -206,6 +219,7 @@ export class RojoTreeItem extends vscode.TreeItem {
 	 */
 	public async getChildren(): Promise<RojoTreeItem[]> {
 		if (this.node) {
+			this.childrenDesired = true;
 			if (!this.children) {
 				await this.update(this.node);
 			}
@@ -214,6 +228,17 @@ export class RojoTreeItem extends vscode.TreeItem {
 		} else {
 			return [];
 		}
+	}
+
+	/**
+	 * Clears the list of currently cached child tree items for this tree item.
+	 *
+	 * This may help improve performance when updating a large explorer tree.
+	 */
+	public async clearChildren() {
+		this.childrenDesired = false;
+		this.children = undefined;
+		await this.update(this.node);
 	}
 }
 
