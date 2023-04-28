@@ -106,7 +106,7 @@ export const download = async (progressCallback: (progress: number) => any) => {
 		pathIndex++
 	) {
 		const path = svgLines[pathIndex];
-		const index = pathIndex - pathsFirstIndex + 1;
+		const index = pathIndex - pathsFirstIndex;
 		const icon = `${svgBefore}\n${path}\n${svgAfter}`.replace(
 			`viewBox="0 0 2160 16"`,
 			`viewBox="${index * 16} 0 ${(index + 1) * 16} 16"`
@@ -150,10 +150,14 @@ export const download = async (progressCallback: (progress: number) => any) => {
 	// Insert into icons map as ClassName.svg => file string buffers
 	const icons = new Map<string, { light: Buffer; dark: Buffer }>();
 	for (const [name, index] of instanceIndices.entries()) {
-		icons.set(`${name}.svg`, {
-			light: iconBuffersLight.get(index)!,
-			dark: iconBuffersDark.get(index)!,
-		});
+		const light = iconBuffersLight.get(index);
+		const dark = iconBuffersDark.get(index);
+		if (light && dark) {
+			icons.set(`${name}.svg`, { light, dark });
+			if (index === 0) {
+				icons.set("Instance.svg", { light, dark });
+			}
+		}
 	}
 	return icons;
 };
