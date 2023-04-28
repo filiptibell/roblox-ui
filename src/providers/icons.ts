@@ -1,7 +1,8 @@
 import * as vscode from "vscode";
 import * as path from "path";
+import * as fs from "fs/promises";
 
-const fs = vscode.workspace.fs;
+const workspaceFs = vscode.workspace.fs;
 
 import { IconPack, downloadIconPack } from "../web/icons";
 import { RobloxApiDump, RobloxReflectionMetadata } from "../web/roblox";
@@ -21,7 +22,7 @@ const stripFileExt = (filePath: string): string => {
 const readDir = async (filePath: string): Promise<string[] | null> => {
 	const fileUri = vscode.Uri.file(filePath);
 	try {
-		const entries = await fs.readDirectory(fileUri);
+		const entries = await workspaceFs.readDirectory(fileUri);
 		return [...entries.map((entry) => entry[0])];
 	} catch {
 		return null;
@@ -106,7 +107,11 @@ export class IconsProvider implements vscode.Disposable {
 		}
 
 		// Not cached, we need to download the pack
-		const downloadedIcons = await downloadIconPack(pack);
+		const downloadedIcons = await downloadIconPack(
+			pack,
+			this.apiDump,
+			this.reflection
+		);
 
 		// Create the directories where we will store our icons
 		const storagePath = path.join(
@@ -117,8 +122,25 @@ export class IconsProvider implements vscode.Disposable {
 		const dirLight = path.join(storagePath, "light");
 		const dirDark = path.join(storagePath, "dark");
 		await Promise.all([
-			fs.createDirectory(vscode.Uri.file(dirLight)),
-			fs.createDirectory(vscode.Uri.file(dirDark)),
+			workspaceFs.createDirectory(vscode.Uri.file(dirLight)),
+			workspaceFs.createDirectory(vscode.Uri.file(dirDark)),
+		]);
+
+		const fsDirLight = path.join(
+			vscode.workspace.workspaceFolders![0]!.uri.fsPath,
+			"iconPacks",
+			pack,
+			"light"
+		);
+		const fsDirDark = path.join(
+			vscode.workspace.workspaceFolders![0]!.uri.fsPath,
+			"iconPacks",
+			pack,
+			"dark"
+		);
+		await Promise.all([
+			fs.mkdir(fsDirDark, { recursive: true }),
+			fs.mkdir(fsDirLight, { recursive: true }),
 		]);
 
 		// Save all of the icons to files for caching and usage
@@ -127,8 +149,10 @@ export class IconsProvider implements vscode.Disposable {
 		for (const [fileName, fileIcons] of downloadedIcons.entries()) {
 			const uriLight = vscode.Uri.file(path.join(dirLight, fileName));
 			const uriDark = vscode.Uri.file(path.join(dirDark, fileName));
-			filePromises.push(fs.writeFile(uriLight, fileIcons.light));
-			filePromises.push(fs.writeFile(uriDark, fileIcons.dark));
+			filePromises.push(workspaceFs.writeFile(uriLight, fileIcons.light));
+			filePromises.push(workspaceFs.writeFile(uriDark, fileIcons.dark));
+			fs.writeFile(path.join(fsDirLight, fileName), fileIcons.light);
+			fs.writeFile(path.join(fsDirDark, fileName), fileIcons.dark);
 			packData.set(stripFileExt(fileName), {
 				light: uriLight,
 				dark: uriDark,

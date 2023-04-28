@@ -23,11 +23,6 @@ export async function activate(context: vscode.ExtensionContext) {
 	const settings = new SettingsProvider();
 	context.subscriptions.push(settings);
 
-	// Start pre-downloading the icon pack that the user has set
-	// and download new icon packs if the user changes the setting
-	downloadIconPack(settings.get("explorer.iconPack"));
-	settings.listen("explorer.iconPack", downloadIconPack);
-
 	// Fetch api dump and reflection metadata, if the user does not
 	// have an internet connection the very first time they activate
 	// the extension this may fail but will otherwise fall back to a
@@ -40,6 +35,17 @@ export async function activate(context: vscode.ExtensionContext) {
 	) {
 		return;
 	}
+
+	// Start pre-downloading the icon pack that the user has set
+	// and download new icon packs if the user changes the setting
+	downloadIconPack(
+		settings.get("explorer.iconPack"),
+		cache.cachedApiDump,
+		cache.cachedReflection
+	);
+	settings.listen("explorer.iconPack", (pack) => {
+		downloadIconPack(pack, cache.cachedApiDump!, cache.cachedReflection!);
+	});
 
 	// Create the tree icons provider for instance class icons in the explorer
 	const icons = new IconsProvider(

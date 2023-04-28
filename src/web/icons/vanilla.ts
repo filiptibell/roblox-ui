@@ -1,4 +1,5 @@
 import { downloadWithProgress } from "../axios";
+import { RobloxApiDump, RobloxReflectionMetadata } from "../roblox";
 
 const URL_REPO = "Elttob/Vanilla";
 const URL_COMMIT = "7dd06bde94384b249055922f9818a87b3c3eba89";
@@ -31,9 +32,11 @@ type Palettes = {
 	palettes: Array<PaletteItem>;
 };
 
-const DEFAULT_PALETTE: PaletteId = "platinum";
-
-export const download = async (progressCallback: (progress: number) => any) => {
+export const download = async (
+	apiDump: RobloxApiDump,
+	reflection: RobloxReflectionMetadata,
+	progressCallback: (progress: number) => any
+) => {
 	let progressPalettes = 0;
 	let progressIconData = 0;
 	let progressIconsSvg = 0;
@@ -69,49 +72,21 @@ export const download = async (progressCallback: (progress: number) => any) => {
 
 	// Parse icon data into map of instance name => index
 	const instanceIndices = new Map<string, number>();
+	let highestKnownIndexInPack = 0;
 	for (const item of iconData.values()) {
 		instanceIndices.set(item.name, item.icon);
-	}
-
-	// Extract svg lines and find out the range in which svg icon paths exist
-	let svgLines = iconsSvg
-		.trim()
-		.split("\n")
-		.map((line) => line.trim());
-	let pathsFirstIndex = 0;
-	let pathsLastIndex = svgLines.length - 1;
-	for (let index = 0; index < pathsLastIndex; index++) {
-		const line = svgLines[index];
-		if (line.startsWith("<path")) {
-			pathsFirstIndex = index;
-			break;
+		if (item.icon > highestKnownIndexInPack) {
+			highestKnownIndexInPack = item.icon;
 		}
 	}
-	for (let index = pathsLastIndex; index > pathsFirstIndex; index--) {
-		const line = svgLines[index];
-		if (line.startsWith("<path")) {
-			pathsLastIndex = index;
-			break;
+	for (const [className, item] of reflection.Classes.entries()) {
+		if (
+			item.ExplorerImageIndex &&
+			item.ExplorerImageIndex <= highestKnownIndexInPack &&
+			!instanceIndices.has(className)
+		) {
+			instanceIndices.set(className, item.ExplorerImageIndex);
 		}
-	}
-
-	// Extract each individual svg icon from iconsSvg set using index,
-	// preserving the svg definition (everything before & after paths)
-	const svgBefore = svgLines.slice(0, pathsFirstIndex - 1).join("\n");
-	const svgAfter = svgLines.slice(pathsLastIndex + 1).join("\n");
-	const svgIcons = new Map<number, string>();
-	for (
-		let pathIndex = pathsFirstIndex;
-		pathIndex <= pathsLastIndex;
-		pathIndex++
-	) {
-		const path = svgLines[pathIndex];
-		const index = pathIndex - pathsFirstIndex;
-		const icon = `${svgBefore}\n${path}\n${svgAfter}`.replace(
-			`viewBox="0 0 2160 16"`,
-			`viewBox="${index * 16} 0 ${(index + 1) * 16} 16"`
-		);
-		svgIcons.set(index, icon);
 	}
 
 	// Gather color hex values to use for transforms
@@ -119,30 +94,48 @@ export const download = async (progressCallback: (progress: number) => any) => {
 	for (const palette of palettes.palettes) {
 		paletteHexColors.set(palette.id, palette.colours);
 	}
-	const paletteColorsDefault = paletteHexColors.get(DEFAULT_PALETTE)!;
+	const paletteColorsDefault = paletteHexColors.get(palettes.defaults.light)!;
 	const paletteColorsLight = paletteHexColors.get(palettes.defaults.light)!;
 	const paletteColorsDark = paletteHexColors.get(palettes.defaults.dark)!;
+
+	// Make light & dark variants of svg
+	const iconsSvgFixed = iconsSvg.replace(
+		new RegExp("006FB3", "gi"),
+		"006FB2"
+	);
+	let iconsSvgLight = iconsSvgFixed;
+	for (const key in paletteColorsDefault) {
+		if (paletteColorsDefault.hasOwnProperty(key)) {
+			const hex = paletteColorsDefault[key as PaletteColor];
+			const repl = paletteColorsLight[key as PaletteColor];
+			iconsSvgLight = iconsSvgLight.replace(new RegExp(hex, "gi"), repl);
+		}
+	}
+	let iconsSvgDark = iconsSvgFixed;
+	for (const key in paletteColorsDefault) {
+		if (paletteColorsDefault.hasOwnProperty(key)) {
+			const hex = paletteColorsDefault[key as PaletteColor];
+			const repl = paletteColorsDark[key as PaletteColor];
+			iconsSvgDark = iconsSvgDark.replace(new RegExp(hex, "gi"), repl);
+		}
+	}
 
 	// Make light/dark variants of each individual icon using the transforms data
 	const iconBuffersLight = new Map<number, Buffer>();
 	const iconBuffersDark = new Map<number, Buffer>();
-	for (const [index, svg] of svgIcons.entries()) {
-		let light = svg;
-		for (const key in paletteColorsDefault) {
-			if (paletteColorsDefault.hasOwnProperty(key)) {
-				const hex = paletteColorsDefault[key as PaletteColor];
-				const repl = paletteColorsLight[key as PaletteColor];
-				light = light.replace(hex, repl);
-			}
-		}
-		let dark = svg;
-		for (const key in paletteColorsDefault) {
-			if (paletteColorsDefault.hasOwnProperty(key)) {
-				const hex = paletteColorsDefault[key as PaletteColor];
-				const repl = paletteColorsDark[key as PaletteColor];
-				dark = dark.replace(hex, repl);
-			}
-		}
+	for (const [name, index] of instanceIndices.entries()) {
+		const light = iconsSvgLight
+			.replace(`width="2160"`, `width="16"`)
+			.replace(
+				`viewBox="0 0 2160 16"`,
+				`viewBox="${index * 16} 0 16 16"`
+			);
+		const dark = iconsSvgDark
+			.replace(`width="2160"`, `width="16"`)
+			.replace(
+				`viewBox="0 0 2160 16"`,
+				`viewBox="${index * 16} 0 16 16"`
+			);
 		iconBuffersLight.set(index, Buffer.from(light, "utf8"));
 		iconBuffersDark.set(index, Buffer.from(dark, "utf8"));
 	}
