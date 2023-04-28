@@ -36,17 +36,6 @@ export async function activate(context: vscode.ExtensionContext) {
 		return;
 	}
 
-	// Start pre-downloading the icon pack that the user has set
-	// and download new icon packs if the user changes the setting
-	downloadIconPack(
-		settings.get("explorer.iconPack"),
-		cache.cachedApiDump,
-		cache.cachedReflection
-	);
-	settings.listen("explorer.iconPack", (pack) => {
-		downloadIconPack(pack, cache.cachedApiDump!, cache.cachedReflection!);
-	});
-
 	// Create the tree icons provider for instance class icons in the explorer
 	const icons = new IconsProvider(
 		context,
@@ -69,7 +58,12 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(treeView);
 
 	// Create other providers for things such as selection handling, ...
-	const commands = new CommandsProvider(context, treeView, treeProvider);
+	const commands = new CommandsProvider(
+		context,
+		treeView,
+		treeProvider,
+		icons
+	);
 	const selection = new SelectionProvider(treeView, treeProvider);
 	context.subscriptions.push(commands);
 	context.subscriptions.push(selection);
