@@ -9,6 +9,8 @@ import {
 import { reloadAllWorkspaces } from "../workspaces";
 
 import { RojoTreeItem, RojoTreeProvider } from "./explorer";
+import { IconsProvider } from "./icons";
+
 import { clearRobloxCache } from "../web/roblox";
 import {
 	SourcemapNode,
@@ -38,14 +40,22 @@ export class CommandsProvider implements vscode.Disposable {
 	constructor(
 		context: vscode.ExtensionContext,
 		treeView: vscode.TreeView<vscode.TreeItem>,
-		treeDataProvider: RojoTreeProvider
+		treeDataProvider: RojoTreeProvider,
+		iconsProvider: IconsProvider
 	) {
 		this.register("refresh", reloadAllWorkspaces);
 		this.register("openProjectFile", (item: RojoTreeItem) => {
 			item.openFile();
 		});
-		this.register("clearRobloxCache", () => {
-			clearRobloxCache(context, true);
+		this.register("clearCache", async () => {
+			try {
+				await iconsProvider.clearCachedIcons();
+				clearRobloxCache(context, true);
+			} catch (err) {
+				vscode.window.showWarningMessage(
+					`Failed to clear cache!\n\n${err}`
+				);
+			}
 		});
 		/*
 			The below commands modify tree items and are somewhat special:

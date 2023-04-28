@@ -2,7 +2,7 @@
 	"name": "rojo-viewer",
 	"displayName": "Rojo Viewer",
 	"description": "Explorer view similar to Roblox Studio for Rojo projects",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"license": "MIT",
 	"publisher": "filiptibell",
 	"author": {
@@ -78,8 +78,8 @@
 				"icon": "$(refresh)"
 			},
 			{
-				"command": "rojoViewer.clearRobloxCache",
-				"title": "Rojo Viewer: Clear Roblox Cache",
+				"command": "rojoViewer.clearCache",
+				"title": "Rojo Viewer: Clear Cache",
 				"icon": "$(refresh)"
 			},
 			{

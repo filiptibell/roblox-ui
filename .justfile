@@ -3,6 +3,7 @@ build:
 	#!/usr/bin/env bash
 	set -euo pipefail
 	WORKDIR="$PWD"
+	rm -rf "$WORKDIR/out"
 	rm -rf "$WORKDIR/bin"
 	mkdir -p "$WORKDIR/bin"
 	echo "🛠️  Building extension..."
