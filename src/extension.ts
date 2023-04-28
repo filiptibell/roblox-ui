@@ -14,11 +14,15 @@ import { CommandsProvider } from "./providers/commands";
 
 import { initRobloxCache } from "./web/roblox";
 import { downloadIconPack } from "./web/icons";
+import { IconsProvider } from "./providers/icons";
 
 export async function activate(context: vscode.ExtensionContext) {
-	// Create settings provider first, since it is used by other providers
+	// Create settings and icon providers first, since
+	// they are used by some other providers below
 	const settings = new SettingsProvider();
 	context.subscriptions.push(settings);
+	const icons = new IconsProvider(context);
+	context.subscriptions.push(icons);
 
 	// Start pre-downloading the icon pack that the user has set
 	// and download new icon packs if the user changes the setting
@@ -42,6 +46,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	// TODO: Create drag & drop provider here
 	const treeProvider = new RojoTreeProvider(
 		settings,
+		icons,
 		cache.cachedApiDump,
 		cache.cachedReflection
 	);
