@@ -2,11 +2,9 @@ import * as vscode from "vscode";
 import * as path from "path";
 
 import { SourcemapNode, findPrimaryFilePath } from "../../utils/sourcemap";
-import { getClassIconPath } from "../../utils/icons";
 
 import { RojoTreeRoot } from "./root";
 import { RojoTreeItem } from "./item";
-import { IconsProvider } from "../icons";
 
 export type TreeItemPropChanges = {
 	[K in keyof vscode.TreeItem]: vscode.TreeItem[K] | null;
@@ -72,7 +70,7 @@ export const getNodeItemProps = async (
 
 	// Set name and icon
 	newProps.label = node.name;
-	newProps.iconPath = await root.iconsProvider.getPackIcon(
+	newProps.iconPath = await root.iconsProvider.getPackIconForClassName(
 		root.settingsProvider.get("explorer.iconPack"),
 		node.className
 	);

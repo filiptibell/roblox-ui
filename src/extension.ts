@@ -17,12 +17,9 @@ import { downloadIconPack } from "./web/icons";
 import { IconsProvider } from "./providers/icons";
 
 export async function activate(context: vscode.ExtensionContext) {
-	// Create settings and icon providers first, since
-	// they are used by some other providers below
+	// Create settings provider first, it is used by other providers
 	const settings = new SettingsProvider();
 	context.subscriptions.push(settings);
-	const icons = new IconsProvider(context);
-	context.subscriptions.push(icons);
 
 	// Start pre-downloading the icon pack that the user has set
 	// and download new icon packs if the user changes the setting
@@ -41,6 +38,14 @@ export async function activate(context: vscode.ExtensionContext) {
 	) {
 		return;
 	}
+
+	// Create the tree icons provider for instance class icons in the explorer
+	const icons = new IconsProvider(
+		context,
+		cache.cachedApiDump,
+		cache.cachedReflection
+	);
+	context.subscriptions.push(icons);
 
 	// Create the main tree view and data providers
 	// TODO: Create drag & drop provider here
