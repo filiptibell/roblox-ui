@@ -10,7 +10,7 @@ const anymatch = require("anymatch");
 import { SettingsProvider } from "../providers/settings";
 import { RojoTreeProvider } from "../providers/explorer";
 
-import { RobloxReflectionMetadata } from "../web/robloxReflectionMetadata";
+import { RobloxReflectionMetadata } from "../web/roblox/reflection";
 
 import {
 	ProjectRootNode,

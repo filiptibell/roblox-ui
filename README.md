@@ -26,17 +26,19 @@ The extension can be installed from the [Visual Studio Marketplace](https://mark
 The extension can also be compiled and installed locally:
 
 1. Clone the repository
-2. Install [Aftman](https://github.com/LPGhatguy/aftman), [VSCE](https://github.com/microsoft/vscode-vsce) and the [VSCode CLI](https://code.visualstudio.com/docs/editor/command-line)
+2. Install [Aftman], [VSCE] and the [VSCode CLI]
 3. Run `aftman install` in the repository
 4. Run `just install` in the repository to install the extension
+
+[Aftman]: https://github.com/LPGhatguy/aftman
+[VSCE]: https://github.com/microsoft/vscode-vsce
+[VSCode CLI]: https://code.visualstudio.com/docs/editor/command-line
 
 ---
 
 ## Project Status
 
-### Unimplemented
-
-#### Features
+### Missing Features
 
 -   Add support for inserting services if the root of the explorer is a DataModel
 -   Add support for adding arbitrary classes using `.model.json` files, improved Insert Object dialog
@@ -44,11 +46,7 @@ The extension can also be compiled and installed locally:
 -   Implement remaining file tree operations - copy/cut/paste/paste into
 -   Implement drag & drop functionality for the file tree
 
-#### Improvements
-
--   Automatically download & store explorer icons in a cache instead of hardcoding
-
-#### Bugs
+### Current Bugs
 
 -   Fix paste action not being available in context menu
 -   Fix open file / insert object ordering in context menu not being consistent with regular file explorer
@@ -56,7 +54,7 @@ The extension can also be compiled and installed locally:
 
 ### Future Plans
 
--   Integration with [Wally](https://github.com/UpliftGames/wally)
+-   Integration with [Wally]
     -   Button for opening the wally manifest, similar to the one for the rojo manifest
     -   Hover cards for wally link files displaying name, version, desc, and link to wally page
     -   Special "package" icon for wally link files
@@ -64,4 +62,19 @@ The extension can also be compiled and installed locally:
     -   Simple text view of properties
     -   Editing properties for simple `.model.json` or `.meta` files
     -   Complex property editing for properties such as colors, vectors
-    -   Editing properties for binary/xml files, maybe using [Lune](https://github.com/filiptibell/lune) as a backend?
+    -   Editing properties for binary/xml files, maybe using [Lune] as a backend?
+
+[Wally]: https://github.com/UpliftGames/wally
+[Lune]: https://github.com/filiptibell/lune
+
+---
+
+## Icons and Attribution
+
+-   The [Classic] (also known as Silk) icon pack used in the extension was created by famfamfam and is licensed under [CC BY 4.0]
+-   The [Vanilla] version 2.1 icon pack used in the extension was created by Elttob and is licensed under [CC BY-NC 4.0]
+
+[Classic]: https://github.com/Elttob/Vanilla
+[Vanilla]: https://github.com/Elttob/Vanilla
+[CC BY 4.0]: https://creativecommons.org/licenses/by/4.0/
+[CC BY-NC 4.0]: https://creativecommons.org/licenses/by-nc/4.0/

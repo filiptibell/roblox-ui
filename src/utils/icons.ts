@@ -1,10 +1,12 @@
 import * as path from "path";
 import * as fs from "fs";
 
-import { RobloxApiDump } from "../web/robloxApiDump";
+import { RobloxApiDump } from "../web/roblox";
 
 const DEFAULT_CLASS_NAME: string = "Instance";
 const ICON_CLASS_FILE_CACHE: Map<string, boolean> = new Map();
+
+// TODO: Support for icon packs, light and dark icon sets
 
 const getFullClassIconFilePath = (className: string): string => {
 	return path.join(__dirname, "..", "..", "icons", `${className}.png`);

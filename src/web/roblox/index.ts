@@ -1,22 +1,21 @@
 import * as vscode from "vscode";
 
-import axios from "axios";
-
+import { downloadWithProgress } from "../axios";
 import {
 	RobloxApiDump,
 	deserializeApiDump,
 	parseApiDumpFromObject,
 	serializeApiDump,
-} from "./robloxApiDump";
+} from "./apiDump";
 import {
 	RobloxReflectionMetadata,
 	deserializeReflection,
 	parseReflectionMetadataFromRobloxStudioZip,
 	serializeReflection,
-} from "./robloxReflectionMetadata";
+} from "./reflection";
 
-export { RobloxApiDump } from "./robloxApiDump";
-export { RobloxReflectionMetadata } from "./robloxReflectionMetadata";
+export { RobloxApiDump } from "./apiDump";
+export { RobloxReflectionMetadata } from "./reflection";
 
 const URL_VERSION = "https://setup.rbxcdn.com/versionQTStudio";
 const URL_API_DUMP = "https://setup.rbxcdn.com/%V-API-Dump.json";
@@ -25,87 +24,6 @@ const URL_STUDIO = "https://setup.rbxcdn.com/%V-RobloxStudio.zip";
 const CACHE_KEY_VERSION = "roblox-version-hash";
 const CACHE_PREFIX_API_DUMP = "roblox-api-dump";
 const CACHE_PREFIX_REFLECTION = "roblox-reflection";
-
-const getRobloxApiVersion = async (
-	progressCallback: (progress: number) => any
-): Promise<string> => {
-	progressCallback(0);
-	const result = await (new Promise((resolve, reject) => {
-		axios
-			.get(URL_VERSION, {
-				onDownloadProgress(progressEvent) {
-					if (progressEvent.progress) {
-						progressCallback(progressEvent.progress);
-					} else {
-						progressCallback(0);
-					}
-				},
-			})
-			.then((res) => resolve(res.data))
-			.catch((err) => reject(err));
-	}) as Promise<string>);
-	progressCallback(1);
-	return result;
-};
-
-const getRobloxApiDump = async (
-	version: string,
-	progressCallback: (progress: number) => any
-): Promise<RobloxApiDump> => {
-	progressCallback(0);
-	const result = await (new Promise((resolve, reject) => {
-		axios
-			.get(URL_API_DUMP.replace("%V", version), {
-				onDownloadProgress(progressEvent) {
-					if (progressEvent.progress) {
-						progressCallback(progressEvent.progress * 0.9);
-					} else {
-						progressCallback(0);
-					}
-				},
-			})
-			.then((res) => {
-				progressCallback(0.95);
-				return parseApiDumpFromObject(res.data);
-			})
-			.then((apiDump) => resolve(apiDump))
-			.catch((err) => reject(err));
-	}) as Promise<RobloxApiDump>);
-	progressCallback(1);
-	return result;
-};
-
-const getRobloxApiReflection = async (
-	version: string,
-	progressCallback: (progress: number) => any
-): Promise<RobloxReflectionMetadata> => {
-	progressCallback(0);
-	const result = await (new Promise((resolve, reject) => {
-		axios
-			.get(URL_STUDIO.replace("%V", version), {
-				responseType: "arraybuffer",
-				onDownloadProgress(progressEvent) {
-					if (progressEvent.progress) {
-						progressCallback(progressEvent.progress * 0.8);
-					} else {
-						progressCallback(0);
-					}
-				},
-			})
-			.then((res) => {
-				progressCallback(0.85);
-				return Buffer.from(res.data, "binary");
-			})
-			.then((buf) => {
-				progressCallback(0.9);
-				return parseReflectionMetadataFromRobloxStudioZip(buf);
-			})
-			.then((reflection) => resolve(reflection))
-			.catch((err) => reject(err));
-	}) as Promise<RobloxReflectionMetadata>);
-	progressCallback(1);
-	return result;
-};
 
 export const clearRobloxCache = (
 	context: vscode.ExtensionContext,
@@ -222,11 +140,14 @@ export const initRobloxCache = async (context: vscode.ExtensionContext) => {
 			},
 			async (indicator) => {
 				try {
-					const apiVersion = await getRobloxApiVersion((progress) => {
-						indicator.report({
-							increment: Math.round(progress * 20),
-						});
-					});
+					const apiVersion = await downloadWithProgress(
+						URL_VERSION,
+						(progress) => {
+							indicator.report({
+								increment: Math.round(progress * 20),
+							});
+						}
+					);
 
 					// NOTE: The progress bar is weighted heavily towards showing changes
 					// in downloading the API dump & reflection since those can be quite
@@ -243,16 +164,30 @@ export const initRobloxCache = async (context: vscode.ExtensionContext) => {
 						});
 					};
 
-					const [apiDump, apiReflection] = await Promise.all([
-						getRobloxApiDump(apiVersion, (progress) => {
-							progressApiDump = progress;
-							updateProgress();
-						}),
-						getRobloxApiReflection(apiVersion, (progress) => {
-							progressReflection = progress;
-							updateProgress();
-						}),
+					const [apiDumpRaw, apiReflectionRaw] = await Promise.all([
+						downloadWithProgress(
+							URL_API_DUMP.replace("%V", apiVersion),
+							(progress) => {
+								progressApiDump = progress;
+								updateProgress();
+							},
+							"json"
+						),
+						downloadWithProgress(
+							URL_STUDIO.replace("%V", apiVersion),
+							(progress) => {
+								progressReflection = progress;
+								updateProgress();
+							},
+							"arraybuffer"
+						),
 					]);
+
+					const apiDump = await parseApiDumpFromObject(apiDumpRaw);
+					const apiReflection =
+						await parseReflectionMetadataFromRobloxStudioZip(
+							apiReflectionRaw
+						);
 
 					indicator.report({ increment: 100 });
 					setRobloxCache(context, apiVersion, apiDump, apiReflection);
@@ -268,7 +203,10 @@ export const initRobloxCache = async (context: vscode.ExtensionContext) => {
 		// and if a new version was found, download new data with a progress
 		// bar, if this fails we instead fall back to the already available cache
 		try {
-			const apiVersion = await getRobloxApiVersion(() => {});
+			const apiVersion = await downloadWithProgress(
+				URL_VERSION,
+				() => {}
+			);
 			if (apiVersion !== cache.cachedVersion) {
 				await vscode.window.withProgress(
 					{
@@ -287,16 +225,33 @@ export const initRobloxCache = async (context: vscode.ExtensionContext) => {
 							});
 						};
 
-						const [apiDump, apiReflection] = await Promise.all([
-							getRobloxApiDump(apiVersion, (progress) => {
-								progressApiDump = progress;
-								updateProgress();
-							}),
-							getRobloxApiReflection(apiVersion, (progress) => {
-								progressReflection = progress;
-								updateProgress();
-							}),
-						]);
+						const [apiDumpRaw, apiReflectionRaw] =
+							await Promise.all([
+								downloadWithProgress(
+									URL_API_DUMP.replace("%V", apiVersion),
+									(progress) => {
+										progressApiDump = progress;
+										updateProgress();
+									},
+									"json"
+								),
+								downloadWithProgress(
+									URL_STUDIO.replace("%V", apiVersion),
+									(progress) => {
+										progressReflection = progress;
+										updateProgress();
+									},
+									"arraybuffer"
+								),
+							]);
+
+						const apiDump = await parseApiDumpFromObject(
+							apiDumpRaw
+						);
+						const apiReflection =
+							await parseReflectionMetadataFromRobloxStudioZip(
+								apiReflectionRaw
+							);
 
 						indicator.report({ increment: 100 });
 						setRobloxCache(
