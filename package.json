@@ -83,6 +83,24 @@
 				"icon": "$(refresh)"
 			},
 			{
+				"command": "rojoViewer.insertObject",
+				"title": "New Instance...",
+				"icon": "$(file-add)",
+				"enablement": "view == rojoViewer.explorer && (viewItem =~ /instance/ && viewItem =~ /canInsertObject/)"
+			},
+			{
+				"command": "rojoViewer.insertFolder",
+				"title": "New Folder...",
+				"icon": "$(file-add)",
+				"enablement": "view == rojoViewer.explorer && (viewItem =~ /instance/ && viewItem =~ /canInsertObject/)"
+			},
+			{
+				"command": "rojoViewer.insertService",
+				"title": "New Service...",
+				"icon": "$(file-add)",
+				"enablement": "view == rojoViewer.explorer && (viewItem =~ /projectFile/ && viewItem =~ /canInsertService/)"
+			},
+			{
 				"command": "rojoViewer.instanceCut",
 				"title": "Cut",
 				"icon": "$(file)",
@@ -105,18 +123,6 @@
 				"title": "Paste Into",
 				"icon": "$(file)",
 				"enablement": "view == rojoViewer.explorer && viewItem =~ /canPasteInto/"
-			},
-			{
-				"command": "rojoViewer.insertObject",
-				"title": "Insert Object",
-				"icon": "$(file-add)",
-				"enablement": "view == rojoViewer.explorer && (viewItem =~ /instance/ && viewItem =~ /canInsertObject/)"
-			},
-			{
-				"command": "rojoViewer.insertService",
-				"title": "Insert Service",
-				"icon": "$(file-add)",
-				"enablement": "view == rojoViewer.explorer && (viewItem =~ /projectFile/ && viewItem =~ /canInsertService/)"
 			},
 			{
 				"command": "rojoViewer.renameObject",
@@ -159,16 +165,6 @@
 				"mac": "shift+cmd+V"
 			},
 			{
-				"command": "rojoViewer.insertObject",
-				"key": "shift+ctrl+I",
-				"mac": "shift+cmd+I"
-			},
-			{
-				"command": "rojoViewer.insertService",
-				"key": "shift+ctrl+I",
-				"mac": "shift+cmd+I"
-			},
-			{
 				"command": "rojoViewer.renameObject",
 				"key": "F2",
 				"mac": "enter"
@@ -189,30 +185,35 @@
 			],
 			"view/item/context": [
 				{
-					"command": "rojoViewer.instanceCut",
-					"group": "navigation@1"
-				},
-				{
-					"command": "rojoViewer.instanceCopy",
-					"group": "navigation@2"
-				},
-				{
-					"command": "rojoViewer.instancePaste",
-					"group": "navigation@3"
-				},
-				{
-					"command": "rojoViewer.instancePasteInto",
-					"group": "navigation@4"
-				},
-				{
 					"command": "rojoViewer.insertObject",
 					"when": "view == rojoViewer.explorer && viewItem =~ /instance/",
-					"group": "navigation_2@1"
+					"group": "navigation_1@1"
+				},
+				{
+					"command": "rojoViewer.insertFolder",
+					"when": "view == rojoViewer.explorer && viewItem =~ /instance/",
+					"group": "navigation_1@2"
 				},
 				{
 					"command": "rojoViewer.insertService",
 					"when": "view == rojoViewer.explorer && viewItem =~ /projectFile/",
+					"group": "navigation_1@3"
+				},
+				{
+					"command": "rojoViewer.instanceCut",
+					"group": "navigation_2@1"
+				},
+				{
+					"command": "rojoViewer.instanceCopy",
 					"group": "navigation_2@2"
+				},
+				{
+					"command": "rojoViewer.instancePaste",
+					"group": "navigation_2@3"
+				},
+				{
+					"command": "rojoViewer.instancePasteInto",
+					"group": "navigation_2@4"
 				},
 				{
 					"command": "rojoViewer.openProjectFile",
@@ -226,16 +227,6 @@
 				{
 					"command": "rojoViewer.deleteObject",
 					"group": "navigation_4@2"
-				},
-				{
-					"command": "rojoViewer.insertObject",
-					"when": "view == rojoViewer.explorer && viewItem =~ /instance/",
-					"group": "inline@1"
-				},
-				{
-					"command": "rojoViewer.insertService",
-					"when": "view == rojoViewer.explorer && viewItem =~ /projectFile/",
-					"group": "inline@2"
 				}
 			]
 		},
