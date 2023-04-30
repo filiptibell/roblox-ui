@@ -6,8 +6,6 @@ import * as fsSync from "fs";
 
 import { extractRojoFileExtension, isInitFilePath } from "./rojo";
 
-type InsertableClassName = "Folder" | "ModuleScript" | "LocalScript" | "Script";
-
 export type CreationResult = {
 	name: string;
 	className: string;
@@ -22,7 +20,7 @@ export type RenameResult = {
 };
 
 const getInstanceFileName = (
-	className: InsertableClassName,
+	className: string,
 	instanceName: string
 ): string => {
 	if (className === "Script") {
@@ -49,7 +47,7 @@ const pathExists = async (path: string) => {
 const canCreateInstanceFile = async (
 	folderPath: string | null,
 	filePath: string | null,
-	className: InsertableClassName,
+	className: string,
 	instanceName: string
 ): Promise<string | undefined> => {
 	if (!folderPath) {
@@ -95,7 +93,7 @@ const canCreateInstanceFile = async (
 export const createNewInstance = async (
 	folderPath: string | null,
 	filePath: string | null,
-	className: InsertableClassName,
+	className: string,
 	instanceName: string
 ): Promise<[boolean, CreationResult | undefined]> => {
 	// Make sure we got a folder path
@@ -290,10 +288,10 @@ export const renameExistingInstance = async (
 export const promptNewInstanceCreation = async (
 	folderPath: string | null,
 	filePath: string | null,
-	insertService: boolean | void
+	classNameOrInsertService: string | boolean | void
 ): Promise<[boolean, CreationResult | undefined]> => {
 	// TODO: Better classes to pick from
-	if (insertService) {
+	if (classNameOrInsertService === true) {
 		vscode.window.showInformationMessage("TODO");
 		return [false, undefined];
 	}
@@ -303,53 +301,46 @@ export const promptNewInstanceCreation = async (
 		new InstanceInsertItem("LocalScript"),
 		new InstanceInsertItem("Script"),
 	];
-	return new Promise((resolve, reject) => {
-		vscode.window.showQuickPick(items).then((chosen) => {
-			if (chosen) {
-				vscode.window
-					.showInputBox({
-						prompt: "Type in a name for the new instance",
-						value: chosen.className,
-						validateInput: async (value: string) => {
-							try {
-								return await canCreateInstanceFile(
-									folderPath,
-									filePath,
-									chosen.className,
-									value
-								);
-							} catch (e) {
-								return `Internal error: ${e}`;
-							}
-						},
-					})
-					.then(async (instanceName) => {
-						if (instanceName) {
-							try {
-								resolve(
-									await createNewInstance(
-										folderPath,
-										filePath,
-										chosen.className,
-										instanceName
-									)
-								);
-							} catch (e) {
-								vscode.window.showWarningMessage(
-									`Failed to insert new instance!` +
-										`\n\nError message:\n\n${e}`
-								);
-								reject(e);
-							}
-						} else {
-							resolve([false, undefined]);
-						}
-					});
-			} else {
-				resolve([false, undefined]);
-			}
+	const className =
+		typeof classNameOrInsertService === "string"
+			? classNameOrInsertService
+			: await vscode.window.showQuickPick(items);
+	if (className) {
+		const chosen =
+			typeof className !== "string" ? className.className : className;
+		const instanceName = await vscode.window.showInputBox({
+			prompt: "Type in a name for the new instance",
+			value: chosen,
+			validateInput: async (value: string) => {
+				try {
+					return await canCreateInstanceFile(
+						folderPath,
+						filePath,
+						chosen,
+						value
+					);
+				} catch (e) {
+					return `Internal error: ${e}`;
+				}
+			},
 		});
-	});
+		if (instanceName) {
+			try {
+				return await createNewInstance(
+					folderPath,
+					filePath,
+					chosen,
+					instanceName
+				);
+			} catch (e) {
+				vscode.window.showWarningMessage(
+					`Failed to insert new instance!` +
+						`\n\nError message:\n\n${e}`
+				);
+			}
+		}
+	}
+	return [false, undefined];
 };
 
 export const promptRenameExistingInstance = async (
@@ -390,7 +381,7 @@ class InstanceInsertItem implements vscode.QuickPickItem {
 	label: string;
 	description?: string;
 
-	constructor(public readonly className: InsertableClassName) {
+	constructor(public readonly className: string) {
 		this.label = className;
 		// TODO: Descriptions?
 		if (className === "Folder") {

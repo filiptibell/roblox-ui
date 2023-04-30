@@ -8,6 +8,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Changed
+
+-   Made right click context menu items more consistent with the normal file explorer
+
 ## `0.1.1` - April 28th, 2023
 
 ### Added
@@ -16,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 -   Added support for light theme in new icon packs
 -   Added "Classic" icon pack which is based on the old Roblox Studio icons
 
-### Changes
+### Changed
 
 -   Improve performance of explorer refreshes & updates
 -   Decreased extension size substantially

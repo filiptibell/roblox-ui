@@ -66,11 +66,14 @@ export class CommandsProvider implements vscode.Disposable {
 			its parent we can manually change it in the sourcemap too
 			and update the item to give the user instant feedback
 		*/
-		const createInstance = async (item: RojoTreeItem, service: boolean) => {
+		const createInstance = async (
+			item: RojoTreeItem,
+			classNameOrInsertService: string | boolean | void
+		) => {
 			const [created, creationResult] = await promptNewInstanceCreation(
 				item.getFolderPath(),
 				item.getFilePath(),
-				service
+				classNameOrInsertService
 			);
 			if (created && creationResult) {
 				const node = item.getNode() ?? undefined;
@@ -108,7 +111,10 @@ export class CommandsProvider implements vscode.Disposable {
 			}
 		};
 		this.register("insertObject", (item: RojoTreeItem) => {
-			createInstance(item, false);
+			createInstance(item);
+		});
+		this.register("insertFolder", (item: RojoTreeItem) => {
+			createInstance(item, "Folder");
 		});
 		this.register("insertService", (item: RojoTreeItem) => {
 			createInstance(item, true);
