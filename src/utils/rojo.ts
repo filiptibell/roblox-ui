@@ -9,25 +9,23 @@ import { SourcemapNode } from "./sourcemap";
 
 export type ProjectRootNode = {
 	name: string;
-	tree: ProjectOrMetaFileNode;
+	tree: ProjectFileNode;
 };
 
-export type ProjectOrMetaFileNode = {
-	[key: string]: any | ProjectOrMetaFileNode;
+export type ProjectFileNode = {
+	[key: string]: any | ProjectFileNode;
 	["$ignoreUnknownInstances"]?: boolean;
 	["$className"]?: string;
 	["$path"]?: string;
-	/**
-	 * Extension-only property
-	 *
-	 * Added by
-	 */
+	// Extension-only properties, these don't actually exist in project files
 	["$filePath"]?: string;
 	["$folderPath"]?: string;
 };
 
 const ROJO_PROJECT_EXTENSION = ".project.json";
 const ROJO_FILE_EXTENSIONS = [
+	"meta.json",
+	"model.json",
 	"server.luau",
 	"server.lua",
 	"client.luau",
@@ -199,17 +197,21 @@ export const cacheProjectFileSystemPaths = async (
 	const rootAsNode = { [project.name]: project.tree };
 	await cacheProjectFileSystemPathsForNode(workspacePath, rootAsNode);
 	if (!project.tree["$filePath"]) {
-		project.tree["$filePath"] = projectPath;
-		project.tree["$folderPath"] = undefined;
+		const relativeFilePath = projectPath.startsWith(workspacePath)
+			? projectPath.slice(workspacePath.length + 1)
+			: projectPath;
+		if (relativeFilePath) {
+			project.tree["$filePath"] = relativeFilePath;
+		}
 	}
 };
 
 const cacheProjectFileSystemPathsForNode = async (
 	workspacePath: string,
-	projectNode: ProjectOrMetaFileNode,
-	parent: ProjectOrMetaFileNode | void
+	projectNode: ProjectFileNode,
+	parent: ProjectFileNode | void
 ) => {
-	const children: Map<string, ProjectOrMetaFileNode> = new Map();
+	const children: Map<string, ProjectFileNode> = new Map();
 	for (const [key, value] of Object.entries(projectNode)) {
 		if (!key.startsWith("$")) {
 			children.set(key, value);
@@ -274,8 +276,7 @@ const cacheProjectFileSystemPathsForNode = async (
 			try {
 				const fullPath = path.join(workspacePath, sharedPrefix);
 				const stats = await fs.stat(fullPath);
-				const isDir = stats.isDirectory();
-				if (isDir) {
+				if (stats.isDirectory()) {
 					projectNode["$folderPath"] = sharedPrefix;
 				}
 			} catch {}
@@ -315,7 +316,7 @@ export const mergeProjectIntoSourcemap = (
 
 const mergeProjectNodeIntoSourcemapNode = (
 	workspacePath: string,
-	projectNode: ProjectOrMetaFileNode,
+	projectNode: ProjectFileNode,
 	sourcemapNode: SourcemapNode
 ) => {
 	const nodeFolderPath = projectNode["$folderPath"];

@@ -194,6 +194,14 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 		}
 	}
 
+	getFilePath(): string | null {
+		return this.treeItem ? this.treeItem.getFilePath() : null;
+	}
+
+	getFolderPath(): string | null {
+		return this.treeItem ? this.treeItem.getFolderPath() : null;
+	}
+
 	getTreeItem() {
 		return undefined;
 	}

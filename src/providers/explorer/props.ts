@@ -106,6 +106,9 @@ export const getNodeItemProps = async (
 	if (filePath) {
 		if (!parent) {
 			contextPartials.add("projectFile");
+			if (folderPath && node.className === "DataModel") {
+				contextPartials.add("canInsertService");
+			}
 		} else if (fileIsScript) {
 			newProps.command = {
 				title: "Open file",
@@ -113,34 +116,26 @@ export const getNodeItemProps = async (
 				arguments: [vscode.Uri.file(filePath)],
 			};
 			contextPartials.add("instance");
+			contextPartials.add("canInsertObject");
 		}
 	} else if (folderPath && !!parent) {
 		contextPartials.add("instance");
-	}
-
-	if (!!parent?.getFolderPath()) {
-		contextPartials.add("canPasteSibling");
-	}
-	if (folderPath !== null) {
-		contextPartials.add("canPasteInto");
-		if (contextPartials.has("instance")) {
-			contextPartials.add("canInsertObject");
-		} else if (contextPartials.has("projectFile")) {
-			// DataModel nodes that have a folderPath are safe
-			// to add services into, the folder path is a confirmed
-			// shared prefix folder where all current services exist
-			if (node.className === "DataModel" && node.folderPath) {
-				contextPartials.add("canInsertService");
-			}
-		}
+		contextPartials.add("canInsertObject");
 	}
 
 	const info = root.apiDump.Classes.get(node.className);
 	const isService = info?.Tags.find((tag) => tag === "Service") !== undefined;
 	if (isService) {
 		contextPartials.delete("instance");
-	} else if (parent && (filePath !== null || folderPath !== null)) {
+	} else if (parent && (filePath || folderPath)) {
 		contextPartials.add("canMove");
+	}
+
+	if (parent && parent.getFolderPath()) {
+		contextPartials.add("canPasteSibling");
+	}
+	if (!isService && folderPath && contextPartials.has("instance")) {
+		contextPartials.add("canPasteInto");
 	}
 
 	newProps.contextValue = Array.from(contextPartials.values()).join(";");

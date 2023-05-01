@@ -5,6 +5,36 @@ import * as path from "path";
 import * as fsSync from "fs";
 
 import { extractRojoFileExtension, isInitFilePath } from "./rojo";
+import { RobloxApiDump, RobloxReflectionMetadata } from "../web/roblox";
+
+const INSERTABLE_SERVICES = new Set([
+	"Lighting",
+	"LocalizationService",
+	"MaterialService",
+	"Players",
+	"ReplicatedFirst",
+	"ReplicatedStorage",
+	"ServerScriptService",
+	"ServerStorage",
+	"SoundService",
+	"StarterGui",
+	"StarterPack",
+	"StarterPlayer",
+	"Teams",
+	"TextChatService",
+	"VoiceChatService",
+	"Workspace",
+]);
+
+const COMMON_INSTANCES = new Set(["ModuleScript", "LocalScript", "Script"]);
+
+const INSTANCE_JSON_FILE_CONTENTS = `{
+    "className": "<<CLASSNAME>>",
+    "properties": {
+        
+    }
+}
+`;
 
 export type CreationResult = {
 	name: string;
@@ -27,8 +57,25 @@ const getInstanceFileName = (
 		return `${instanceName}.server.luau`;
 	} else if (className === "LocalScript") {
 		return `${instanceName}.client.luau`;
-	} else {
+	} else if (className === "ModuleScript") {
 		return `${instanceName}.luau`;
+	} else {
+		return `${instanceName}.model.json`;
+	}
+};
+
+const getInstanceFileContents = (
+	className: string,
+	instanceName: string
+): string => {
+	if (
+		className === "Script" ||
+		className === "LocalScript" ||
+		className === "ModuleScript"
+	) {
+		return "";
+	} else {
+		return INSTANCE_JSON_FILE_CONTENTS.replace("<<CLASSNAME>>", className);
 	}
 };
 
@@ -94,7 +141,8 @@ export const createNewInstance = async (
 	folderPath: string | null,
 	filePath: string | null,
 	className: string,
-	instanceName: string
+	instanceName: string,
+	isService: boolean | undefined | null | void
 ): Promise<[boolean, CreationResult | undefined]> => {
 	// Make sure we got a folder path
 	if (!folderPath && !filePath) {
@@ -121,9 +169,15 @@ export const createNewInstance = async (
 			if (fileExt) {
 				const dirName = path.dirname(filePath);
 				const subdirName = path.basename(filePath, `.${fileExt}`);
+				// Convert model json files to meta json, since
+				// model json does not support init-style files
+				const initFileName =
+					fileExt === "model.json"
+						? "init.meta.json"
+						: `init.${fileExt}`;
 				folderPath = path.join(dirName, subdirName);
 				await fs.mkdir(folderPath);
-				await fs.rename(filePath, `${folderPath}/init.${fileExt}`);
+				await fs.rename(filePath, `${folderPath}/${initFileName}`);
 				isInitFile = true;
 			} else {
 				vscode.window.showWarningMessage(
@@ -148,10 +202,33 @@ export const createNewInstance = async (
 				filePaths: undefined,
 			},
 		];
+	} else if (isService === true) {
+		const newFolderPath = path.join(folderPath, instanceName);
+		const newFileName = "init.meta.json";
+		const newFilePath = path.join(newFolderPath, newFileName);
+		const newFileContents = getInstanceFileContents(
+			className,
+			instanceName
+		);
+		await fs.mkdir(newFolderPath);
+		await fs.writeFile(newFilePath, newFileContents);
+		return [
+			true,
+			{
+				name: instanceName,
+				className,
+				folderPath: newFolderPath,
+				filePaths: [newFilePath],
+			},
+		];
 	} else {
 		const newFileName = getInstanceFileName(className, instanceName);
 		const newFilePath = path.join(folderPath, newFileName);
-		await fs.writeFile(newFilePath, "");
+		const newFileContents = getInstanceFileContents(
+			className,
+			instanceName
+		);
+		await fs.writeFile(newFilePath, newFileContents);
 		return [
 			true,
 			{
@@ -286,30 +363,55 @@ export const renameExistingInstance = async (
 };
 
 export const promptNewInstanceCreation = async (
+	apiDump: RobloxApiDump,
+	reflection: RobloxReflectionMetadata,
 	folderPath: string | null,
 	filePath: string | null,
 	classNameOrInsertService: string | boolean | void
 ): Promise<[boolean, CreationResult | undefined]> => {
-	// TODO: Better classes to pick from
-	if (classNameOrInsertService === true) {
-		vscode.window.showInformationMessage("TODO");
-		return [false, undefined];
+	const items: vscode.QuickPickItem[] = [];
+	if (typeof classNameOrInsertService !== "string") {
+		if (classNameOrInsertService === true) {
+			for (const serviceName of INSERTABLE_SERVICES.values()) {
+				items.push(new InstanceInsertItem(serviceName));
+			}
+		} else {
+			for (const serviceName of COMMON_INSTANCES.values()) {
+				items.push(new InstanceInsertItem(serviceName));
+			}
+			items.push(new InstanceInsertSeparator());
+			const restItems = [];
+			for (const apiItem of apiDump.Classes.values()) {
+				if (
+					!COMMON_INSTANCES.has(apiItem.Name) &&
+					!apiItem.Tags.find((tag) => tag === "Service") &&
+					!apiItem.Tags.find((tag) => tag === "NotBrowsable") &&
+					!apiItem.Tags.find((tag) => tag === "NotCreatable")
+				) {
+					restItems.push(new InstanceInsertItem(apiItem.Name));
+				}
+			}
+			restItems.sort((left, right) => {
+				return left.label.localeCompare(right.label);
+			});
+			for (const item of restItems.values()) {
+				items.push(item);
+			}
+		}
 	}
-	const items = [
-		new InstanceInsertItem("Folder"),
-		new InstanceInsertItem("ModuleScript"),
-		new InstanceInsertItem("LocalScript"),
-		new InstanceInsertItem("Script"),
-	];
 	const className =
 		typeof classNameOrInsertService === "string"
 			? classNameOrInsertService
 			: await vscode.window.showQuickPick(items);
 	if (className) {
 		const chosen =
-			typeof className !== "string" ? className.className : className;
+			typeof className !== "string"
+				? className instanceof InstanceInsertItem
+					? className.className
+					: className.label
+				: className;
 		const instanceName = await vscode.window.showInputBox({
-			prompt: "Type in a name for the new instance",
+			prompt: `Enter a name for the new ${chosen}`,
 			value: chosen,
 			validateInput: async (value: string) => {
 				try {
@@ -330,7 +432,8 @@ export const promptNewInstanceCreation = async (
 					folderPath,
 					filePath,
 					chosen,
-					instanceName
+					instanceName,
+					classNameOrInsertService === true
 				);
 			} catch (e) {
 				vscode.window.showWarningMessage(
@@ -345,37 +448,33 @@ export const promptNewInstanceCreation = async (
 
 export const promptRenameExistingInstance = async (
 	folderPath: string | null,
-	filePath: string | null
+	filePath: string | null,
+	className: string | undefined | null | void
 ): Promise<[boolean, RenameResult | undefined]> => {
-	return new Promise((resolve, reject) => {
-		vscode.window
-			.showInputBox({
-				prompt: "Type in a new name for the instance",
-				value: "",
-			})
-			.then(async (instanceName) => {
-				if (instanceName) {
-					try {
-						resolve(
-							await renameExistingInstance(
-								folderPath,
-								filePath,
-								instanceName
-							)
-						);
-					} catch (e) {
-						vscode.window.showWarningMessage(
-							`Failed to rename instance!` +
-								`\n\nError message:\n\n${e}`
-						);
-						reject(e);
-					}
-				} else {
-					resolve([false, undefined]);
-				}
-			});
+	const instanceName = await vscode.window.showInputBox({
+		prompt: `Enter a new name for the ${className ?? "Instance"}`,
+		value: "",
 	});
+	if (instanceName) {
+		try {
+			return await renameExistingInstance(
+				folderPath,
+				filePath,
+				instanceName
+			);
+		} catch (e) {
+			vscode.window.showWarningMessage(
+				`Failed to rename instance!\n\nError message:\n\n${e}`
+			);
+		}
+	}
+	return [false, undefined];
 };
+
+class InstanceInsertSeparator implements vscode.QuickPickItem {
+	label = "";
+	kind = vscode.QuickPickItemKind.Separator;
+}
 
 class InstanceInsertItem implements vscode.QuickPickItem {
 	label: string;
