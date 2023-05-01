@@ -11,7 +11,11 @@ import { reloadAllWorkspaces } from "../workspaces";
 import { RojoTreeItem, RojoTreeProvider } from "./explorer";
 import { IconsProvider } from "./icons";
 
-import { clearRobloxCache } from "../web/roblox";
+import {
+	RobloxApiDump,
+	RobloxReflectionMetadata,
+	clearRobloxCache,
+} from "../web/roblox";
 import {
 	SourcemapNode,
 	cloneSourcemapNode,
@@ -41,7 +45,9 @@ export class CommandsProvider implements vscode.Disposable {
 		context: vscode.ExtensionContext,
 		treeView: vscode.TreeView<vscode.TreeItem>,
 		treeDataProvider: RojoTreeProvider,
-		iconsProvider: IconsProvider
+		iconsProvider: IconsProvider,
+		apiDump: RobloxApiDump,
+		reflection: RobloxReflectionMetadata
 	) {
 		this.register("refresh", reloadAllWorkspaces);
 		this.register("openProjectFile", (item: RojoTreeItem) => {
@@ -71,6 +77,8 @@ export class CommandsProvider implements vscode.Disposable {
 			classNameOrInsertService: string | boolean | void
 		) => {
 			const [created, creationResult] = await promptNewInstanceCreation(
+				apiDump,
+				reflection,
 				item.getFolderPath(),
 				item.getFilePath(),
 				classNameOrInsertService

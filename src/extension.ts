@@ -62,7 +62,9 @@ export async function activate(context: vscode.ExtensionContext) {
 		context,
 		treeView,
 		treeProvider,
-		icons
+		icons,
+		cache.cachedApiDump,
+		cache.cachedReflection
 	);
 	const selection = new SelectionProvider(treeView, treeProvider);
 	context.subscriptions.push(commands);

@@ -40,16 +40,12 @@ The extension can also be compiled and installed locally:
 
 ### Missing Features
 
--   Add support for inserting services if the root of the explorer is a DataModel
--   Add support for adding arbitrary classes using `.model.json` files, improved Insert Object dialog
 -   Add support for showing a file picker (`rbxm` and `rbxmx`) and inserting them into instances
 -   Implement remaining file tree operations - copy/cut/paste/paste into
 -   Implement drag & drop functionality for the file tree
 
 ### Current Bugs
 
--   Fix paste action not being available in context menu
--   Fix open file / insert object ordering in context menu not being consistent with regular file explorer
 -   Fix `.meta` files not being renamed together with main file in rename/delete operations
 
 ### Future Plans
