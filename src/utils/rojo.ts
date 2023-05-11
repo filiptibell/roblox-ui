@@ -1,8 +1,9 @@
 import * as vscode from "vscode";
 import * as cp from "child_process";
-import * as fs from "fs/promises";
 import * as path from "path";
 import * as semver from "semver";
+
+const fs = vscode.workspace.fs;
 
 import { SettingsProvider } from "../providers/settings";
 import { SourcemapNode } from "./sourcemap";
@@ -232,12 +233,12 @@ const cacheProjectFileSystemPathsForNode = async (
 	if (nodePath && typeof nodePath === "string") {
 		try {
 			const fullPath = path.join(workspacePath, nodePath);
-			const stats = await fs.stat(fullPath);
-			const isFile = stats.isFile();
+			const stats = await fs.stat(vscode.Uri.file(fullPath));
+			const isFile = stats.type === vscode.FileType.File;
 			if (isFile) {
 				projectNode["$filePath"] = nodePath;
 			}
-			const isDir = stats.isDirectory();
+			const isDir = stats.type === vscode.FileType.Directory;
 			if (isDir) {
 				projectNode["$folderPath"] = nodePath;
 			}
@@ -275,8 +276,8 @@ const cacheProjectFileSystemPathsForNode = async (
 		) {
 			try {
 				const fullPath = path.join(workspacePath, sharedPrefix);
-				const stats = await fs.stat(fullPath);
-				if (stats.isDirectory()) {
+				const stats = await fs.stat(vscode.Uri.file(fullPath));
+				if (stats.type === vscode.FileType.Directory) {
 					projectNode["$folderPath"] = sharedPrefix;
 				}
 			} catch {}

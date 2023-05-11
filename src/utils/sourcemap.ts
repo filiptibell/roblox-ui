@@ -1,9 +1,8 @@
 import * as vscode from "vscode";
 import * as path from "path";
-import * as fs from "fs/promises";
 import * as cp from "child_process";
 
-import * as fsSync from "fs";
+const fs = vscode.workspace.fs;
 
 const anymatch = require("anymatch");
 
@@ -20,6 +19,7 @@ import {
 	rojoSourcemapWatch,
 	isBinaryFilePath,
 } from "./rojo";
+import { pathMetadata } from "./files";
 
 export type SourcemapNode = {
 	name: string;
@@ -27,18 +27,6 @@ export type SourcemapNode = {
 	folderPath?: string;
 	filePaths?: string[];
 	children?: SourcemapNode[];
-};
-
-const pathExists = async (path: string) => {
-	return new Promise((resolve, _) => {
-		fsSync.access(path, fsSync.constants.F_OK, (err) => {
-			if (err) {
-				resolve(false);
-			} else {
-				resolve(true);
-			}
-		});
-	});
 };
 
 const postprocessSourcemapNode = (
@@ -349,16 +337,19 @@ export const connectSourcemapUsingRojo = (
 
 	// Listen to the project file changing and also read it once initially
 	const readProjectFile = async () => {
-		if (await pathExists(projectFilePath)) {
+		if ((await pathMetadata(projectFilePath)).isFile) {
 			treeProvider.setLoading(workspacePath, projectFilePath);
-			fs.readFile(projectFilePath, "utf8")
-				.then(updateProjectFile)
-				.catch((e) => {
-					treeProvider.delete(workspacePath);
-					vscode.window.showErrorMessage(
-						`Failed to read the project file at ${projectFilePath}\n${e}`
-					);
-				});
+			try {
+				await fs
+					.readFile(vscode.Uri.file(projectFilePath))
+					.then((bytes) => bytes.toString())
+					.then(updateProjectFile);
+			} catch (e) {
+				treeProvider.delete(workspacePath);
+				vscode.window.showErrorMessage(
+					`Failed to read the project file at ${projectFilePath}\n${e}`
+				);
+			}
 		} else {
 			treeProvider.delete(workspacePath);
 		}
@@ -390,20 +381,21 @@ export const connectSourcemapUsingFile = (
 			return false;
 		}
 	};
-	const reload = () => {
+	const reload = async () => {
 		treeProvider.setLoading(workspacePath, sourcemapPath);
-		fs.readFile(sourcemapPath, "utf8")
-			.then(JSON.parse)
-			.then((sourcemap: SourcemapNode) => {
-				postprocessSourcemap(workspacePath, settings, sourcemap);
-				lastSourcemap = sourcemap;
-				treeProvider.clearError(workspacePath);
-				treeProvider.update(workspacePath, sourcemap);
-			})
-			.catch((err) => {
-				const errorMessage = `${err ?? ""}`;
-				treeProvider.setError(workspacePath, errorMessage);
-			});
+		try {
+			const sourcemap: SourcemapNode = await fs
+				.readFile(vscode.Uri.file(sourcemapPath))
+				.then((bytes) => bytes.toString())
+				.then(JSON.parse);
+			postprocessSourcemap(workspacePath, settings, sourcemap);
+			lastSourcemap = sourcemap;
+			treeProvider.clearError(workspacePath);
+			treeProvider.update(workspacePath, sourcemap);
+		} catch (err) {
+			const errorMessage = `${err ?? ""}`;
+			treeProvider.setError(workspacePath, errorMessage);
+		}
 	};
 
 	// Create callback for disconnecting (destroying)
