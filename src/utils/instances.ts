@@ -1,11 +1,11 @@
 import * as vscode from "vscode";
-import * as fs from "fs/promises";
 import * as path from "path";
 
-import * as fsSync from "fs";
+const fs = vscode.workspace.fs;
 
 import { extractRojoFileExtension, isInitFilePath } from "./rojo";
 import { RobloxApiDump, RobloxReflectionMetadata } from "../web/roblox";
+import { pathMetadata } from "./files";
 
 const INSERTABLE_SERVICES = new Set([
 	"Lighting",
@@ -79,18 +79,6 @@ const getInstanceFileContents = (
 	}
 };
 
-const pathExists = async (path: string) => {
-	return new Promise((resolve, _) => {
-		fsSync.access(path, fsSync.constants.F_OK, (err) => {
-			if (err) {
-				resolve(false);
-			} else {
-				resolve(true);
-			}
-		});
-	});
-};
-
 const canCreateInstanceFile = async (
 	folderPath: string | null,
 	filePath: string | null,
@@ -117,19 +105,21 @@ const canCreateInstanceFile = async (
 
 	if (className === "Folder") {
 		const newFolderPath = path.join(folderPath, instanceName);
-		if (!(await pathExists(newFolderPath))) {
+		const newMetadata = await pathMetadata(newFolderPath);
+		if (!newMetadata.exists) {
 			return;
 		}
-		if ((await fs.stat(newFolderPath)).isDirectory()) {
+		if (newMetadata.isDir) {
 			return `Folder already exists at '${newFolderPath}'`;
 		}
 	} else {
 		const newFileName = getInstanceFileName(className, instanceName);
 		const newFilePath = path.join(folderPath, newFileName);
-		if (!(await pathExists(newFilePath))) {
+		const newMetadata = await pathMetadata(newFilePath);
+		if (!newMetadata.exists) {
 			return;
 		}
-		if ((await fs.stat(newFilePath)).isFile()) {
+		if (newMetadata.isFile) {
 			return `File already exists at '${newFileName}'`;
 		}
 	}
@@ -176,8 +166,11 @@ export const createNewInstance = async (
 						? "init.meta.json"
 						: `init.${fileExt}`;
 				folderPath = path.join(dirName, subdirName);
-				await fs.mkdir(folderPath);
-				await fs.rename(filePath, `${folderPath}/${initFileName}`);
+				await fs.createDirectory(vscode.Uri.file(folderPath));
+				await fs.rename(
+					vscode.Uri.file(filePath),
+					vscode.Uri.file(`${folderPath}/${initFileName}`)
+				);
 				isInitFile = true;
 			} else {
 				vscode.window.showWarningMessage(
@@ -192,7 +185,7 @@ export const createNewInstance = async (
 	// Create the folder or instance file
 	if (className === "Folder") {
 		const newFolderPath = path.join(folderPath, instanceName);
-		await fs.mkdir(newFolderPath);
+		await fs.createDirectory(vscode.Uri.file(newFolderPath));
 		return [
 			true,
 			{
@@ -210,8 +203,11 @@ export const createNewInstance = async (
 			className,
 			instanceName
 		);
-		await fs.mkdir(newFolderPath);
-		await fs.writeFile(newFilePath, newFileContents);
+		await fs.createDirectory(vscode.Uri.file(newFolderPath));
+		await fs.writeFile(
+			vscode.Uri.file(newFilePath),
+			Uint8Array.from(newFileContents, (c) => c.charCodeAt(0))
+		);
 		return [
 			true,
 			{
@@ -228,7 +224,10 @@ export const createNewInstance = async (
 			className,
 			instanceName
 		);
-		await fs.writeFile(newFilePath, newFileContents);
+		await fs.writeFile(
+			vscode.Uri.file(newFilePath),
+			Uint8Array.from(newFileContents, (c) => c.charCodeAt(0))
+		);
 		return [
 			true,
 			{
@@ -258,7 +257,7 @@ export const deleteExistingInstance = async (
 
 	// Init files should have both their folder & file paths deleted
 	if (folderPath && filePath && isInitFilePath(filePath)) {
-		await fs.rm(folderPath, {
+		await fs.delete(vscode.Uri.file(folderPath), {
 			recursive: true,
 		});
 		return true;
@@ -266,7 +265,7 @@ export const deleteExistingInstance = async (
 
 	// Folders should also be deleted recursively
 	if (folderPath && !filePath) {
-		await fs.rm(folderPath, {
+		await fs.delete(vscode.Uri.file(folderPath), {
 			recursive: true,
 		});
 		return true;
@@ -277,7 +276,7 @@ export const deleteExistingInstance = async (
 	// TODO: If the folder the instance is in was using an init file and no longer has
 	// any children, try to remove the usage of init files and make it a plain file instead
 	if (filePath) {
-		await fs.rm(filePath);
+		await fs.delete(vscode.Uri.file(filePath));
 		return true;
 	}
 
@@ -305,7 +304,10 @@ export const renameExistingInstance = async (
 	// Init files should have their parent folder renamed
 	if (folderPath && filePath && isInitFilePath(filePath)) {
 		const newFolderPath = path.join(folderPath, "..", instanceName);
-		await fs.rename(folderPath, newFolderPath);
+		await fs.rename(
+			vscode.Uri.file(folderPath),
+			vscode.Uri.file(newFolderPath)
+		);
 		return [
 			true,
 			{
@@ -319,7 +321,10 @@ export const renameExistingInstance = async (
 	// Folders should also be renamed the same way
 	if (folderPath && !filePath) {
 		const newFolderPath = path.join(folderPath, "..", instanceName);
-		await fs.rename(folderPath, newFolderPath);
+		await fs.rename(
+			vscode.Uri.file(folderPath),
+			vscode.Uri.file(newFolderPath)
+		);
 		return [
 			true,
 			{
@@ -337,7 +342,10 @@ export const renameExistingInstance = async (
 		if (fileExt) {
 			const fileDir = path.dirname(filePath);
 			const fileName = `${instanceName}.${fileExt}`;
-			await fs.rename(filePath, path.join(fileDir, fileName));
+			await fs.rename(
+				vscode.Uri.file(filePath),
+				vscode.Uri.file(path.join(fileDir, fileName))
+			);
 			return [
 				true,
 				{
@@ -544,7 +552,7 @@ const forceCloseTextDocument = async (
 };
 
 const forceShowTextDocument = async (uri: vscode.Uri) => {
-	if ((await fs.stat(uri.fsPath)).isFile()) {
+	if ((await pathMetadata(uri.fsPath)).isFile) {
 		const textDoc = await vscode.workspace.openTextDocument(uri);
 		await vscode.window.showTextDocument(textDoc);
 	}
