@@ -59,6 +59,16 @@ The extension can also be compiled and installed locally:
     -   Editing properties for simple `.model.json` or `.meta` files
     -   Complex property editing for properties such as colors, vectors
     -   Editing properties for binary/xml files, maybe using [Lune] as a backend?
+-   Output panel
+    -   Server that can listen for output messages from Roblox Studio
+    -   Plugin that sends output messages from Roblox Studio to the extension
+    -   Automatically connect to a test session and its output when one starts
+    -   Create an output channel/panel in VSCode that forwards received output
+    -   Parse output and use sourcemap to create clickable file links
+    -   Colorize output messages and stack traces
+-   Debugger integration (requires output first)
+    -   Press F5 to start debugger and a Roblox Studio testing session
+    -   Stopping the debugger by pressing F5 or any of the buttons also stops studio
 
 [Wally]: https://github.com/UpliftGames/wally
 [Lune]: https://github.com/filiptibell/lune
