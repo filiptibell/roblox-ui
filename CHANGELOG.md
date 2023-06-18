@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+-   Following a file link by ctrl/cmd+clicking it or pressing F12 will now also reveal it in the explorer view
+
 ### Changed
 
 -   Greatly improved performance of icon pack downloads

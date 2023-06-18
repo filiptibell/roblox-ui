@@ -23,6 +23,8 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 	private treeItem: RojoTreeItem | undefined;
 
 	private sourcemap: SourcemapNode | undefined;
+	private sourcemapPathsMap: Map<string, Array<SourcemapNode>> | undefined;
+	private sourcemapParentsMap: Map<SourcemapNode, SourcemapNode> | undefined;
 	private sourcemapChangePending: boolean = false;
 
 	dispose() {}
@@ -170,6 +172,14 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 		this.isLoading = false;
 		this.sourcemap = rootNode;
 		this.sourcemapChangePending = true;
+		if (this.sourcemapPathsMap) {
+			this.sourcemapPathsMap.clear();
+			this.sourcemapPathsMap = undefined;
+		}
+		if (this.sourcemapParentsMap) {
+			this.sourcemapParentsMap.clear();
+			this.sourcemapParentsMap = undefined;
+		}
 		await this.refreshTreeItem(forced);
 	}
 
@@ -178,8 +188,96 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 			this.treeItem = undefined;
 			this.sourcemap = undefined;
 			this.sourcemapChangePending = true;
+			if (this.sourcemapPathsMap) {
+				this.sourcemapPathsMap.clear();
+				this.sourcemapPathsMap = undefined;
+			}
+			if (this.sourcemapParentsMap) {
+				this.sourcemapParentsMap.clear();
+				this.sourcemapParentsMap = undefined;
+			}
 			await this.refreshTreeItem();
 		}
+	}
+
+	public async findTreeItem(
+		filePath: string,
+		pathIsRelative: boolean | undefined | null | void
+	): Promise<vscode.TreeItem | null> {
+		if (!this.sourcemap) {
+			return null;
+		}
+
+		// Make sure we have a tree item, or try to create it by refreshing
+		if (!this.treeItem) {
+			await this.refreshTreeItem();
+		}
+		if (!this.treeItem) {
+			return null;
+		}
+
+		// Make sure we have maps between sourcemap nodes,
+		// their paths and parents, or try to create them
+		if (!this.sourcemapPathsMap) {
+			this.sourcemapPathsMap = new Map();
+			createSourcemapPathsMap(this.sourcemapPathsMap, this.sourcemap);
+		}
+		if (!this.sourcemapParentsMap) {
+			this.sourcemapParentsMap = new Map();
+			createSourcemapParentsMap(
+				this.sourcemapParentsMap,
+				this.sourcemap,
+				undefined
+			);
+		}
+
+		const relPath = pathIsRelative
+			? filePath
+			: filePath.slice(this.workspacePath.length + 1);
+		const nodes = this.sourcemapPathsMap.get(relPath);
+		if (nodes) {
+			for (const node of nodes) {
+				// Create a path of sourcemap nodes from the root of the
+				// sourcemap tree to the leaf node that we are looking for
+				const nodePath: Array<SourcemapNode> = new Array();
+				let nodePathCurrent: SourcemapNode | undefined = node;
+				while (nodePathCurrent) {
+					nodePath.unshift(nodePathCurrent);
+					nodePathCurrent =
+						this.sourcemapParentsMap.get(nodePathCurrent);
+				}
+
+				nodePath.shift(); // Remove root
+
+				// Traverse the path in order, with the corrensponding tree item at the same time:
+				// tree root -> tree item 1 -> tree item 2 -> ... -> tree leaf
+				// smap root -> smap item 1 -> smap item 2 -> ... -> smap leaf
+				let currentTreeItem = this.treeItem;
+				let currentNodeInPath = nodePath.shift();
+				while (currentNodeInPath !== undefined) {
+					let found = undefined;
+					const children = await currentTreeItem.getChildren();
+					for (const child of children) {
+						if (child.getNode() === currentNodeInPath) {
+							found = child;
+							break;
+						}
+					}
+					if (found) {
+						currentTreeItem = found;
+						currentNodeInPath = nodePath.shift();
+						// End of path and everything matched, means we must
+						// have found the leaf tree item we were looking for
+						if (currentNodeInPath === undefined) {
+							return currentTreeItem;
+						}
+					} else {
+						break;
+					}
+				}
+			}
+		}
+		return null;
 	}
 
 	openFile(): boolean {
@@ -218,3 +316,41 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 		}
 	}
 }
+
+const createSourcemapPathsMap = (
+	map: Map<string, Array<SourcemapNode>>,
+	node: SourcemapNode
+) => {
+	if (node.filePaths) {
+		for (const filePath of node.filePaths) {
+			const existing = map.get(filePath);
+			if (existing) {
+				existing.push(node);
+			} else {
+				const created = new Array();
+				created.push(node);
+				map.set(filePath, created);
+			}
+		}
+	}
+	if (node.children) {
+		for (const child of node.children) {
+			createSourcemapPathsMap(map, child);
+		}
+	}
+};
+
+const createSourcemapParentsMap = (
+	map: Map<SourcemapNode, SourcemapNode>,
+	node: SourcemapNode,
+	parent: SourcemapNode | undefined
+) => {
+	if (parent) {
+		map.set(node, parent);
+	}
+	if (node.children) {
+		for (const child of node.children) {
+			createSourcemapParentsMap(map, child, node);
+		}
+	}
+};
