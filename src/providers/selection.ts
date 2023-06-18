@@ -9,7 +9,23 @@ export class SelectionProvider implements vscode.Disposable {
 		treeView: vscode.TreeView<vscode.TreeItem>,
 		treeDataProvider: RojoTreeProvider
 	) {
-		// TODO: Listen for selection changing and reveal items in the explorer
+		this.disposables.push(
+			vscode.workspace.onDidOpenTextDocument(
+				async (document: vscode.TextDocument) => {
+					if (!treeView.visible) {
+						return;
+					}
+					let path = document.uri.fsPath;
+					if (!path.endsWith(".lua") && !path.endsWith(".luau")) {
+						return;
+					}
+					const treeItem = await treeDataProvider.findTreeItem(path);
+					if (treeItem) {
+						treeView.reveal(treeItem);
+					}
+				}
+			)
+		);
 	}
 
 	dispose() {

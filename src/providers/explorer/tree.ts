@@ -142,6 +142,26 @@ export class RojoTreeProvider
 		}
 	}
 
+	/**
+	 * Find a tree item for the given filesystem path.
+	 */
+	public async findTreeItem(
+		filePath: string,
+		pathIsRelative: boolean | undefined | null | void
+	): Promise<vscode.TreeItem | null> {
+		const promises: Array<Promise<vscode.TreeItem | null>> = new Array();
+		for (const root of this.roots.values()) {
+			promises.push(root.findTreeItem(filePath, pathIsRelative));
+		}
+		const results = await Promise.all(promises);
+		for (const result of results) {
+			if (result !== null) {
+				return result;
+			}
+		}
+		return null;
+	}
+
 	getTreeItem(item: RojoTreeItem): vscode.TreeItem {
 		return item;
 	}
