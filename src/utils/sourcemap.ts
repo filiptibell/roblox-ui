@@ -93,19 +93,40 @@ const postprocessSourcemap = (
 	}
 };
 
+const PRIMARY_FILE_PRIORITIES = new Map([
+	["init.luau", 0],
+	["init.lua", 0],
+	["init.model.json", 1],
+	["init.meta.json", 2],
+	[".luau", 3],
+	[".lua", 3],
+	[".model.json", 4],
+	[".meta.json", 5],
+]);
+
+const getSortKey = (path: string): number => {
+	for (const [ext, value] of PRIMARY_FILE_PRIORITIES) {
+		if (path.endsWith(ext)) {
+			return value * 1000 + path.length;
+		}
+	}
+	return Infinity;
+};
+
 export const findPrimaryFilePath = (
 	node: SourcemapNode,
 	allowBinaryFiles: boolean | void
 ): string | null => {
 	if (node.filePaths) {
-		if (node.filePaths.length === 1) {
-			if (allowBinaryFiles || !isBinaryFilePath(node.filePaths[0])) {
-				return node.filePaths[0];
-			}
-		} else {
-			// TODO: Sort and find using ordering - init, lua, model, meta, project
-			const copied = node.filePaths.slice();
-		}
+		// Sort and find using ordering - init, lua, model, meta, other
+		const sorted = node.filePaths
+			.slice() // Copy
+			.filter((str) => allowBinaryFiles || !isBinaryFilePath(str))
+			.map((str) => [str, getSortKey(str)] as [string, number])
+			.sort((a, b) => a[1] - b[1])
+			.map((pair) => pair[0]);
+		const first = sorted.shift();
+		return first ?? null;
 	}
 	return null;
 };
