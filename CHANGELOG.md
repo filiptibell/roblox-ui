@@ -8,13 +8,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## `0.1.5` - May 21st, 2023
+## `0.1.6` - June 25th, 2023
+
+### Fixed
+
+-   Fixed instances being revealed in the explorer just by hovering over require links
+
+## `0.1.5` - June 21st, 2023
 
 ### Fixed
 
 -   Fixed not being able to open instances created from multiple files - meaning scripts with `.meta.json`, wally packages with a project file pointing to `init.lua`, ...
 
-## `0.1.4` - May 18th, 2023
+## `0.1.4` - June 18th, 2023
 
 ### Added
 
