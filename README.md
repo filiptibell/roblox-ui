@@ -26,11 +26,10 @@ The extension can be installed from the [Visual Studio Marketplace](https://mark
 The extension can also be compiled and installed locally:
 
 1. Clone the repository
-2. Install [Aftman], [VSCE] and the [VSCode CLI]
-3. Run `aftman install` in the repository
-4. Run `just install` in the repository to install the extension
+2. Install [Just], [VSCE] and the [VSCode CLI]
+3. Run `just install` in the repository to install the extension
 
-[Aftman]: https://github.com/LPGhatguy/aftman
+[Just]: https://github.com/casey/just
 [VSCE]: https://github.com/microsoft/vscode-vsce
 [VSCode CLI]: https://code.visualstudio.com/docs/editor/command-line
 
