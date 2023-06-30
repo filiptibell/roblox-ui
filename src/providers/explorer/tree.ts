@@ -16,8 +16,13 @@ export class RojoTreeProvider
 
 	readonly _onDidChangeTreeData: vscode.EventEmitter<void | vscode.TreeItem> =
 		new vscode.EventEmitter();
-	readonly onDidChangeTreeData: vscode.Event<void | vscode.TreeItem> =
+	public readonly onDidChangeTreeData: vscode.Event<void | vscode.TreeItem> =
 		this._onDidChangeTreeData.event;
+
+	readonly _onAutoExpandRootDesired: vscode.EventEmitter<RojoTreeRoot> =
+		new vscode.EventEmitter();
+	public readonly onAutoExpandRootDesired: vscode.Event<RojoTreeRoot> =
+		this._onAutoExpandRootDesired.event;
 
 	constructor(
 		public readonly settingsProvider: SettingsProvider,
@@ -119,13 +124,27 @@ export class RojoTreeProvider
 		rootNode: SourcemapNode,
 		forced: boolean | void
 	) {
+		// HACK: If this is the only workspace root we have, we can
+		// automatically expand it so that the user does not have to do
+		// it themselves, improves the experience for like 99% of users
+		const expandSingleRoot = () => {
+			let root = this.findRoot(workspacePath);
+			if (root !== undefined && this.roots.size === 1) {
+				root.getChildren().then(() => {
+					if (root !== undefined) {
+						this._onAutoExpandRootDesired.fire(root);
+					}
+				});
+			}
+		};
 		let root = this.findRoot(workspacePath);
 		if (root) {
-			root.updateTree(rootNode, forced);
+			root.updateTree(rootNode, forced).then(expandSingleRoot);
 		} else {
 			root = this.createRoot(workspacePath);
 			root.updateTree(rootNode, forced).then(() => {
 				this._onDidChangeTreeData.fire();
+				expandSingleRoot();
 			});
 			this._onDidChangeTreeData.fire();
 		}

@@ -15,7 +15,6 @@ import { SelectionProvider } from "./providers/selection";
 import { CommandsProvider } from "./providers/commands";
 
 import { initRobloxCache } from "./web/roblox";
-import { downloadIconPack } from "./web/icons";
 import { IconsProvider } from "./providers/icons";
 
 export async function activate(context: vscode.ExtensionContext) {
@@ -56,6 +55,15 @@ export async function activate(context: vscode.ExtensionContext) {
 		treeDataProvider: treeProvider,
 	});
 	context.subscriptions.push(treeView);
+	context.subscriptions.push(
+		treeProvider.onAutoExpandRootDesired((root) => {
+			treeView.reveal(root, {
+				expand: true,
+				focus: false,
+				select: false,
+			});
+		})
+	);
 
 	// Create other providers for things such as selection handling, ...
 	const commands = new CommandsProvider(
