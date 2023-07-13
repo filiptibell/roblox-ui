@@ -8,6 +8,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Fixed
+
+-   Fixed instances in the explorer view sometimes not being revealed when their file is opened
+-   Fixed instances in the explorer view not being revealed when the explorer view initially loads
+-   Fixed forcing the explorer view to be focused when selecting instance files in another view (search, native file explorer, ...)
+
 ## `0.1.7` - June 30th, 2023
 
 ### Added
