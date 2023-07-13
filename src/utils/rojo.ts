@@ -59,7 +59,15 @@ export const rojoSupportsSourcemapWatch = (cwd: string) => {
 		);
 		supported = false;
 	} else {
-		const version = result.stdout.toString("utf8").slice(5);
+		// Grab last "word" of string, meaning the last substring which
+		// does not contain a space, supporting version strings like:
+		// - Rojo 7.3.0
+		// - Rojo v7.3.0
+		// - Rojo (Forked Version) 7.3.0
+		// - Rojo (Forked Version) v7.3.0
+		const words = result.stdout.toString("utf8").split(" ");
+		const word = words[words.length - 1].trim();
+		const version = word.startsWith("v") ? word.slice(1) : word;
 		if (!semver.satisfies(version, "^7.3.0")) {
 			vscode.window.showWarningMessage(
 				"Failed to generate a sourcemap!" +
