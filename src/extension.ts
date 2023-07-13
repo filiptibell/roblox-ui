@@ -55,15 +55,6 @@ export async function activate(context: vscode.ExtensionContext) {
 		treeDataProvider: treeProvider,
 	});
 	context.subscriptions.push(treeView);
-	context.subscriptions.push(
-		treeProvider.onAutoExpandRootDesired((root) => {
-			treeView.reveal(root, {
-				expand: true,
-				focus: false,
-				select: false,
-			});
-		})
-	);
 
 	// Create other providers for things such as selection handling, ...
 	const commands = new CommandsProvider(

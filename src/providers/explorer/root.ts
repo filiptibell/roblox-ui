@@ -135,21 +135,29 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 		}
 	}
 
-	public async setLoading(projectPath: string | undefined) {
+	public treeHasLoaded(): boolean {
+		return !this.isLoading && this.treeItem !== undefined;
+	}
+
+	public async setLoading(projectPath: string | undefined): Promise<boolean> {
 		if (!this.isLoading || this.projectPath !== projectPath) {
 			this.isLoading = true;
 			this.projectPath = projectPath;
 			this.clearError();
 			await this.refreshTreeItem();
+			return true;
 		}
+		return false;
 	}
 
-	public async clearLoading() {
+	public async clearLoading(): Promise<boolean> {
 		if (this.isLoading) {
 			this.isLoading = false;
 			this.projectPath = undefined;
 			await this.refreshTreeItem();
+			return true;
 		}
+		return false;
 	}
 
 	public async setError(errorMessage: string) {

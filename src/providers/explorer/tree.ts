@@ -13,11 +13,17 @@ export class RojoTreeProvider
 	implements vscode.TreeDataProvider<vscode.TreeItem>
 {
 	private roots: Map<string, RojoTreeRoot> = new Map();
+	private loaded: Map<string, boolean> = new Map();
 
 	readonly _onDidChangeTreeData: vscode.EventEmitter<void | vscode.TreeItem> =
 		new vscode.EventEmitter();
 	public readonly onDidChangeTreeData: vscode.Event<void | vscode.TreeItem> =
 		this._onDidChangeTreeData.event;
+
+	readonly _onInitialWorkspaceLoaded: vscode.EventEmitter<string> =
+		new vscode.EventEmitter();
+	public readonly onInitialWorkspaceLoaded: vscode.Event<string> =
+		this._onInitialWorkspaceLoaded.event;
 
 	readonly _onAutoExpandRootDesired: vscode.EventEmitter<RojoTreeRoot> =
 		new vscode.EventEmitter();
@@ -46,7 +52,19 @@ export class RojoTreeProvider
 			this._onDidChangeTreeData
 		);
 		this.roots.set(workspacePath, root);
+		this.loaded.set(workspacePath, false);
 		return root;
+	}
+
+	private updateInitialWorkspaceLoaded(workspacePath: string) {
+		if (this.loaded.get(workspacePath)) {
+			return;
+		}
+		const root = this.findRoot(workspacePath);
+		if (root && root.treeHasLoaded()) {
+			this.loaded.set(workspacePath, true);
+			this._onInitialWorkspaceLoaded.fire(workspacePath);
+		}
 	}
 
 	private deleteRoot(workspacePath: string) {
@@ -54,6 +72,7 @@ export class RojoTreeProvider
 		if (root) {
 			root.dispose();
 			this.roots.delete(workspacePath);
+			this.loaded.delete(workspacePath);
 			return true;
 		} else {
 			return false;
@@ -82,7 +101,9 @@ export class RojoTreeProvider
 	public clearLoading(workspacePath: string) {
 		const root = this.findRoot(workspacePath);
 		if (root) {
-			root.clearLoading();
+			root.clearLoading().then(() => {
+				this.updateInitialWorkspaceLoaded(workspacePath);
+			});
 		}
 	}
 
@@ -139,12 +160,16 @@ export class RojoTreeProvider
 		};
 		let root = this.findRoot(workspacePath);
 		if (root) {
-			root.updateTree(rootNode, forced).then(expandSingleRoot);
+			root.updateTree(rootNode, forced).then(() => {
+				expandSingleRoot();
+				this.updateInitialWorkspaceLoaded(workspacePath);
+			});
 		} else {
 			root = this.createRoot(workspacePath);
 			root.updateTree(rootNode, forced).then(() => {
 				this._onDidChangeTreeData.fire();
 				expandSingleRoot();
+				this.updateInitialWorkspaceLoaded(workspacePath);
 			});
 			this._onDidChangeTreeData.fire();
 		}
