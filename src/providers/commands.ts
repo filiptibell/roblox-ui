@@ -45,7 +45,6 @@ export class CommandsProvider implements vscode.Disposable {
 		context: vscode.ExtensionContext,
 		treeView: vscode.TreeView<vscode.TreeItem>,
 		treeDataProvider: RojoTreeProvider,
-		iconsProvider: IconsProvider,
 		apiDump: RobloxApiDump,
 		reflection: RobloxReflectionMetadata
 	) {
@@ -55,7 +54,7 @@ export class CommandsProvider implements vscode.Disposable {
 		});
 		this.register("clearCache", async () => {
 			try {
-				await iconsProvider.clearCachedIcons();
+				await treeDataProvider.iconsProvider.clearCachedIcons();
 				clearRobloxCache(context, true);
 			} catch (err) {
 				vscode.window.showWarningMessage(
@@ -79,6 +78,8 @@ export class CommandsProvider implements vscode.Disposable {
 			const [created, creationResult] = await promptNewInstanceCreation(
 				apiDump,
 				reflection,
+				treeDataProvider.settingsProvider,
+				treeDataProvider.iconsProvider,
 				item.getFolderPath(),
 				item.getFilePath(),
 				classNameOrInsertService
