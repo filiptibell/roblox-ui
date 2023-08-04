@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+-   Added class icons to the instance insertion dialog
+
+## `0.1.8` - July 13th, 2023
+
+### Added
+
 -   Added support for forked versions of Rojo that have a different format in their version strings, such as `Rojo (Quenty's Version) 7.3.0`
 
 ### Fixed

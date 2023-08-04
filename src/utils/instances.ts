@@ -6,6 +6,8 @@ const fs = vscode.workspace.fs;
 import { extractRojoFileExtension, isInitFilePath } from "./rojo";
 import { RobloxApiDump, RobloxReflectionMetadata } from "../web/roblox";
 import { pathMetadata } from "./files";
+import { IconsProvider } from "../providers/icons";
+import { SettingsProvider } from "../providers/settings";
 
 const INSERTABLE_SERVICES = new Set([
 	"Lighting",
@@ -373,11 +375,13 @@ export const renameExistingInstance = async (
 export const promptNewInstanceCreation = async (
 	apiDump: RobloxApiDump,
 	reflection: RobloxReflectionMetadata,
+	settingsProvider: SettingsProvider,
+	iconsProvider: IconsProvider,
 	folderPath: string | null,
 	filePath: string | null,
 	classNameOrInsertService: string | boolean | void
 ): Promise<[boolean, CreationResult | undefined]> => {
-	const items: vscode.QuickPickItem[] = [];
+	const items: (InstanceInsertItem | InstanceInsertSeparator)[] = [];
 	if (typeof classNameOrInsertService !== "string") {
 		if (classNameOrInsertService === true) {
 			for (const serviceName of INSERTABLE_SERVICES.values()) {
@@ -407,6 +411,9 @@ export const promptNewInstanceCreation = async (
 			}
 		}
 	}
+	await Promise.all(
+		items.map((item) => item.updateIcon(settingsProvider, iconsProvider))
+	);
 	const className =
 		typeof classNameOrInsertService === "string"
 			? classNameOrInsertService
@@ -482,11 +489,21 @@ export const promptRenameExistingInstance = async (
 class InstanceInsertSeparator implements vscode.QuickPickItem {
 	label = "";
 	kind = vscode.QuickPickItemKind.Separator;
+
+	async updateIcon(
+		settingsProvider: SettingsProvider,
+		iconsProvider: IconsProvider
+	) {}
 }
 
 class InstanceInsertItem implements vscode.QuickPickItem {
 	label: string;
 	description?: string;
+	iconPath?:
+		| vscode.Uri
+		| { light: vscode.Uri; dark: vscode.Uri }
+		| vscode.ThemeIcon
+		| undefined;
 
 	constructor(public readonly className: string) {
 		this.label = className;
@@ -496,6 +513,16 @@ class InstanceInsertItem implements vscode.QuickPickItem {
 		} else if (className === "LocalScript") {
 		} else if (className === "Script") {
 		}
+	}
+
+	async updateIcon(
+		settingsProvider: SettingsProvider,
+		iconsProvider: IconsProvider
+	) {
+		this.iconPath = await iconsProvider.getPackIconForClassName(
+			settingsProvider.get("explorer.iconPack"),
+			this.className
+		);
 	}
 }
 

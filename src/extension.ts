@@ -61,7 +61,6 @@ export async function activate(context: vscode.ExtensionContext) {
 		context,
 		treeView,
 		treeProvider,
-		icons,
 		cache.cachedApiDump,
 		cache.cachedReflection
 	);
