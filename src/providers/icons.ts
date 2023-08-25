@@ -118,52 +118,82 @@ export class IconsProvider implements vscode.Disposable {
 		}
 
 		const fetch = async () => {
-			// Check the extension cache directory for already downloaded files
-			const cachedIconData =
-				this.context.extensionMode !== vscode.ExtensionMode.Development
-					? await this.tryGetCachedIcons(pack)
-					: null;
-			if (cachedIconData) {
-				this.packs.set(pack, cachedIconData);
-				return cachedIconData;
-			}
+			return await vscode.window.withProgress(
+				{
+					title: `Downloading icon pack '${pack}'`,
+					location: vscode.ProgressLocation.Notification,
+					cancellable: false,
+				},
+				async (indicator) => {
+					indicator.report({ increment: 0 });
 
-			// Not cached, we need to download the pack
-			const downloadedIcons = await downloadIconPack(
-				pack,
-				this.apiDump,
-				this.reflection
+					// Check the extension cache directory for already downloaded files
+					const cachedIconData =
+						this.context.extensionMode !==
+						vscode.ExtensionMode.Development
+							? await this.tryGetCachedIcons(pack)
+							: null;
+					if (cachedIconData) {
+						this.packs.set(pack, cachedIconData);
+						indicator.report({ increment: 100 });
+						return cachedIconData;
+					}
+
+					// Not cached, we need to download the pack
+					const downloadedIcons = await downloadIconPack(
+						pack,
+						this.apiDump,
+						this.reflection
+					);
+
+					indicator.report({ increment: 50 });
+
+					// Create the directories where we will store our icons
+					const storagePath = path.join(
+						this.context.globalStorageUri.fsPath,
+						"iconPacks",
+						pack
+					);
+					const dirLight = path.join(storagePath, "light");
+					const dirDark = path.join(storagePath, "dark");
+					await Promise.all([
+						fs.createDirectory(vscode.Uri.file(dirLight)),
+						fs.createDirectory(vscode.Uri.file(dirDark)),
+					]);
+
+					indicator.report({ increment: 75 });
+
+					// Save all of the icons to files for caching and usage
+					const newPackData = new Map();
+					const filePromises = new Array<Thenable<void>>();
+					for (const [
+						fileName,
+						fileIcons,
+					] of downloadedIcons.entries()) {
+						const uriLight = vscode.Uri.file(
+							path.join(dirLight, fileName)
+						);
+						const uriDark = vscode.Uri.file(
+							path.join(dirDark, fileName)
+						);
+						filePromises.push(
+							fs.writeFile(uriLight, fileIcons.light)
+						);
+						filePromises.push(
+							fs.writeFile(uriDark, fileIcons.dark)
+						);
+						newPackData.set(stripFileExt(fileName), {
+							light: uriLight,
+							dark: uriDark,
+						});
+					}
+					await Promise.all(filePromises);
+
+					indicator.report({ increment: 100 });
+
+					return newPackData;
+				}
 			);
-
-			// Create the directories where we will store our icons
-			const storagePath = path.join(
-				this.context.globalStorageUri.fsPath,
-				"iconPacks",
-				pack
-			);
-			const dirLight = path.join(storagePath, "light");
-			const dirDark = path.join(storagePath, "dark");
-			await Promise.all([
-				fs.createDirectory(vscode.Uri.file(dirLight)),
-				fs.createDirectory(vscode.Uri.file(dirDark)),
-			]);
-
-			// Save all of the icons to files for caching and usage
-			const newPackData = new Map();
-			const filePromises = new Array<Thenable<void>>();
-			for (const [fileName, fileIcons] of downloadedIcons.entries()) {
-				const uriLight = vscode.Uri.file(path.join(dirLight, fileName));
-				const uriDark = vscode.Uri.file(path.join(dirDark, fileName));
-				filePromises.push(fs.writeFile(uriLight, fileIcons.light));
-				filePromises.push(fs.writeFile(uriDark, fileIcons.dark));
-				newPackData.set(stripFileExt(fileName), {
-					light: uriLight,
-					dark: uriDark,
-				});
-			}
-			await Promise.all(filePromises);
-
-			return newPackData;
 		};
 
 		const packDataPromise = fetch();
