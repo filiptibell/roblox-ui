@@ -40,7 +40,7 @@ export const reloadAllWorkspaces = () => {
 	}
 };
 
-export const connectWorkspace = (
+export const connectWorkspace = async (
 	folder: vscode.WorkspaceFolder,
 	settings: SettingsProvider,
 	treeProvider: RojoTreeProvider
@@ -51,7 +51,8 @@ export const connectWorkspace = (
 	// with watching is supported if we want to autogenerate
 	let autogenerate = settings.get("sourcemap.autogenerate");
 	if (autogenerate) {
-		if (!rojoSupportsSourcemapWatch(workspacePath)) {
+		const supported = await rojoSupportsSourcemapWatch(workspacePath);
+		if (!supported) {
 			autogenerate = false;
 		}
 	}

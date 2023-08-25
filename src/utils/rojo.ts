@@ -7,6 +7,7 @@ const fs = vscode.workspace.fs;
 
 import { SettingsProvider } from "../providers/settings";
 import { SourcemapNode } from "./sourcemap";
+import { spawnWithTimeout } from "./child_process";
 
 export type ProjectRootNode = {
 	name: string;
@@ -40,22 +41,32 @@ const ROJO_FILE_EXTENSIONS = [
 ];
 
 const globalWatchSupportCache: Map<string, boolean> = new Map();
-export const rojoSupportsSourcemapWatch = (cwd: string) => {
+export const rojoSupportsSourcemapWatch = async (cwd: string) => {
 	const cached = globalWatchSupportCache.get(cwd);
 	if (cached !== undefined) {
 		return cached;
 	}
+
 	// Rojo version 7.3.0 is the minimum supported version for sourcemap watching
 	let supported = true;
-	const result = cp.spawnSync("rojo --version", {
-		cwd: cwd,
-		env: process.env,
-		shell: true,
-	});
-	if (result.status !== null && result.status !== 0) {
+	const result = await spawnWithTimeout(
+		"rojo",
+		["--version"],
+		{
+			cwd: cwd,
+			env: process.env,
+			shell: true,
+		},
+		1_000
+	);
+
+	if (!result.ok) {
 		vscode.window.showWarningMessage(
 			"Failed to generate a sourcemap!" +
-				"\nMake sure Rojo is installed and available in the current directory."
+				"\nMake sure Rojo is installed and available in the current directory." +
+				"\nThe extension will watch a 'sourcemap.json' file instead." +
+				"\n\nError message: " +
+				result.stderr
 		);
 		supported = false;
 	} else {
@@ -65,14 +76,15 @@ export const rojoSupportsSourcemapWatch = (cwd: string) => {
 		// - Rojo v7.3.0
 		// - Rojo (Forked Version) 7.3.0
 		// - Rojo (Forked Version) v7.3.0
-		const words = result.stdout.toString("utf8").split(" ");
+		const words = result.stdout.split(" ");
 		const word = words[words.length - 1].trim();
 		const version = word.startsWith("v") ? word.slice(1) : word;
 		if (!semver.satisfies(version, "^7.3.0")) {
 			vscode.window.showWarningMessage(
 				"Failed to generate a sourcemap!" +
 					`\nRojo is installed with version ${version}` +
-					", but a minimum version of 7.3.0 is required."
+					", but a minimum version of 7.3.0 is required." +
+					"\nThe extension will watch a 'sourcemap.json' file instead."
 			);
 			supported = false;
 		}

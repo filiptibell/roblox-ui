@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 -   Added class icons to the instance insertion dialog
 
+### Changed
+
+-   Improved error messages and progress windows for Roblox API & icon pack downloads
+-   Added a warning and timeout if spawning a process takes too long
+
 ## `0.1.8` - July 13th, 2023
 
 ### Added

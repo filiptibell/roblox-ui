@@ -144,7 +144,7 @@ export const initRobloxCache = async (context: vscode.ExtensionContext) => {
 						URL_VERSION,
 						(progress) => {
 							indicator.report({
-								increment: Math.round(progress * 20),
+								increment: Math.round(progress * 15),
 							});
 						}
 					);
@@ -157,7 +157,7 @@ export const initRobloxCache = async (context: vscode.ExtensionContext) => {
 					const updateProgress = () => {
 						indicator.report({
 							increment: Math.round(
-								20 +
+								15 +
 									40 * progressApiDump +
 									40 * progressReflection
 							),
@@ -200,15 +200,18 @@ export const initRobloxCache = async (context: vscode.ExtensionContext) => {
 		);
 	} else {
 		// A cache was found, we will silently check for a new version,
-		// and if a new version was found, download new data with a progress
-		// bar, if this fails we instead fall back to the already available cache
+		// and if a new version was found, download new data with a
+		// progress bar in the background. We will not wait for this
+		// new version to finish downloading since we already have an
+		// older cached version, and if a user has a very slow internet
+		// connection we should not block the extension from working here
 		try {
 			const apiVersion = await downloadWithProgress(
 				URL_VERSION,
 				() => {}
 			);
 			if (apiVersion !== cache.cachedVersion) {
-				await vscode.window.withProgress(
+				vscode.window.withProgress(
 					{
 						title: "Downloading latest Roblox API...\n\n",
 						location: vscode.ProgressLocation.Notification,
@@ -265,7 +268,7 @@ export const initRobloxCache = async (context: vscode.ExtensionContext) => {
 			}
 		} catch (err) {
 			vscode.window.showErrorMessage(
-				"Failed to download the latest Roblox API!" +
+				"Failed to fetch the latest Roblox API version!" +
 					"\n\nInstances may not appear correctly, but the extension will still work." +
 					`\n\n${err}`
 			);
