@@ -79,7 +79,11 @@ export const rojoSupportsSourcemapWatch = async (cwd: string) => {
 		const words = result.stdout.split(" ");
 		const word = words[words.length - 1].trim();
 		const version = word.startsWith("v") ? word.slice(1) : word;
-		if (!semver.satisfies(version, "^7.3.0")) {
+		if (
+			!semver.satisfies(version, "^7.3.0", {
+				includePrerelease: true,
+			})
+		) {
 			vscode.window.showWarningMessage(
 				"Failed to generate a sourcemap!" +
 					`\nRojo is installed with version ${version}` +
