@@ -20,6 +20,13 @@ import {
 	isBinaryFilePath,
 } from "./rojo";
 import { pathMetadata } from "./files";
+import {
+	findPackageSource,
+	findPackageSourceNode,
+	parseWallySpec,
+} from "./wally";
+
+const PACKAGE_CLASS_NAME = "Package";
 
 export type SourcemapNode = {
 	name: string;
@@ -27,13 +34,16 @@ export type SourcemapNode = {
 	folderPath?: string;
 	filePaths?: string[];
 	children?: SourcemapNode[];
+	wallyVersion?: string;
 };
 
-const postprocessSourcemapNode = (
+const postprocessSourcemapNode = async (
+	workspacePath: string,
 	matcher: any | null,
 	node: SourcemapNode,
-	parent: SourcemapNode | void
-): SourcemapNode | null => {
+	parent?: SourcemapNode | void,
+	modifyWally?: boolean | void
+): Promise<SourcemapNode | null> => {
 	// Init files have a guaranteed parent directory
 	if (!node.folderPath && node.filePaths) {
 		for (const filePath of node.filePaths.values()) {
@@ -65,14 +75,81 @@ const postprocessSourcemapNode = (
 		}
 	}
 
-	// Process children and remove them if ignore globs were matched
-	if (node.children) {
-		const indicesToRemove = [];
-		for (const [index, child] of node.children.entries()) {
-			if (!postprocessSourcemapNode(matcher, child, node)) {
-				indicesToRemove.push(index);
+	// Check if we are in a Wally packages dir and modify it, when desired
+	if (modifyWally && node.className === "Folder" && node.children) {
+		let wallyIndexNode: SourcemapNode | undefined;
+		for (const child of node.children.values()) {
+			if (child.name === "_Index") {
+				wallyIndexNode = child;
+				break;
 			}
 		}
+		if (wallyIndexNode) {
+			// Turns packages folder children into "package sources"
+			const childPromises = node.children
+				.filter((child) => child !== wallyIndexNode)
+				.map((child) => {
+					if (child.filePaths && child.filePaths.length >= 1) {
+						const fullPath = path.join(
+							workspacePath,
+							child.filePaths[0]
+						);
+						return findPackageSource(child.name, fullPath);
+					} else {
+						return Promise.resolve(undefined);
+					}
+				});
+
+			// Remove original package folder children
+			node.children.splice(0, node.children.length);
+
+			// Map child package sources generated above to package instances
+			for (const packageSource of await Promise.all(childPromises)) {
+				if (packageSource) {
+					const packageChild = findPackageSourceNode(
+						wallyIndexNode,
+						packageSource
+					);
+					if (packageChild) {
+						packageChild.name = packageSource.originalName;
+						packageChild.className = PACKAGE_CLASS_NAME;
+						const packageSpec = parseWallySpec(
+							packageSource.outerName
+						);
+						if (packageSpec) {
+							packageChild.wallyVersion = packageSpec.version;
+						}
+						node.children.push(packageChild);
+					}
+				}
+			}
+		}
+	}
+
+	// Process children and remove them if ignore globs were matched
+	if (node.children) {
+		const childPromises: Promise<void>[] = [];
+		const indicesToRemove: number[] = [];
+
+		for (const [index, child] of node.children.entries()) {
+			childPromises.push(
+				postprocessSourcemapNode(
+					workspacePath,
+					matcher,
+					child,
+					node,
+					modifyWally
+				).then((node) => {
+					if (!node) {
+						child.name = "REMOVED";
+						indicesToRemove.push(index);
+					}
+				})
+			);
+		}
+
+		await Promise.allSettled(childPromises);
+
 		for (const index of indicesToRemove.reverse()) {
 			node.children.splice(index, 1);
 		}
@@ -80,16 +157,29 @@ const postprocessSourcemapNode = (
 	return node;
 };
 
-const postprocessSourcemap = (
+const postprocessSourcemap = async (
 	workspacePath: string,
 	settings: SettingsProvider,
 	sourcemap: SourcemapNode
 ) => {
 	const ignoreGlobs = settings.get("sourcemap.ignoreGlobs");
+	const modifyWally = settings.get("wally.modifyPackagesDir");
 	if (ignoreGlobs && ignoreGlobs.length > 0) {
-		postprocessSourcemapNode(anymatch(ignoreGlobs), sourcemap);
+		await postprocessSourcemapNode(
+			workspacePath,
+			anymatch(ignoreGlobs),
+			sourcemap,
+			undefined,
+			modifyWally
+		);
 	} else {
-		postprocessSourcemapNode(null, sourcemap);
+		await postprocessSourcemapNode(
+			workspacePath,
+			null,
+			sourcemap,
+			undefined,
+			modifyWally
+		);
 	}
 };
 
@@ -175,7 +265,8 @@ export const areSourcemapNodesEqual = (
 	if (
 		previous?.folderPath !== current?.folderPath ||
 		previous?.className !== current?.className ||
-		previous?.name !== current?.name
+		previous?.name !== current?.name ||
+		previous?.wallyVersion !== current?.wallyVersion
 	) {
 		return false;
 	}
@@ -294,7 +385,7 @@ export const connectSourcemapUsingRojo = (
 						treeProvider.setLoading(workspacePath, projectFilePath),
 					errored: (_: any, errorMessage: string) =>
 						treeProvider.setError(workspacePath, errorMessage),
-					update: (_: any, sourcemap: SourcemapNode) => {
+					update: async (_: any, sourcemap: SourcemapNode) => {
 						if (projectFileNode) {
 							mergeProjectIntoSourcemap(
 								workspacePath,
@@ -302,7 +393,7 @@ export const connectSourcemapUsingRojo = (
 								sourcemap
 							);
 						}
-						postprocessSourcemap(
+						await postprocessSourcemap(
 							workspacePath,
 							settings,
 							sourcemap

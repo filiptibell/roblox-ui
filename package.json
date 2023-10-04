@@ -2,7 +2,7 @@
 	"name": "rojo-viewer",
 	"displayName": "Rojo Viewer",
 	"description": "Explorer view similar to Roblox Studio for Rojo projects",
-	"version": "0.1.10",
+	"version": "0.1.11",
 	"license": "MIT",
 	"publisher": "filiptibell",
 	"author": {
@@ -27,26 +27,6 @@
 		"configuration": {
 			"title": "Rojo Viewer",
 			"properties": {
-				"rojoViewer.sourcemap.autogenerate": {
-					"type": "boolean",
-					"default": true,
-					"markdownDescription": "Autogenerate sourcemap using the rojo project file.\n\nTurn this setting off to watch a `sourcemap.json` file instead."
-				},
-				"rojoViewer.sourcemap.ignoreGlobs": {
-					"type": "array",
-					"default": [],
-					"markdownDescription": "Glob patterns of file paths to hide from the explorer."
-				},
-				"rojoViewer.sourcemap.includeNonScripts": {
-					"type": "boolean",
-					"default": true,
-					"markdownDescription": "If instances that are not scripts should be included in the explorer."
-				},
-				"rojoViewer.sourcemap.rojoProjectFile": {
-					"type": "string",
-					"default": "default.project.json",
-					"markdownDescription": "Which project file to use for generating sourcemaps."
-				},
 				"rojoViewer.explorer.showClassNames": {
 					"type": "boolean",
 					"default": false,
@@ -68,6 +48,36 @@
 					],
 					"default": "Vanilla 2.1",
 					"markdownDescription": "Icon pack used for instances in the explorer."
+				},
+				"rojoViewer.sourcemap.autogenerate": {
+					"type": "boolean",
+					"default": true,
+					"markdownDescription": "Autogenerate sourcemap using the rojo project file.\n\nTurn this setting off to watch a `sourcemap.json` file instead."
+				},
+				"rojoViewer.sourcemap.ignoreGlobs": {
+					"type": "array",
+					"default": [],
+					"markdownDescription": "Glob patterns of file paths to hide from the explorer."
+				},
+				"rojoViewer.sourcemap.includeNonScripts": {
+					"type": "boolean",
+					"default": true,
+					"markdownDescription": "If instances that are not scripts should be included in the explorer."
+				},
+				"rojoViewer.sourcemap.rojoProjectFile": {
+					"type": "string",
+					"default": "default.project.json",
+					"markdownDescription": "Which project file to use for generating sourcemaps."
+				},
+				"rojoViewer.wally.modifyPackagesDir": {
+					"type": "boolean",
+					"default": true,
+					"markdownDescription": "Show Wally package directory as Package instances in the explorer."
+				},
+				"rojoViewer.wally.showPackageVersion": {
+					"type": "boolean",
+					"default": true,
+					"markdownDescription": "Show Wally package versions on Package instances in the explorer."
 				}
 			}
 		},

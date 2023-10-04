@@ -4,13 +4,15 @@ import { IconPack } from "../web/icons";
 
 const EXTENSION = "rojoViewer";
 const DEFAULTS = {
-	["sourcemap.autogenerate"]: true,
-	["sourcemap.ignoreGlobs"]: ["**/_Index/**"],
-	["sourcemap.includeNonScripts"]: false,
-	["sourcemap.rojoProjectFile"]: "default.project.json",
 	["explorer.showClassNames"]: false,
 	["explorer.showFilePaths"]: false,
 	["explorer.iconPack"]: "Vanilla 2.1" as IconPack,
+	["sourcemap.autogenerate"]: true,
+	["sourcemap.ignoreGlobs"]: [],
+	["sourcemap.includeNonScripts"]: false,
+	["sourcemap.rojoProjectFile"]: "default.project.json",
+	["wally.modifyPackagesDir"]: true,
+	["wally.showPackageVersion"]: true,
 };
 
 type Settings = typeof DEFAULTS;

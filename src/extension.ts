@@ -75,12 +75,14 @@ export async function activate(context: vscode.ExtensionContext) {
 	settings.listen("sourcemap.ignoreGlobs", reloadAllWorkspaces);
 	settings.listen("sourcemap.includeNonScripts", reloadAllWorkspaces);
 	settings.listen("sourcemap.rojoProjectFile", reloadAllWorkspaces);
+	settings.listen("wally.modifyPackagesDir", reloadAllWorkspaces);
 
 	// For some settings we don't need a complete reload of the project,
 	// sourcemap, and tree, we just need a refresh of any existing tree
 	settings.listen("explorer.showClassNames", refreshAllWorkspaces);
 	settings.listen("explorer.showFilePaths", refreshAllWorkspaces);
 	settings.listen("explorer.iconPack", refreshAllWorkspaces);
+	settings.listen("wally.showPackageVersion", refreshAllWorkspaces);
 
 	// Listen for workspace folders changing, and initialize current workspace folders
 	context.subscriptions.push(

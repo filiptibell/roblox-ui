@@ -49,10 +49,9 @@ The extension can also be compiled and installed locally:
 
 ### Future Plans
 
--   Integration with [Wally]
+-   Improved integration with [Wally]
     -   Button for opening the wally manifest, similar to the one for the rojo manifest
     -   Hover cards for wally link files displaying name, version, desc, and link to wally page
-    -   Special "package" icon for wally link files
 -   Properties panel
     -   Simple text view of properties
     -   Editing properties for simple `.model.json` or `.meta` files
