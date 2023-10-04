@@ -9,6 +9,10 @@ import { RobloxApiDump, RobloxReflectionMetadata } from "../web/roblox";
 type IconPackIcon = { light: vscode.Uri; dark: vscode.Uri };
 type IconPackData = Map<string, IconPackIcon>;
 
+const INSTANCE_ICON_FALLBACKS: Map<string, string[]> = new Map([
+	["Package", ["PackageLink"]],
+]);
+
 const stripFileExt = (filePath: string): string => {
 	const ext = path.extname(filePath);
 	if (ext) {
@@ -265,6 +269,16 @@ export class IconsProvider implements vscode.Disposable {
 					current = apiClass.Superclass;
 				} else {
 					break;
+				}
+			}
+		}
+
+		const fallbacks = INSTANCE_ICON_FALLBACKS.get(className);
+		if (fallbacks && fallbacks.length > 0) {
+			for (const fallback of fallbacks) {
+				const fallbackIcon = packData.get(fallback);
+				if (fallbackIcon) {
+					return fallbackIcon;
 				}
 			}
 		}

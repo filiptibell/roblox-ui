@@ -8,6 +8,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## `0.1.11` - October 4th, 2023
+
+### Added
+
+-   Added support for showing Wally packages in a nicer format, with two new settings:
+
+    -   `wally.modifyPackagesDir` - Shows Wally package directory as Package instances in the explorer
+    -   `wally.showPackageVersions` - Shows Wally package version on Package instances in the explorer
+
 ## `0.1.10` - October 4th, 2023
 
 ### Fixed

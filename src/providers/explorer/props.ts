@@ -77,6 +77,12 @@ export const getNodeItemProps = async (
 
 	// Set description based on settings
 	const descriptionPartials: string[] = [];
+	const showPackageVersion = root.settingsProvider.get(
+		"wally.showPackageVersion"
+	);
+	if (showPackageVersion && node.wallyVersion) {
+		descriptionPartials.push(node.wallyVersion);
+	}
 	const showClassNames = root.settingsProvider.get("explorer.showClassNames");
 	if (showClassNames) {
 		descriptionPartials.push(node.className);
