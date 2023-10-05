@@ -77,6 +77,9 @@ const postprocessSourcemapNode = async (
 
 	// Check if we are in a Wally packages dir and modify it, when desired
 	if (modifyWally && node.className === "Folder" && node.children) {
+		if (node.name === "_Index") {
+			return null;
+		}
 		let wallyIndexNode: SourcemapNode | undefined;
 		for (const child of node.children.values()) {
 			if (child.name === "_Index") {
@@ -94,32 +97,40 @@ const postprocessSourcemapNode = async (
 							workspacePath,
 							child.filePaths[0]
 						);
-						return findPackageSource(child.name, fullPath);
+						return findPackageSource(child.name, fullPath).then(
+							(source) => {
+								if (source) {
+									return {
+										child,
+										source,
+									};
+								} else {
+									return undefined;
+								}
+							}
+						);
 					} else {
 						return Promise.resolve(undefined);
 					}
 				});
-
-			// Remove original package folder children
-			node.children.splice(0, node.children.length);
-
 			// Map child package sources generated above to package instances
 			for (const packageSource of await Promise.all(childPromises)) {
 				if (packageSource) {
-					const packageChild = findPackageSourceNode(
+					const { child, source } = packageSource;
+					const indexChild = findPackageSourceNode(
 						wallyIndexNode,
-						packageSource
+						source
 					);
-					if (packageChild) {
-						packageChild.name = packageSource.originalName;
-						packageChild.className = PACKAGE_CLASS_NAME;
-						const packageSpec = parseWallySpec(
-							packageSource.outerName
-						);
+					if (indexChild) {
+						child.className = PACKAGE_CLASS_NAME;
+						child.name = source.originalName;
+						child.children = indexChild.children;
+						child.filePaths = indexChild.filePaths;
+						child.folderPath = indexChild.folderPath;
+						const packageSpec = parseWallySpec(source.outerName);
 						if (packageSpec) {
-							packageChild.wallyVersion = packageSpec.version;
+							child.wallyVersion = packageSpec.version;
 						}
-						node.children.push(packageChild);
 					}
 				}
 			}
@@ -225,11 +236,19 @@ export const getSourcemapNodeTreeOrder = (
 	node: SourcemapNode,
 	reflectionMetadata: RobloxReflectionMetadata
 ): number | null => {
+	let order = 0;
+
 	const metadata = reflectionMetadata.Classes.get(node.className);
 	if (metadata && metadata.ExplorerOrder) {
-		return metadata.ExplorerOrder;
+		order = metadata.ExplorerOrder;
 	}
-	return null;
+
+	// HACK: Always sort wally packages last
+	if (node.wallyVersion) {
+		order += 999_999;
+	}
+
+	return order;
 };
 
 export const cloneSourcemapNode = (
