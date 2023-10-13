@@ -135,6 +135,10 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 		}
 	}
 
+	public isDataModel(): boolean {
+		return this.sourcemap?.className === "DataModel";
+	}
+
 	public treeHasLoaded(): boolean {
 		return !this.isLoading && this.treeItem !== undefined;
 	}

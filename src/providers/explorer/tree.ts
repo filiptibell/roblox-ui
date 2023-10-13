@@ -14,6 +14,8 @@ export class RojoTreeProvider
 {
 	private roots: Map<string, RojoTreeRoot> = new Map();
 	private loaded: Map<string, boolean> = new Map();
+	private disposables: Array<vscode.Disposable> = new Array();
+	private showDataModel: boolean = false;
 
 	readonly _onDidChangeTreeData: vscode.EventEmitter<void | vscode.TreeItem> =
 		new vscode.EventEmitter();
@@ -35,7 +37,19 @@ export class RojoTreeProvider
 		public readonly iconsProvider: IconsProvider,
 		public readonly apiDump: RobloxApiDump,
 		public readonly reflectionMetadata: RobloxReflectionMetadata
-	) {}
+	) {
+		const show = !!settingsProvider.get("explorer.showDataModel");
+		this.showDataModel = show;
+		this.disposables.push(
+			settingsProvider.listen("explorer.showDataModel", () => {
+				const show = !!settingsProvider.get("explorer.showDataModel");
+				if (this.showDataModel !== show) {
+					this.showDataModel = show;
+					this._onDidChangeTreeData.fire();
+				}
+			})
+		);
+	}
 
 	private findRoot(workspacePath: string) {
 		return this.roots.get(workspacePath);
@@ -64,6 +78,7 @@ export class RojoTreeProvider
 		if (root && root.treeHasLoaded()) {
 			this.loaded.set(workspacePath, true);
 			this._onInitialWorkspaceLoaded.fire(workspacePath);
+			this._onDidChangeTreeData.fire();
 		}
 	}
 
@@ -216,6 +231,13 @@ export class RojoTreeProvider
 
 	async getChildren(item?: RojoTreeItem): Promise<vscode.TreeItem[]> {
 		if (!item) {
+			if (!this.showDataModel && this.roots.size <= 1) {
+				let firstPath = [...this.roots.keys()][0];
+				let firstRoot = this.findRoot(firstPath);
+				if (firstRoot && firstRoot.isDataModel()) {
+					return await firstRoot.getChildren();
+				}
+			}
 			return [...this.roots.keys()]
 				.sort()
 				.map((path) => this.findRoot(path)!);
@@ -228,6 +250,9 @@ export class RojoTreeProvider
 		const workspacePaths = [...this.roots.keys()];
 		for (const workspacePath of workspacePaths.values()) {
 			this.deleteRoot(workspacePath);
+		}
+		for (const disposable of this.disposables) {
+			disposable.dispose();
 		}
 	}
 }
