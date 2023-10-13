@@ -4,6 +4,7 @@ import { IconPack } from "../web/icons";
 
 const EXTENSION = "rojoViewer";
 const DEFAULTS = {
+	["explorer.showDataModel"]: true,
 	["explorer.showClassNames"]: false,
 	["explorer.showFilePaths"]: false,
 	["explorer.iconPack"]: "Vanilla 2.1" as IconPack,

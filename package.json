@@ -2,7 +2,7 @@
 	"name": "rojo-viewer",
 	"displayName": "Rojo Viewer",
 	"description": "Explorer view similar to Roblox Studio for Rojo projects",
-	"version": "0.1.12",
+	"version": "0.1.13",
 	"license": "MIT",
 	"publisher": "filiptibell",
 	"author": {
@@ -27,6 +27,11 @@
 		"configuration": {
 			"title": "Rojo Viewer",
 			"properties": {
+				"rojoViewer.explorer.showDataModel": {
+					"type": "boolean",
+					"default": false,
+					"markdownDescription": "Show the DataModel (game) in the explorer. Note that for multi-root workspaces, the DataModel top-level instance is always shown."
+				},
 				"rojoViewer.explorer.showClassNames": {
 					"type": "boolean",
 					"default": false,
