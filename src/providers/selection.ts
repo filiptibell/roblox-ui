@@ -4,6 +4,7 @@ import { RojoTreeProvider } from "./explorer";
 
 export class SelectionProvider implements vscode.Disposable {
 	private disposables: Array<vscode.Disposable> = new Array();
+	private treeViewVisible: boolean = false;
 
 	constructor(
 		private treeView: vscode.TreeView<vscode.TreeItem>,
@@ -18,6 +19,7 @@ export class SelectionProvider implements vscode.Disposable {
 			return results.find((val) => val === true);
 		};
 		revealCurrentlyVisibleEditorsInTree();
+
 		// Reveal tree items when they become visible / active in the editor
 		this.disposables.push(
 			vscode.window.onDidChangeVisibleTextEditors(() =>
@@ -31,14 +33,19 @@ export class SelectionProvider implements vscode.Disposable {
 				}
 			})
 		);
+
 		// If our tree view was not previously visible we would
 		// not have revealed any tree items currently being edited,
 		// so we need to listen for the tree view becoming visible
-		treeView.onDidChangeVisibility((event) => {
-			if (event.visible) {
+		this.treeViewVisible = !!treeView.visible;
+		treeView.onDidChangeVisibility(() => {
+			const newVisible = !!treeView.visible;
+			if (this.treeViewVisible !== newVisible) {
+				this.treeViewVisible = newVisible;
 				revealCurrentlyVisibleEditorsInTree();
 			}
 		});
+
 		// Loading the tree view is asynchronous since it may call out to another
 		// process or wait for fil I/O, so we also need to listen for it loading
 		// since the user may have had a file open before the tree had loaded
@@ -61,6 +68,7 @@ export class SelectionProvider implements vscode.Disposable {
 				retryRevealUntilSuccessOrTimeout();
 			})
 		);
+
 		// If we only load one workspace, it is desirable to automatically
 		// expand its root, since it is usually a single DataModel / game
 		this.disposables.push(
@@ -78,8 +86,8 @@ export class SelectionProvider implements vscode.Disposable {
 		});
 	}
 
-	async reveal(item: vscode.TreeItem, force: true | void): Promise<boolean> {
-		if (this.treeView.visible || force === true) {
+	async reveal(item: vscode.TreeItem): Promise<boolean> {
+		if (this.treeViewVisible) {
 			await this.treeView.reveal(item);
 			return true;
 		}
