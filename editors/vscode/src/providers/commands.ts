@@ -23,7 +23,7 @@ export class CommandsProvider implements vscode.Disposable {
 	private disposables: Array<vscode.Disposable> = new Array();
 
 	private register(name: string, command: (...args: any[]) => any) {
-		const fullName = `rojoViewer.${name}`;
+		const fullName = `roblox-ui.${name}`;
 		const disposable = vscode.commands.registerCommand(fullName, command);
 		this.disposables.push(disposable);
 	}

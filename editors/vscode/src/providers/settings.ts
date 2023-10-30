@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 
 import { IconPack } from "../web/icons";
 
-const EXTENSION = "rojoViewer";
+const EXTENSION = "roblox-ui";
 const DEFAULTS = {
 	["explorer.showDataModel"]: true,
 	["explorer.showClassNames"]: false,

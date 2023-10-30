@@ -51,7 +51,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		cache.cachedApiDump,
 		cache.cachedReflection
 	);
-	const treeView = vscode.window.createTreeView("rojoViewer.explorer", {
+	const treeView = vscode.window.createTreeView("roblox-ui.explorer", {
 		treeDataProvider: treeProvider,
 	});
 	context.subscriptions.push(treeView);
