@@ -20,8 +20,8 @@ impl IconPack {
 
     pub fn provider(&self) -> &'static dyn IconPackProvider {
         match self {
-            Self::Classic => &ClassicIconPack,
-            Self::Vanilla2 => &Vanilla2IconPack,
+            Self::Classic => &Classic,
+            Self::Vanilla2 => &Vanilla2,
         }
     }
 }

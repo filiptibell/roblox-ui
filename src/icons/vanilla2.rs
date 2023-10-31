@@ -18,8 +18,6 @@ use resvg::{
 
 use super::*;
 
-pub struct Vanilla2IconPack;
-
 const ICON_RENDER_SCALE: u32 = 4;
 
 const URL_REPO: &str = "Elttob/Vanilla";
@@ -81,8 +79,10 @@ struct IconData {
 
 const PALETTE_ID_SOURCE: PaletteId = PaletteId::Platinum;
 
+pub struct Vanilla2;
+
 #[async_trait::async_trait]
-impl IconPackProvider for Vanilla2IconPack {
+impl IconPackProvider for Vanilla2 {
     async fn download(&self) -> Result<IconPackContents> {
         let client = reqwest::Client::new();
 
