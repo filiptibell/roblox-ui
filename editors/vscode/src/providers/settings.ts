@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 
-import { IconPack } from "../web/icons";
+import { IconPack } from "./icons";
 
 const EXTENSION = "roblox-ui";
 const DEFAULTS = {

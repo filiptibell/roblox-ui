@@ -70,7 +70,7 @@ export const getNodeItemProps = async (
 
 	// Set name and icon
 	newProps.label = node.name;
-	newProps.iconPath = await root.iconsProvider.getPackIconForClassName(
+	newProps.iconPath = root.iconsProvider.getClassIcon(
 		root.settingsProvider.get("explorer.iconPack"),
 		node.className
 	);
@@ -145,8 +145,6 @@ export const getNodeItemProps = async (
 	}
 
 	newProps.contextValue = Array.from(contextPartials.values()).join(";");
-
-	// TODO: Wally integration, read wally file for package(s)
 
 	// Set new resource uri for git/lsp decorations and keeping tree state intact
 	newProps.resourceUri = filePath

@@ -54,6 +54,7 @@ fn class_is_a(instance_class: impl AsRef<str>, class_name: impl AsRef<str>) -> O
 }
 
 #[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct IconPackContentsMetadata {
     class_count: usize,
     class_icons: BTreeMap<String, PathBuf>,

@@ -50,7 +50,6 @@ export class CommandsProvider implements vscode.Disposable {
 		});
 		this.register("clearCache", async () => {
 			try {
-				await treeDataProvider.iconsProvider.clearCachedIcons();
 				clearRobloxCache(context, true);
 			} catch (err) {
 				vscode.window.showWarningMessage(
