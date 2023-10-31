@@ -7,7 +7,7 @@ import { RobloxApiDump, RobloxReflectionMetadata } from "../roblox";
 import { download as downloadClassic } from "./classic";
 import { download as downloadVanilla } from "./vanilla";
 
-export type IconPack = "Classic" | "Vanilla 2.1";
+export type IconPack = "Classic" | "Vanilla2";
 
 const downloadPack = async (
 	pack: IconPack,
@@ -17,7 +17,7 @@ const downloadPack = async (
 ) => {
 	if (pack === "Classic") {
 		return await downloadClassic(apiDump, reflection, progressCallback);
-	} else if (pack === "Vanilla 2.1") {
+	} else if (pack === "Vanilla2") {
 		return await downloadVanilla(apiDump, reflection, progressCallback);
 	} else {
 		throw new Error(`Invalid icon pack name: ${pack}`);
