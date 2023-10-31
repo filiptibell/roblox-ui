@@ -7,7 +7,7 @@ const DEFAULTS = {
 	["explorer.showDataModel"]: true,
 	["explorer.showClassNames"]: false,
 	["explorer.showFilePaths"]: false,
-	["explorer.iconPack"]: "Vanilla 2.1" as IconPack,
+	["explorer.iconPack"]: "Vanilla2" as IconPack,
 	["sourcemap.autogenerate"]: true,
 	["sourcemap.ignoreGlobs"]: [],
 	["sourcemap.includeNonScripts"]: false,
