@@ -13,14 +13,14 @@ default:
 	printf "Current directory:\n    {{CWD}}\n"
 	just --list
 
-# Builds the language server
+# Builds the executable
 [no-exit-message]
 build *ARGS:
 	#!/usr/bin/env bash
 	set -euo pipefail
 	cargo build --bin {{BIN_NAME}} {{ARGS}}
 
-# Packs the language server into the VSCode extension build directory
+# Packs the executable into the VSCode extension build directory
 [no-exit-message]
 [private]
 vscode-pack TARGET_DIR DEBUG="false":
@@ -36,9 +36,11 @@ vscode-pack TARGET_DIR DEBUG="false":
 	#
 	if [[ "{{DEBUG}}" == "true" ]]; then
 		mkdir -p {{VSCODE}}/out/debug/
+		cargo run -- generate-icons --all --output {{VSCODE}}/out/icons
 		cp {{TARGET_DIR}}/debug/{{BIN_NAME}}{{EXT}} {{VSCODE}}/out/debug/
 	else
 		mkdir -p {{VSCODE}}/out/release/
+		cargo run --release -- generate-icons --all --output {{VSCODE}}/out/icons
 		cp {{TARGET_DIR}}/release/{{BIN_NAME}}{{EXT}} {{VSCODE}}/out/release/
 	fi
 	#
@@ -61,13 +63,13 @@ vscode-install DEBUG="false":
 	#!/usr/bin/env bash
 	set -euo pipefail
 	#
-	echo "🚧 [1/4] Building language server..."
+	echo "🚧 [1/4] Building executable..."
 	if [[ "{{DEBUG}}" == "true" ]]; then
 		just build
 	else
 		just build --release
 	fi
-	echo "📦 [2/4] Packing language server..."
+	echo "📦 [2/4] Packing executable..."
 	just vscode-pack "target" {{DEBUG}} > /dev/null
 	echo "🧰 [3/4] Building extension..."
 	just vscode-build > /dev/null
@@ -84,9 +86,9 @@ vscode-publish TARGET_TRIPLE VSCODE_TARGET:
 	#!/usr/bin/env bash
 	set -euo pipefail
 	#
-	echo "🚧 [1/4] Building language server..."
+	echo "🚧 [1/4] Building executable..."
 	just build --release --target {{TARGET_TRIPLE}}
-	echo "📦 [2/4] Packing language server..."
+	echo "📦 [2/4] Packing executable..."
 	just vscode-pack "target/{{TARGET_TRIPLE}}"
 	echo "🧰 [3/4] Building extension..."
 	just vscode-build
@@ -97,7 +99,7 @@ vscode-publish TARGET_TRIPLE VSCODE_TARGET:
 	#
 	echo "✅ Published extension successfully!"
 
-# Zips up language server and built extensions into single zip file
+# Zips up executable and built extensions into single zip file
 [no-exit-message]
 zip-release TARGET_TRIPLE:
 	#!/usr/bin/env bash
