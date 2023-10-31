@@ -1,3 +1,4 @@
+use anyhow::Result;
 use tracing_subscriber::filter::{EnvFilter, LevelFilter};
 
 #[cfg(debug_assertions)]
@@ -5,8 +6,11 @@ const IS_DEBUG: bool = true;
 #[cfg(not(debug_assertions))]
 const IS_DEBUG: bool = false;
 
+mod cli;
+mod icons;
+
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
     // Set up logging / tracing
     let tracing_filter = EnvFilter::builder()
         .with_default_directive(LevelFilter::INFO.into())
@@ -26,5 +30,6 @@ async fn main() {
         .with_writer(std::io::stderr) // Stdio transport takes up stdout, so emit output to stderr
         .init();
 
-    // TODO: Run CLI
+    // Run the CLI
+    cli::Cli::new().run().await
 }
