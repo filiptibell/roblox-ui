@@ -4,15 +4,15 @@ use anyhow::{Context, Result};
 
 use super::*;
 
-pub struct ClassicIconPack;
-
 const PACK_ZIP_URL: &str = concat!(
     "https://devforum.roblox.com/uploads/short-url/",
     "vHjNEH4jUjBlz9tl8Yetp6T1b99.zip"
 );
 
+pub struct Classic;
+
 #[async_trait::async_trait]
-impl IconPackProvider for ClassicIconPack {
+impl IconPackProvider for Classic {
     async fn download(&self) -> Result<IconPackContents> {
         let bytes = reqwest::get(PACK_ZIP_URL)
             .await
