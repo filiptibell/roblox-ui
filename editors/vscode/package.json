@@ -14,6 +14,7 @@
         "type": "git",
         "url": "https://github.com/filiptibell/roblox-ui.git"
     },
+    "icon": "assets/icon-128.png",
     "engines": {
         "vscode": "^1.81.0"
     },
