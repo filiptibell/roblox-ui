@@ -108,8 +108,6 @@ impl IconPackProvider for Vanilla2 {
         let bytes_icondata = bytes_icondata.context("failed to download palettes (2)")?;
         let bytes_icons_svg = bytes_icons_svg.context("failed to download icons svg (2)")?;
 
-        std::fs::write("icons.svg", &bytes_icons_svg).ok();
-
         let palettes: Palettes = serde_json::from_slice(bytes_palettes.as_ref())
             .context("failed to deserialize palettes")?;
         let icon_datas: Vec<IconData> = serde_json::from_slice(bytes_icondata.as_ref())
