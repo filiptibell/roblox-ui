@@ -36,11 +36,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	}
 
 	// Create the tree icons provider for instance class icons in the explorer
-	const icons = new IconsProvider(
-		context,
-		cache.cachedApiDump,
-		cache.cachedReflection
-	);
+	const icons = new IconsProvider(context);
 	context.subscriptions.push(icons);
 
 	// Create the main tree view and data providers

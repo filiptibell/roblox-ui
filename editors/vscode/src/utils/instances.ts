@@ -33,7 +33,7 @@ const COMMON_INSTANCES = new Set(["ModuleScript", "LocalScript", "Script"]);
 const INSTANCE_JSON_FILE_CONTENTS = `{
     "className": "<<CLASSNAME>>",
     "properties": {
-        
+
     }
 }
 `;
@@ -519,7 +519,7 @@ class InstanceInsertItem implements vscode.QuickPickItem {
 		settingsProvider: SettingsProvider,
 		iconsProvider: IconsProvider
 	) {
-		this.iconPath = await iconsProvider.getPackIconForClassName(
+		this.iconPath = iconsProvider.getClassIcon(
 			settingsProvider.get("explorer.iconPack"),
 			this.className
 		);
