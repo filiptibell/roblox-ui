@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 The project and VSCode extension have been renamed from **Rojo Viewer** to **Roblox UI**! <br/>
 
 This is a breaking change, so you will need to re-download the extension and update your settings if you've used Rojo Viewer before. <br/>
-Going forward this will help discovery of the project and make it clear that it does not only work when using Rojo, and has more features than just an explorer view.
+Going forward this will help discovery of the project and make it clear that it does not only work when using Rojo, and has more features than just an explorer view. Extensions and binaries will also be distributed on GitHub as well as marketplaces.
 
 ### Added
 
