@@ -124,10 +124,8 @@ export class RojoTreeItem extends vscode.TreeItem {
 
 		if (itemChanged) {
 			this.order = node
-				? getSourcemapNodeTreeOrder(
-						node,
-						this.root.reflectionMetadata
-				  ) ?? undefined
+				? getSourcemapNodeTreeOrder(node, this.root.metadataProvider) ??
+				  undefined
 				: undefined;
 		}
 		if (childrenChanged || !this.childrenDesired) {

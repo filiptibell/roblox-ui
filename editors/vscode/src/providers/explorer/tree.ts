@@ -1,13 +1,13 @@
 import * as vscode from "vscode";
 
 import { SourcemapNode } from "../../utils/sourcemap";
-import { RobloxApiDump, RobloxReflectionMetadata } from "../../web/roblox";
 
 import { SettingsProvider } from "../settings";
 import { IconsProvider } from "../icons";
 
 import { RojoTreeRoot } from "./root";
 import { RojoTreeItem } from "./item";
+import { MetadataProvider } from "../metadata";
 
 export class RojoTreeProvider
 	implements vscode.TreeDataProvider<vscode.TreeItem>
@@ -34,9 +34,8 @@ export class RojoTreeProvider
 
 	constructor(
 		public readonly settingsProvider: SettingsProvider,
-		public readonly iconsProvider: IconsProvider,
-		public readonly apiDump: RobloxApiDump,
-		public readonly reflectionMetadata: RobloxReflectionMetadata
+		public readonly metadataProvider: MetadataProvider,
+		public readonly iconsProvider: IconsProvider
 	) {
 		const show = !!settingsProvider.get("explorer.showDataModel");
 		this.showDataModel = show;
@@ -59,10 +58,9 @@ export class RojoTreeProvider
 		const root = new RojoTreeRoot(
 			workspacePath,
 			this.settingsProvider,
+			this.metadataProvider,
 			this.iconsProvider,
 			this,
-			this.apiDump,
-			this.reflectionMetadata,
 			this._onDidChangeTreeData
 		);
 		this.roots.set(workspacePath, root);

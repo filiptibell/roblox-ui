@@ -9,8 +9,6 @@ const anymatch = require("anymatch");
 import { SettingsProvider } from "../providers/settings";
 import { RojoTreeProvider } from "../providers/explorer";
 
-import { RobloxReflectionMetadata } from "../web/roblox/reflection";
-
 import {
 	ProjectRootNode,
 	isInitFilePath,
@@ -25,6 +23,7 @@ import {
 	findPackageSourceNode,
 	parseWallySpec,
 } from "./wally";
+import { MetadataProvider } from "../providers/metadata";
 
 const PACKAGE_CLASS_NAME = "Package";
 
@@ -234,13 +233,13 @@ export const findPrimaryFilePath = (
 
 export const getSourcemapNodeTreeOrder = (
 	node: SourcemapNode,
-	reflectionMetadata: RobloxReflectionMetadata
+	metadataProvider: MetadataProvider
 ): number | null => {
 	let order = 0;
 
-	const metadata = reflectionMetadata.Classes.get(node.className);
-	if (metadata && metadata.ExplorerOrder) {
-		order = metadata.ExplorerOrder;
+	const metadataOrder = metadataProvider.getExplorerOrder(node.className);
+	if (metadataOrder) {
+		order = metadataOrder;
 	}
 
 	// HACK: Always sort wally packages last

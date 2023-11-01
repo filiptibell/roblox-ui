@@ -14,7 +14,7 @@ import { SettingsProvider } from "./providers/settings";
 import { SelectionProvider } from "./providers/selection";
 import { CommandsProvider } from "./providers/commands";
 
-import { initRobloxCache } from "./web/roblox";
+import { MetadataProvider } from "./providers/metadata";
 import { IconsProvider } from "./providers/icons";
 
 export async function activate(context: vscode.ExtensionContext) {
@@ -22,31 +22,16 @@ export async function activate(context: vscode.ExtensionContext) {
 	const settings = new SettingsProvider();
 	context.subscriptions.push(settings);
 
-	// Fetch api dump and reflection metadata, if the user does not
-	// have an internet connection the very first time they activate
-	// the extension this may fail but will otherwise fall back to a
-	// cached version and warn the user about the potential desync
-	const cache = await initRobloxCache(context);
-	if (
-		!cache.cachedVersion ||
-		!cache.cachedApiDump ||
-		!cache.cachedReflection
-	) {
-		return;
-	}
-
-	// Create the tree icons provider for instance class icons in the explorer
+	// Create metadata and icon providers, these will load some bundled files
+	// using sync fs methods so we do it before creating anything else below
+	const metadata = new MetadataProvider(context);
 	const icons = new IconsProvider(context);
+	context.subscriptions.push(metadata);
 	context.subscriptions.push(icons);
 
 	// Create the main tree view and data providers
 	// TODO: Create drag & drop provider here
-	const treeProvider = new RojoTreeProvider(
-		settings,
-		icons,
-		cache.cachedApiDump,
-		cache.cachedReflection
-	);
+	const treeProvider = new RojoTreeProvider(settings, metadata, icons);
 	const treeView = vscode.window.createTreeView("roblox-ui.explorer", {
 		treeDataProvider: treeProvider,
 	});
@@ -55,10 +40,9 @@ export async function activate(context: vscode.ExtensionContext) {
 	// Create other providers for things such as selection handling, ...
 	const commands = new CommandsProvider(
 		context,
+		metadata,
 		treeView,
-		treeProvider,
-		cache.cachedApiDump,
-		cache.cachedReflection
+		treeProvider
 	);
 	const selection = new SelectionProvider(treeView, treeProvider);
 	context.subscriptions.push(commands);

@@ -4,10 +4,10 @@ import * as path from "path";
 const fs = vscode.workspace.fs;
 
 import { extractRojoFileExtension, isInitFilePath } from "./rojo";
-import { RobloxApiDump, RobloxReflectionMetadata } from "../web/roblox";
 import { pathMetadata } from "./files";
 import { IconsProvider } from "../providers/icons";
 import { SettingsProvider } from "../providers/settings";
+import { MetadataProvider } from "../providers/metadata";
 
 const INSERTABLE_SERVICES = new Set([
 	"Lighting",
@@ -373,9 +373,8 @@ export const renameExistingInstance = async (
 };
 
 export const promptNewInstanceCreation = async (
-	apiDump: RobloxApiDump,
-	reflection: RobloxReflectionMetadata,
 	settingsProvider: SettingsProvider,
+	metadataProvider: MetadataProvider,
 	iconsProvider: IconsProvider,
 	folderPath: string | null,
 	filePath: string | null,
@@ -393,14 +392,9 @@ export const promptNewInstanceCreation = async (
 			}
 			items.push(new InstanceInsertSeparator());
 			const restItems = [];
-			for (const apiItem of apiDump.Classes.values()) {
-				if (
-					!COMMON_INSTANCES.has(apiItem.Name) &&
-					!apiItem.Tags.find((tag) => tag === "Service") &&
-					!apiItem.Tags.find((tag) => tag === "NotBrowsable") &&
-					!apiItem.Tags.find((tag) => tag === "NotCreatable")
-				) {
-					restItems.push(new InstanceInsertItem(apiItem.Name));
+			for (const className of metadataProvider.getInsertableClassNames()) {
+				if (!COMMON_INSTANCES.has(className)) {
+					restItems.push(new InstanceInsertItem(className));
 				}
 			}
 			restItems.sort((left, right) => {

@@ -1,7 +1,6 @@
 import * as vscode from "vscode";
 
 import { SourcemapNode } from "../../utils/sourcemap";
-import { RobloxApiDump, RobloxReflectionMetadata } from "../../web/roblox";
 
 import { SettingsProvider } from "../settings";
 import { IconsProvider } from "../icons";
@@ -14,6 +13,7 @@ import {
 	getErroredProps,
 	getLoadingProps,
 } from "./props";
+import { MetadataProvider } from "../metadata";
 
 export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 	private isLoading: boolean = true;
@@ -32,10 +32,9 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 	constructor(
 		public readonly workspacePath: string,
 		public readonly settingsProvider: SettingsProvider,
+		public readonly metadataProvider: MetadataProvider,
 		public readonly iconsProvider: IconsProvider,
 		public readonly treeProvider: RojoTreeProvider,
-		public readonly apiDump: RobloxApiDump,
-		public readonly reflectionMetadata: RobloxReflectionMetadata,
 		private readonly eventEmitter: vscode.EventEmitter<void | vscode.TreeItem>
 	) {
 		super("<<<ROOT>>>");
