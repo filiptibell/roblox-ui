@@ -20,6 +20,30 @@ build *ARGS:
 	set -euo pipefail
 	cargo build --bin {{BIN_NAME}} {{ARGS}}
 
+# Generates all icon packs in an "icons" directory in cwd
+[no-exit-message]
+generate-icons DEBUG="false":
+	#!/usr/bin/env bash
+	set -euo pipefail
+	mkdir -p {{CWD}}/icons/
+	if [[ "{{DEBUG}}" == "true" ]]; then
+		cargo run -- generate-icons --all --output {{CWD}}/icons/
+	else
+		cargo run --release -- generate-icons --all --output {{CWD}}/icons/
+	fi
+
+# Generates reflection and class metadata files in a "data" directory in cwd
+[no-exit-message]
+generate-metadata DEBUG="false":
+	#!/usr/bin/env bash
+	set -euo pipefail
+	mkdir -p {{CWD}}/data/
+	if [[ "{{DEBUG}}" == "true" ]]; then
+		cargo run -- generate-reflection --output {{CWD}}/data/reflection.json
+	else
+		cargo run --release -- generate-reflection --output {{CWD}}/data/reflection.json
+	fi
+
 # Packs the executable into the VSCode extension build directory
 [no-exit-message]
 [private]
@@ -31,22 +55,21 @@ vscode-pack TARGET_DIR DEBUG="false":
 	rm -rf "{{VSCODE}}/bin"
 	rm -rf "{{VSCODE}}/CHANGELOG.md"
 	rm -rf "{{VSCODE}}/LICENSE.txt"
-	mkdir -p "{{VSCODE}}/out"
 	mkdir -p "{{VSCODE}}/bin"
+	mkdir -p "{{VSCODE}}/out"
+	mkdir -p "{{VSCODE}}/out/icons"
+	mkdir -p "{{VSCODE}}/out/data"
 	#
 	if [[ "{{DEBUG}}" == "true" ]]; then
-		mkdir -p {{VSCODE}}/out/data/
 		mkdir -p {{VSCODE}}/out/debug/
-		cargo run -- generate-icons --all --output {{VSCODE}}/out/icons
-		cargo run -- generate-reflection --output {{VSCODE}}/out/data/reflection.json
 		cp {{TARGET_DIR}}/debug/{{BIN_NAME}}{{EXT}} {{VSCODE}}/out/debug/
 	else
-		mkdir -p {{VSCODE}}/out/data/
 		mkdir -p {{VSCODE}}/out/release/
-		cargo run --release -- generate-icons --all --output {{VSCODE}}/out/icons
-		cargo run --release -- generate-reflection --output {{VSCODE}}/out/data/reflection.json
 		cp {{TARGET_DIR}}/release/{{BIN_NAME}}{{EXT}} {{VSCODE}}/out/release/
 	fi
+	#
+	cp -R {{CWD}}/icons/ {{VSCODE}}/out/icons/
+	cp -R {{CWD}}/data/ {{VSCODE}}/out/data/
 	#
 	cp CHANGELOG.md {{VSCODE}}/CHANGELOG.md
 	cp LICENSE.txt {{VSCODE}}/LICENSE.txt
@@ -67,17 +90,20 @@ vscode-install DEBUG="false":
 	#!/usr/bin/env bash
 	set -euo pipefail
 	#
-	echo "🚧 [1/4] Building executable..."
+	echo "🚧 [1/5] Building executable..."
 	if [[ "{{DEBUG}}" == "true" ]]; then
 		just build
 	else
 		just build --release
 	fi
-	echo "📦 [2/4] Packing executable..."
+	echo "🤖 [2/5] Generating files..."
+	just generate-icons {{DEBUG}} > /dev/null
+	just generate-metadata {{DEBUG}} > /dev/null
+	echo "📦 [3/5] Packing executable..."
 	just vscode-pack "target" {{DEBUG}} > /dev/null
-	echo "🧰 [3/4] Building extension..."
+	echo "🧰 [4/5] Building extension..."
 	just vscode-build > /dev/null
-	echo "🚀 [4/4] Installing extension..."
+	echo "🚀 [5/5] Installing extension..."
 	#
 	EXTENSION=$(find "{{VSCODE}}/bin/" -name "*.vsix")
 	code --install-extension "$EXTENSION" &> /dev/null
@@ -90,13 +116,16 @@ vscode-publish TARGET_TRIPLE VSCODE_TARGET:
 	#!/usr/bin/env bash
 	set -euo pipefail
 	#
-	echo "🚧 [1/4] Building executable..."
+	echo "🚧 [1/5] Building executable..."
 	just build --release --target {{TARGET_TRIPLE}}
-	echo "📦 [2/4] Packing executable..."
+	echo "🤖 [2/5] Generating files..."
+	just generate-icons
+	just generate-metadata
+	echo "📦 [3/5] Packing executable..."
 	just vscode-pack "target/{{TARGET_TRIPLE}}"
-	echo "🧰 [3/4] Building extension..."
+	echo "🧰 [4/5] Building extension..."
 	just vscode-build
-	echo "🚀 [4/4] Publishing extension..."
+	echo "🚀 [5/5] Publishing extension..."
 	#
 	cd "{{VSCODE}}/"
 	vsce publish --target {{VSCODE_TARGET}}
