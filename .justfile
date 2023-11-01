@@ -137,11 +137,16 @@ vscode-publish TARGET_TRIPLE VSCODE_TARGET:
 zip-release TARGET_TRIPLE:
 	#!/usr/bin/env bash
 	set -euo pipefail
+	#
 	rm -rf staging
 	rm -rf release.zip
 	mkdir -p staging
+	#
 	cp "target/{{TARGET_TRIPLE}}/release/{{BIN_NAME}}{{EXT}}" staging/
 	cp "$(find "{{VSCODE}}/bin/" -name "*.vsix")" staging/extension.vsix
+	cp "icons" staging/
+	cp "data" staging/
+	#
 	cd staging
 	if [ "{{os_family()}}" = "windows" ]; then
 		7z a ../release.zip *
@@ -150,6 +155,7 @@ zip-release TARGET_TRIPLE:
 		zip ../release.zip *
 	fi
 	cd "{{CWD}}"
+	#
 	rm -rf staging
 
 # Used in GitHub workflow to move per-matrix release zips
