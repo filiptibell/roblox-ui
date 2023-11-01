@@ -57,6 +57,7 @@ export const getNodeItemProps = async (
 	parent: RojoTreeItem | undefined | null | void
 ): Promise<TreeItemPropChanges> => {
 	const newProps: TreeItemPropChanges = getNullProps();
+	const classData = root.metadataProvider.getClassData(node.className);
 
 	// Find folder path and file path to use for props
 	const folderPath = node.folderPath
@@ -68,12 +69,33 @@ export const getNodeItemProps = async (
 		: null;
 	const fileIsScript = filePath && !filePath.endsWith(".project.json");
 
-	// Set name and icon
+	// Set name, icon, description (tooltip)
 	newProps.label = node.name;
 	newProps.iconPath = root.iconsProvider.getClassIcon(
 		root.settingsProvider.get("explorer.iconPack"),
 		node.className
 	);
+	let tooltip = "### " + node.name;
+	if (node.className !== node.name) {
+		tooltip += "\n\n";
+		tooltip += "#### " + node.className;
+	}
+	let desc = classData?.description ?? null;
+	if (typeof desc === "string" && desc.length > 0) {
+		tooltip += "\n\n";
+		tooltip += desc;
+	}
+	let link = classData?.documentationUrl ?? null;
+	if (typeof link === "string" && link.length > 0) {
+		tooltip += "\n\n";
+		tooltip += "[Learn More $(link-external)](" + link + ")";
+	}
+	tooltip += "\n";
+	let tooltipMarkdown = new vscode.MarkdownString(tooltip);
+	tooltipMarkdown.supportThemeIcons = true;
+	tooltipMarkdown.supportHtml = true;
+	tooltipMarkdown.isTrusted = true;
+	newProps.tooltip = tooltipMarkdown;
 
 	// Set description based on settings
 	const descriptionPartials: string[] = [];
@@ -129,7 +151,6 @@ export const getNodeItemProps = async (
 		contextPartials.add("canInsertObject");
 	}
 
-	const classData = root.metadataProvider.getClassData(node.className);
 	const isService = classData?.isService ?? false;
 	if (isService) {
 		contextPartials.delete("instance");
