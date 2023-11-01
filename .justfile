@@ -35,12 +35,16 @@ vscode-pack TARGET_DIR DEBUG="false":
 	mkdir -p "{{VSCODE}}/bin"
 	#
 	if [[ "{{DEBUG}}" == "true" ]]; then
+		mkdir -p {{VSCODE}}/out/data/
 		mkdir -p {{VSCODE}}/out/debug/
 		cargo run -- generate-icons --all --output {{VSCODE}}/out/icons
+		cargo run -- generate-reflection --output {{VSCODE}}/out/data/reflection.json
 		cp {{TARGET_DIR}}/debug/{{BIN_NAME}}{{EXT}} {{VSCODE}}/out/debug/
 	else
+		mkdir -p {{VSCODE}}/out/data/
 		mkdir -p {{VSCODE}}/out/release/
 		cargo run --release -- generate-icons --all --output {{VSCODE}}/out/icons
+		cargo run --release -- generate-reflection --output {{VSCODE}}/out/data/reflection.json
 		cp {{TARGET_DIR}}/release/{{BIN_NAME}}{{EXT}} {{VSCODE}}/out/release/
 	fi
 	#
