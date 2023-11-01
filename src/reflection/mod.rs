@@ -4,13 +4,13 @@ use anyhow::{Context, Result};
 use serde::Serialize;
 
 mod constants;
-mod reflection_node;
-mod reflection_value;
+mod node;
+mod value;
 
 use constants::*;
 
-pub use reflection_node::*;
-pub use reflection_value::*;
+pub use node::*;
+pub use value::*;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Reflection {

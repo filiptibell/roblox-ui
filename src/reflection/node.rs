@@ -4,7 +4,7 @@ use anyhow::{bail, Context, Result};
 use quick_xml::events::{BytesStart, Event as XmlEvent};
 use quick_xml::Reader as XmlReader;
 
-use super::reflection_value::*;
+use super::value::*;
 
 // HACK: Some values dont have proper types in reflection
 // metadata, we try to coerce them manually to fix that
