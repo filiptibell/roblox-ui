@@ -39,8 +39,10 @@ generate-metadata DEBUG="false":
 	set -euo pipefail
 	mkdir -p {{CWD}}/data/
 	if [[ "{{DEBUG}}" == "true" ]]; then
+		cargo run -- generate-classes --output {{CWD}}/data/classes.json
 		cargo run -- generate-reflection --output {{CWD}}/data/reflection.json
 	else
+		cargo run --release -- generate-classes --output {{CWD}}/data/classes.json
 		cargo run --release -- generate-reflection --output {{CWD}}/data/reflection.json
 	fi
 
