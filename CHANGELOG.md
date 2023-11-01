@@ -8,6 +8,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- Added tooltips with official API descriptions and links when hovering over instances in the Explorer.
+- Added a 'Collapse All' button to the Explorer panel.
+
+### Changed
+
+- Roblox UI no longer makes any web requests! All metadata and API info is now statically bundled - this means that the VSCode extension will work just fine without an internet connection, and that opening the extension for the first time no longer requires a long load before being usable. The extension also uses less disk space because caches no longer exist.
+
 ## `0.2.0` - October 31st, 2023
 
 The project and VSCode extension have been renamed from **Rojo Viewer** to **Roblox UI**! <br/>
