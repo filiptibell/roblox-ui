@@ -129,8 +129,8 @@ export const getNodeItemProps = async (
 		contextPartials.add("canInsertObject");
 	}
 
-	const info = root.apiDump.Classes.get(node.className);
-	const isService = info?.Tags.find((tag) => tag === "Service") !== undefined;
+	const classData = root.metadataProvider.getClassData(node.className);
+	const isService = classData?.isService ?? false;
 	if (isService) {
 		contextPartials.delete("instance");
 	} else if (parent && (filePath || folderPath)) {

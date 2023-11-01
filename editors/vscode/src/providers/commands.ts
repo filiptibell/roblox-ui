@@ -10,13 +10,8 @@ import { reloadAllWorkspaces } from "../workspaces";
 
 import { RojoTreeItem, RojoTreeProvider } from "./explorer";
 
-import {
-	RobloxApiDump,
-	RobloxReflectionMetadata,
-	clearRobloxCache,
-} from "../web/roblox";
-
 import { findPrimaryFilePath } from "../utils/sourcemap";
+import { MetadataProvider } from "./metadata";
 
 export class CommandsProvider implements vscode.Disposable {
 	private commands: Map<string, (...args: any[]) => any> = new Map();
@@ -39,23 +34,13 @@ export class CommandsProvider implements vscode.Disposable {
 
 	constructor(
 		context: vscode.ExtensionContext,
+		metadata: MetadataProvider,
 		treeView: vscode.TreeView<vscode.TreeItem>,
-		treeDataProvider: RojoTreeProvider,
-		apiDump: RobloxApiDump,
-		reflection: RobloxReflectionMetadata
+		treeDataProvider: RojoTreeProvider
 	) {
 		this.register("refresh", reloadAllWorkspaces);
 		this.register("openProjectFile", (item: RojoTreeItem) => {
 			item.openFile();
-		});
-		this.register("clearCache", async () => {
-			try {
-				clearRobloxCache(context, true);
-			} catch (err) {
-				vscode.window.showWarningMessage(
-					`Failed to clear cache!\n\n${err}`
-				);
-			}
 		});
 		/*
 			The below commands modify tree items and are somewhat special:
@@ -71,9 +56,8 @@ export class CommandsProvider implements vscode.Disposable {
 			classNameOrInsertService: string | boolean | void
 		) => {
 			const [created, creationResult] = await promptNewInstanceCreation(
-				apiDump,
-				reflection,
 				treeDataProvider.settingsProvider,
+				treeDataProvider.metadataProvider,
 				treeDataProvider.iconsProvider,
 				item.getFolderPath(),
 				item.getFilePath(),

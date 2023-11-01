@@ -96,11 +96,6 @@
                 "icon": "$(refresh)"
             },
             {
-                "command": "roblox-ui.clearCache",
-                "title": "Roblox UI: Clear Cache",
-                "icon": "$(refresh)"
-            },
-            {
                 "command": "roblox-ui.insertObject",
                 "title": "New Instance...",
                 "icon": "$(file-add)",

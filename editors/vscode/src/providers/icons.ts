@@ -2,8 +2,6 @@ import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
 
-import { RobloxApiDump, RobloxReflectionMetadata } from "../web/roblox";
-
 export type IconPack = "None" | "Classic" | "Vanilla2";
 
 type IconPackIcon = { light: vscode.Uri; dark: vscode.Uri };
@@ -59,8 +57,6 @@ const readIconPackMetadatas = (
 
 	const metaContentsLight = fs.readFileSync(metaPathLight, "utf-8");
 	const metaContentsDark = fs.readFileSync(metaPathDark, "utf-8");
-
-	console.error("Meta light: " + metaContentsLight);
 
 	return {
 		light: JSON.parse(metaContentsLight),
