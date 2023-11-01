@@ -51,8 +51,8 @@ fn class_is_a(instance_class: impl AsRef<str>, class_name: impl AsRef<str>) -> O
 #[derive(Debug, Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IconPackMetadata {
-    class_count: usize,
-    class_icons: BTreeMap<String, PathBuf>,
+    pub class_count: usize,
+    pub class_icons: BTreeMap<String, PathBuf>,
 }
 
 impl IconPackMetadata {
@@ -96,10 +96,10 @@ impl IconPackMetadata {
         }
     }
 
-    pub fn generate_from(icon_pack_map: &BTreeMap<PathBuf, Bytes>) -> Result<Self> {
+    pub fn from_paths(icon_paths: &[&Path]) -> Result<Self> {
         let mut metadata = IconPackMetadata::default();
 
-        for path in icon_pack_map.keys() {
+        for path in icon_paths {
             metadata.add_icon(class_name_from_path(path)?, path, false);
         }
 
@@ -108,7 +108,7 @@ impl IconPackMetadata {
                 continue;
             }
             for fallback in fallbacks.iter() {
-                if let Some(path) = icon_pack_map.keys().find(|path| {
+                if let Some(path) = icon_paths.iter().find(|path| {
                     matches!(
                         class_name_from_path(path),
                         Ok(path_class) if &path_class == fallback
