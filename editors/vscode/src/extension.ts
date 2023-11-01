@@ -34,6 +34,8 @@ export async function activate(context: vscode.ExtensionContext) {
 	const treeProvider = new RojoTreeProvider(settings, metadata, icons);
 	const treeView = vscode.window.createTreeView("roblox-ui.explorer", {
 		treeDataProvider: treeProvider,
+		showCollapseAll: true,
+		canSelectMany: false,
 	});
 	context.subscriptions.push(treeView);
 
