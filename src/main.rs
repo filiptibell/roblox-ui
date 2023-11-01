@@ -6,6 +6,7 @@ const IS_DEBUG: bool = true;
 #[cfg(not(debug_assertions))]
 const IS_DEBUG: bool = false;
 
+mod classes;
 mod cli;
 mod icons;
 mod reflection;

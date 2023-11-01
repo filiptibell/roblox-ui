@@ -11,6 +11,7 @@ use super::value::*;
 const VALUE_COERCIONS: &[(&str, ValueKind)] = &[
     ("ExplorerOrder", ValueKind::Integer),
     ("ExplorerImageIndex", ValueKind::Integer),
+    ("ServiceVisibility", ValueKind::Integer),
     ("Deprecated", ValueKind::Bool),
     ("Insertable", ValueKind::Bool),
     ("Browsable", ValueKind::Bool),
