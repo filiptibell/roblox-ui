@@ -15,11 +15,14 @@ pub struct GenerateClassesCommand {
 impl GenerateClassesCommand {
     pub async fn run(self) -> Result<()> {
         println!("Generating class datas...");
-        let classes = Classes::from_database()?;
-        let classes_json = serde_json::to_string(&classes)
-            .context("failed to serialize class datas into json file")?;
+        let mut classes = Classes::from_database()?;
+
+        println!("Adding documentation...");
+        insert_documentation(&mut classes).await?;
 
         println!("Writing classes file...");
+        let classes_json = serde_json::to_string(&classes)
+            .context("failed to serialize class datas into json file")?;
         fs::write(&self.output, classes_json).await?;
 
         println!("Generated classes at '{}'", self.output.display());
