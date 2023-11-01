@@ -146,8 +146,8 @@ zip-release TARGET_TRIPLE:
 	#
 	cp "target/{{TARGET_TRIPLE}}/release/{{BIN_NAME}}{{EXT}}" staging/
 	cp "$(find "{{VSCODE}}/bin/" -name "*.vsix")" staging/extension.vsix
-	cp "icons" staging/
-	cp "data" staging/
+	cp -R "icons" staging/
+	cp -R "data" staging/
 	#
 	cd staging
 	if [ "{{os_family()}}" = "windows" ]; then
