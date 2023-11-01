@@ -5,6 +5,8 @@ use anyhow::Result;
 use serde_with::{DeserializeFromStr, SerializeDisplay};
 use thiserror::Error;
 
+use super::classic::*;
+use super::vanilla2::*;
 use super::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, SerializeDisplay, DeserializeFromStr)]
