@@ -13,13 +13,13 @@ pub use reflection_node::*;
 pub use reflection_value::*;
 
 #[derive(Debug, Clone, Serialize)]
-pub struct ReflectionMetadata {
-    pub classes: BTreeMap<String, ReflectionMetadataClass>,
-    pub enums: BTreeMap<String, ReflectionMetadataEnum>,
+pub struct Reflection {
+    pub classes: BTreeMap<String, ReflectionClass>,
+    pub enums: BTreeMap<String, ReflectionEnum>,
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct ReflectionMetadataClass {
+pub struct ReflectionClass {
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub summary: Option<String>,
@@ -29,18 +29,18 @@ pub struct ReflectionMetadataClass {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct ReflectionMetadataEnum {
+pub struct ReflectionEnum {
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub summary: Option<String>,
     #[serde(skip_serializing_if = "BTreeMap::is_empty")]
     pub values: BTreeMap<String, Value>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub items: Vec<ReflectionMetadataEnumItem>,
+    pub items: Vec<ReflectionEnumItem>,
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct ReflectionMetadataEnumItem {
+pub struct ReflectionEnumItem {
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub summary: Option<String>,
@@ -75,7 +75,7 @@ pub async fn download_latest_studio() -> Result<Vec<u8>> {
     Ok(studio_bytes.to_vec())
 }
 
-pub fn parse_reflection_metadata(reflection_bytes: &[u8]) -> Result<ReflectionMetadata> {
+pub fn parse_reflection_metadata(reflection_bytes: &[u8]) -> Result<Reflection> {
     let reflection_tree = parse_reflection_tree(reflection_bytes)?;
 
     let classes = reflection_tree
@@ -93,7 +93,7 @@ pub fn parse_reflection_metadata(reflection_bytes: &[u8]) -> Result<ReflectionMe
         .filter_map(|child| child.split_properties())
         .collect::<Vec<_>>();
 
-    let mut reflection_data = ReflectionMetadata {
+    let mut reflection = Reflection {
         classes: BTreeMap::new(),
         enums: BTreeMap::new(),
     };
@@ -105,9 +105,9 @@ pub fn parse_reflection_metadata(reflection_bytes: &[u8]) -> Result<ReflectionMe
             .remove("summary")
             .and_then(|s| s.as_string().map(|s| s.to_string()));
 
-        reflection_data.classes.insert(
+        reflection.classes.insert(
             name.clone(),
-            ReflectionMetadataClass {
+            ReflectionClass {
                 name,
                 summary,
                 values,
@@ -135,7 +135,7 @@ pub fn parse_reflection_metadata(reflection_bytes: &[u8]) -> Result<ReflectionMe
                 let item_summary = item_values
                     .remove("summary")
                     .and_then(|s| s.as_string().map(|s| s.to_string()));
-                items.push(ReflectionMetadataEnumItem {
+                items.push(ReflectionEnumItem {
                     name: item_name,
                     summary: item_summary,
                     values: item_values,
@@ -143,9 +143,9 @@ pub fn parse_reflection_metadata(reflection_bytes: &[u8]) -> Result<ReflectionMe
             }
         }
 
-        reflection_data.enums.insert(
+        reflection.enums.insert(
             name.clone(),
-            ReflectionMetadataEnum {
+            ReflectionEnum {
                 name,
                 summary,
                 values,
@@ -154,5 +154,5 @@ pub fn parse_reflection_metadata(reflection_bytes: &[u8]) -> Result<ReflectionMe
         );
     }
 
-    Ok(reflection_data)
+    Ok(reflection)
 }
