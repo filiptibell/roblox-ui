@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::ops::Deref;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
@@ -92,11 +93,14 @@ impl IconPackContents {
         fs::create_dir_all(&dir_light).await?;
         fs::create_dir_all(&dir_dark).await?;
 
-        let metadata_light = IconPackMetadata::generate_from(&self.light)
+        let paths_light = self.light.keys().map(|p| p.deref()).collect::<Vec<_>>();
+        let paths_dark = self.dark.keys().map(|p| p.deref()).collect::<Vec<_>>();
+
+        let metadata_light = IconPackMetadata::from_paths(&paths_light)
             .context("failed to generate icon pack metadata (light)")?
             .serialize_bytes()
             .context("failed to serialize icon pack metadata (light)")?;
-        let metadata_dark = IconPackMetadata::generate_from(&self.dark)
+        let metadata_dark = IconPackMetadata::from_paths(&paths_dark)
             .context("failed to generate icon pack metadata (dark)")?
             .serialize_bytes()
             .context("failed to serialize icon pack metadata (dark)")?;
