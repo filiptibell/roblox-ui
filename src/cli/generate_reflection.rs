@@ -5,6 +5,7 @@ use clap::Parser;
 use tokio::fs;
 
 use crate::reflection::*;
+use crate::util::zip::*;
 
 #[derive(Debug, Clone, Parser)]
 pub struct GenerateReflectionCommand {
@@ -17,10 +18,8 @@ impl GenerateReflectionCommand {
         println!("Downloading latest Roblox Studio...");
         let studio = download_latest_studio().await?;
 
-        println!("Extracting reflection metadata file...");
-        let reflection_bytes = extract_reflection_metadata_from_zip(&studio)?;
-
-        println!("Parsing reflection metadata file...");
+        println!("Parsing reflection metadata...");
+        let reflection_bytes = extract_file_from_zip(&studio, "ReflectionMetadata.xml")?;
         let reflection_metadata = parse_reflection_metadata(&reflection_bytes)?;
 
         println!("Writing reflection file...");

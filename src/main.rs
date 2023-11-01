@@ -9,6 +9,7 @@ const IS_DEBUG: bool = false;
 mod cli;
 mod icons;
 mod reflection;
+mod util;
 
 #[tokio::main]
 async fn main() -> Result<()> {
