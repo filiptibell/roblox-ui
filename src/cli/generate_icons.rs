@@ -4,6 +4,7 @@ use anyhow::{bail, Context, Result};
 use clap::Parser;
 use futures::future::join_all;
 use tokio::fs;
+use tracing::info;
 
 use crate::icons::*;
 
@@ -24,7 +25,7 @@ impl GenerateIconsCommand {
 
             fs::remove_dir_all(&self.output).await.ok();
 
-            println!("Downloading icon packs...");
+            info!("Downloading icon packs...");
             let mut all_contents_futs = Vec::new();
             for pack in packs {
                 all_contents_futs.push(pack.provider().download());
@@ -34,7 +35,7 @@ impl GenerateIconsCommand {
                 all_contents.push(result.context("failed to download icon pack contents")?);
             }
 
-            println!("Writing icon packs...");
+            info!("Writing icon packs...");
             let mut all_files_futs = Vec::new();
             for (index, contents) in all_contents.iter().enumerate() {
                 let pack_name = packs[index].to_string();
@@ -46,7 +47,7 @@ impl GenerateIconsCommand {
             }
 
             let total_len = all_contents.iter().fold(0, |acc, c| acc + c.len());
-            println!(
+            info!(
                 "Generated {} icon packs with {} files total to '{}'",
                 packs.len(),
                 total_len,
@@ -57,7 +58,7 @@ impl GenerateIconsCommand {
         } else if let Some(pack) = self.pack {
             fs::remove_dir_all(&self.output).await.ok();
 
-            println!("Downloading icon pack '{pack}'...");
+            info!("Downloading icon pack '{pack}'...");
 
             let contents = pack
                 .provider()
@@ -65,14 +66,14 @@ impl GenerateIconsCommand {
                 .await
                 .context("failed to download icon pack contents")?;
 
-            println!("Writing icon pack to '{}'...", self.output.display());
+            info!("Writing icon pack to '{}'...", self.output.display());
 
             contents
                 .write_to(&self.output)
                 .await
                 .context("failed to write icon pack contents")?;
 
-            println!("Generated {} files total", contents.len());
+            info!("Generated {} files total", contents.len());
 
             Ok(())
         } else {

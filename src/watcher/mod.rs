@@ -4,12 +4,13 @@ mod transport;
 
 pub use transport::*;
 
+#[derive(Debug, Clone)]
 pub struct WatcherArguments {
     pub transport: Transport,
 }
 
 pub struct Watcher {
-    pub args: WatcherArguments,
+    args: WatcherArguments,
 }
 
 impl Watcher {
@@ -28,6 +29,7 @@ impl Watcher {
                 // TODO: Start watching
             }
         }
+
         Ok(())
     }
 }
