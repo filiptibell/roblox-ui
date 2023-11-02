@@ -32,11 +32,22 @@ The UI can be installed as an extension from:
 
 ## Features
 
-- Explorer view for instances, similar to Roblox Studio
-- Included community icon packs, as well as the classic icon pack
-- Integration with [Wally](https://wally.run) in the explorer view
+- Explorer view, similar to Roblox Studio, with additional [Wally](https://wally.run) integration
+- Included community icon packs such as [Classic] & [Vanilla]
 
 ## TODO
+
+<details>
+<summary>Quick Open</summary>
+
+- Dialog similar to the insert dialog, with a search field
+- Search and rank based on instance name instead of file name
+- Biased ranking for script/localscript/modulescript, preferring them over other instances
+- Opening the respective file in the editor for what you end up selecting
+- Search button at the top of explorer, add keybind to open dialog
+- Search filtering, [similar to Roblox Studio?](https://create.roblox.com/docs/studio/explorer#filtering-instances)
+
+</details>
 
 <details>
 <summary>Wally</summary>
