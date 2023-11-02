@@ -28,8 +28,6 @@ impl WatchCommand {
 
         debug!("Parsed arguments\n\ttransport: {}", args.transport);
 
-        Watcher::new(args).watch().await;
-
-        Ok(())
+        Watcher::new(args).watch().await
     }
 }
