@@ -1,3 +1,5 @@
+use anyhow::Result;
+
 mod transport;
 
 pub use transport::*;
@@ -15,7 +17,7 @@ impl Watcher {
         Self { args }
     }
 
-    pub async fn watch(self) {
+    pub async fn watch(self) -> Result<()> {
         match self.args.transport {
             Transport::Socket(port) => {
                 let (_read, _write) = Transport::create_socket(port).await;
@@ -26,5 +28,6 @@ impl Watcher {
                 // TODO: Start watching
             }
         }
+        Ok(())
     }
 }
