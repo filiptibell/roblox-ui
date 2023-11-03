@@ -2,7 +2,7 @@ use anyhow::Result;
 use clap::Parser;
 use tracing::debug;
 
-use crate::watcher::{Transport, Watcher, WatcherArguments};
+use crate::watcher::{Settings, Transport, Watcher, WatcherArguments};
 
 #[derive(Debug, Clone, Parser)]
 pub struct WatchCommand {
@@ -10,6 +10,8 @@ pub struct WatchCommand {
     pub socket: Option<u16>,
     #[arg(long)]
     pub stdio: bool,
+    #[arg(long)]
+    pub settings: Option<Settings>,
 }
 
 impl WatchCommand {
@@ -24,9 +26,13 @@ impl WatchCommand {
 
         let args = WatcherArguments {
             transport: transport.unwrap_or_default(),
+            settings: self.settings.unwrap_or_default(),
         };
 
-        debug!("Parsed arguments\n\ttransport: {}", args.transport);
+        debug!(
+            "Parsed arguments\n\ttransport: {}\n\tsettings: {:?}",
+            args.transport, args.settings
+        );
 
         Watcher::new(args).watch().await
     }

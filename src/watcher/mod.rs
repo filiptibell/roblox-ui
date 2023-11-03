@@ -1,12 +1,15 @@
 use anyhow::Result;
 
+mod settings;
 mod transport;
 
+pub use settings::*;
 pub use transport::*;
 
 #[derive(Debug, Clone)]
 pub struct WatcherArguments {
     pub transport: Transport,
+    pub settings: Settings,
 }
 
 pub struct Watcher {
