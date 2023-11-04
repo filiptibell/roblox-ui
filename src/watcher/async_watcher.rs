@@ -44,7 +44,7 @@ fn matching_paths(event: &DebouncedEvent, relevant_paths: &[PathBuf]) -> Vec<Pat
 pub struct AsyncFileWatcher {
     // NOTE: We can't drop the debouncer since it would then stop watching,
     // so we keep it in the same struct that the consumer gets events from
-    _debouncer: Debouncer<FsEventWatcher, FileIdMap>,
+    _debouncer: Debouncer<RecommendedWatcher, FileIdMap>,
     receiver: UnboundedReceiver<PathBuf>,
 }
 
