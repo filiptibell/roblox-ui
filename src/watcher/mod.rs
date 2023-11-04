@@ -21,20 +21,20 @@ pub struct WatcherArguments {
 
 pub struct Watcher {
     args: WatcherArguments,
-    smap: SourcemapProvider,
+    smap: SourcemapWatcher,
 }
 
 impl Watcher {
     pub fn new(args: WatcherArguments) -> Self {
-        let smap = SourcemapProvider::new();
+        let smap = SourcemapWatcher::new(args.settings.clone());
         Self { args, smap }
     }
 
-    fn handle_event(&mut self, event: AsyncFileEvent, path: &Path, contents: Option<&str>) {
+    async fn handle_event(&mut self, event: AsyncFileEvent, path: &Path, contents: Option<&str>) {
         let res = if self.args.settings.is_sourcemap_path(path) {
-            self.smap.update_sourcemap(contents)
+            self.smap.update_file(contents).await
         } else if self.args.settings.is_project_path(path) {
-            self.smap.update_project(contents)
+            self.smap.update_rojo(contents).await
         } else {
             Ok(())
         };
@@ -51,7 +51,7 @@ impl Watcher {
         let mut cache = AsyncFileCache::new();
         for path in &paths {
             if let Some(event) = cache.update(path).await? {
-                self.handle_event(event, path, cache.get(path));
+                self.handle_event(event, path, cache.get(path)).await;
             }
         }
 
@@ -59,7 +59,7 @@ impl Watcher {
         let mut watcher = AsyncFileWatcher::new(paths)?;
         while let Some(path) = watcher.recv().await {
             if let Some(event) = cache.update(&path).await? {
-                self.handle_event(event, &path, cache.get(&path));
+                self.handle_event(event, &path, cache.get(&path)).await;
             }
         }
 
