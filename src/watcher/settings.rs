@@ -34,7 +34,9 @@ impl Settings {
     }
 
     pub fn is_project_path(&self, path: &Path) -> bool {
-        if let Some(project_path) = &self.rojo_project_file {
+        if !self.autogenerate {
+            false
+        } else if let Some(project_path) = &self.rojo_project_file {
             let abs_proj = clean_and_make_absolute(project_path);
             let abs_path = clean_and_make_absolute(path);
 
@@ -47,8 +49,10 @@ impl Settings {
     pub fn relevant_paths(&self) -> Vec<PathBuf> {
         let mut paths = vec![PathBuf::from("sourcemap.json")];
 
-        if let Some(project_path) = &self.rojo_project_file {
-            paths.push(project_path.to_path_buf());
+        if self.autogenerate {
+            if let Some(project_path) = &self.rojo_project_file {
+                paths.push(project_path.to_path_buf());
+            }
         }
 
         for path in paths.iter_mut() {
