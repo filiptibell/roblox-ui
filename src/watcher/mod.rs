@@ -1,14 +1,17 @@
 use std::path::Path;
 
 use anyhow::Result;
-use tracing::info;
+use tracing::{debug, error};
 
 mod async_cache;
 mod async_watcher;
 mod settings;
+mod sourcemap;
 
 use async_cache::*;
 use async_watcher::*;
+use sourcemap::*;
+
 pub use settings::*;
 
 #[derive(Debug, Clone)]
@@ -18,18 +21,27 @@ pub struct WatcherArguments {
 
 pub struct Watcher {
     args: WatcherArguments,
+    smap: SourcemapProvider,
 }
 
 impl Watcher {
     pub fn new(args: WatcherArguments) -> Self {
-        Self { args }
+        let smap = SourcemapProvider::new();
+        Self { args, smap }
     }
 
-    fn handle_event(&mut self, event: AsyncFileEvent, path: &Path, _contents: Option<&str>) {
-        info!("{:?} -> {}", event, path.display());
-        // TODO: Check if the path is a sourcemap.json or rojo project file, then:
-        // TODO: - Handle changes to sourcemap
-        // TODO: - Handle changes to rojo project
+    fn handle_event(&mut self, event: AsyncFileEvent, path: &Path, contents: Option<&str>) {
+        let res = if self.args.settings.is_sourcemap_path(path) {
+            self.smap.update_sourcemap(contents)
+        } else if self.args.settings.is_project_path(path) {
+            self.smap.update_project(contents)
+        } else {
+            Ok(())
+        };
+        match res {
+            Err(e) => error!("{:?} -> {} -> {e:?}", event, path.display()),
+            Ok(_) => debug!("{:?} -> {}", event, path.display()),
+        }
     }
 
     pub async fn watch(mut self) -> Result<()> {
