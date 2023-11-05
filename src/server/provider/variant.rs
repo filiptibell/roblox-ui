@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-use crate::watcher::Settings;
+use crate::server::Config;
 
 use super::{
     file_sourcemap::FileSourcemapProvider, none::NoneProvider,
@@ -28,21 +28,21 @@ pub enum InstanceProviderKind {
     `update` method must be called *after* `start`, but *before* `stop`.
 */
 #[derive(Debug)]
-pub enum InstanceProvider {
+pub enum InstanceProviderVariant {
     None(NoneProvider),
     FileSourcemap(FileSourcemapProvider),
     RojoSourcemap(RojoSourcemapProvider),
 }
 
-impl InstanceProvider {
-    pub fn from_kind(kind: InstanceProviderKind, settings: Settings) -> Self {
+impl InstanceProviderVariant {
+    pub fn from_kind(kind: InstanceProviderKind, config: Config) -> Self {
         match kind {
-            InstanceProviderKind::None => Self::None(NoneProvider::new(settings)),
+            InstanceProviderKind::None => Self::None(NoneProvider::new(config)),
             InstanceProviderKind::FileSourcemap => {
-                Self::FileSourcemap(FileSourcemapProvider::new(settings))
+                Self::FileSourcemap(FileSourcemapProvider::new(config))
             }
             InstanceProviderKind::RojoSourcemap => {
-                Self::RojoSourcemap(RojoSourcemapProvider::new(settings))
+                Self::RojoSourcemap(RojoSourcemapProvider::new(config))
             }
         }
     }
@@ -80,8 +80,8 @@ impl InstanceProvider {
     }
 }
 
-impl Default for InstanceProvider {
+impl Default for InstanceProviderVariant {
     fn default() -> Self {
-        Self::from_kind(InstanceProviderKind::default(), Settings::default())
+        Self::from_kind(InstanceProviderKind::default(), Config::default())
     }
 }

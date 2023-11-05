@@ -3,17 +3,17 @@ use tracing::error;
 
 mod file_sourcemap;
 mod none;
-mod provider;
 mod rojo_sourcemap;
 mod shared;
+mod variant;
 
-pub use provider::*;
 pub use shared::*;
+pub use variant::*;
 
 use super::*;
 
 /**
-    A fault-tolerant instance watcher.
+    A fault-tolerant instance provider & watcher.
 
     Prioritizes instance watching in the following order:
 
@@ -22,28 +22,28 @@ use super::*;
     3. Using empty data, which should display as blank in an explorer
 */
 #[derive(Debug, Default)]
-pub struct InstanceWatcher {
-    settings: Settings,
+pub struct InstanceProvider {
+    config: Config,
     last_sourcemap: Option<InstanceNode>,
     last_project: Option<RojoProjectFile>,
-    provider: Option<InstanceProvider>,
+    provider: Option<InstanceProviderVariant>,
 }
 
-impl InstanceWatcher {
-    pub fn new(settings: Settings) -> Self {
+impl InstanceProvider {
+    pub fn new(config: Config) -> Self {
         Self {
-            settings,
+            config,
             last_sourcemap: None,
             last_project: None,
             provider: None,
         }
     }
 
-    async fn update_provider(&mut self, desired_kind: InstanceProviderKind) -> Result<()> {
+    async fn update_inner(&mut self, desired_kind: InstanceProviderKind) -> Result<()> {
         let smap = self.last_sourcemap.as_ref();
         if !matches!(self.provider.as_ref().map(|p| p.kind()), Some(k) if k == desired_kind) {
             // Create, start, and store a new provider, stop the old one if one existed
-            let mut this = InstanceProvider::from_kind(desired_kind, self.settings.clone());
+            let mut this = InstanceProviderVariant::from_kind(desired_kind, self.config.clone());
             match this.start(smap).await {
                 Err(e) => {
                     error!("failed to start provider - {e}");
@@ -84,10 +84,10 @@ impl InstanceWatcher {
         let provider_kind = self.provider.as_ref().map(|p| p.kind());
         if !matches!(provider_kind, Some(InstanceProviderKind::RojoSourcemap)) {
             if is_some {
-                self.update_provider(InstanceProviderKind::FileSourcemap)
+                self.update_inner(InstanceProviderKind::FileSourcemap)
                     .await?;
             } else {
-                self.update_provider(InstanceProviderKind::None).await?;
+                self.update_inner(InstanceProviderKind::None).await?;
             }
         }
 
@@ -116,20 +116,18 @@ impl InstanceWatcher {
         }
 
         // Stop / despawn any spawned process
-        self.update_provider(InstanceProviderKind::None).await?;
+        self.update_inner(InstanceProviderKind::None).await?;
 
         if is_some {
             // We have a project, try to spawn a new process
-            self.update_provider(InstanceProviderKind::RojoSourcemap)
-                .await
+            self.update_inner(InstanceProviderKind::RojoSourcemap).await
         } else {
             // No project, go back to either using manual
             // sourcemaps if we can or simply doing nothing
             if self.last_sourcemap.is_some() {
-                self.update_provider(InstanceProviderKind::FileSourcemap)
-                    .await
+                self.update_inner(InstanceProviderKind::FileSourcemap).await
             } else {
-                self.update_provider(InstanceProviderKind::None).await
+                self.update_inner(InstanceProviderKind::None).await
             }
         }
     }

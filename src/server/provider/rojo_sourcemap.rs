@@ -23,15 +23,15 @@ static REQUIRED_VERSION: Lazy<VersionReq> = Lazy::new(|| VersionReq::parse("7.3.
 */
 #[derive(Debug, Default)]
 pub struct RojoSourcemapProvider {
-    settings: Settings,
+    config: Config,
     version: Option<Version>,
     child: Option<Child>,
 }
 
 impl RojoSourcemapProvider {
-    pub fn new(settings: Settings) -> Self {
+    pub fn new(config: Config) -> Self {
         Self {
-            settings,
+            config,
             version: None,
             child: None,
         }
@@ -60,7 +60,7 @@ impl RojoSourcemapProvider {
 
         // Spawn the sourcemap watching command, which
         // should not fail if our version check was correct
-        let mut child = spawn_rojo_sourcemap(&self.settings)?;
+        let mut child = spawn_rojo_sourcemap(&self.config)?;
 
         // Emit an initial single "null" to let any consumer know watching started
         println!("null");
@@ -108,22 +108,22 @@ async fn get_rojo_version() -> Result<Version> {
         .context("failed to parse rojo --version output")
 }
 
-fn spawn_rojo_sourcemap(settings: &Settings) -> Result<Child> {
+fn spawn_rojo_sourcemap(config: &Config) -> Result<Child> {
     assert!(
-        settings.autogenerate,
+        config.autogenerate,
         "autogenerate must be enabled to spawn rojo sourcemap --watch"
     );
 
     let mut command = Command::new("rojo");
     command
         .arg("sourcemap")
-        .arg(&settings.rojo_project_file)
+        .arg(&config.rojo_project_file)
         .arg("--watch")
         .kill_on_drop(true)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
 
-    if settings.include_non_scripts {
+    if config.include_non_scripts {
         command.arg("--include-non-scripts");
     }
 
