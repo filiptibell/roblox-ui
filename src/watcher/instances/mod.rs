@@ -1,37 +1,37 @@
 use anyhow::Result;
 use tracing::error;
 
-mod file;
-mod node;
+mod file_sourcemap;
 mod provider;
-mod rojo;
+mod rojo_sourcemap;
+mod shared;
 
-use file::*;
-use rojo::*;
+use file_sourcemap::*;
+use rojo_sourcemap::*;
 
-pub use node::*;
 pub use provider::*;
+pub use shared::*;
 
-use super::Settings;
+use super::*;
 
 /**
-    A fault-tolerant sourcemap watcher.
+    A fault-tolerant instance watcher.
 
-    Prioritizes sourcemap watching in the following order:
+    Prioritizes instance watching in the following order:
 
     1. Using `rojo sourcemap --watch`, if a project is available and valid
     2. Using a `sourcemap.json` file, if available and valid
-    3. Using a static sourcemap with no content, which should display as blank in an explorer
+    3. Using empty data, which should display as blank in an explorer
 */
 #[derive(Debug, Default)]
-pub struct SourcemapWatcher {
+pub struct InstanceWatcher {
     settings: Settings,
     last_sourcemap: Option<SourcemapNode>,
     last_project: Option<RojoProjectFile>,
-    provider: Option<SourcemapProvider>,
+    provider: Option<InstanceProvider>,
 }
 
-impl SourcemapWatcher {
+impl InstanceWatcher {
     pub fn new(settings: Settings) -> Self {
         Self {
             settings,
@@ -41,25 +41,25 @@ impl SourcemapWatcher {
         }
     }
 
-    async fn update_provider(&mut self, desired_kind: SourcemapProviderKind) -> Result<()> {
+    async fn update_provider(&mut self, desired_kind: InstanceProviderKind) -> Result<()> {
         if !matches!(self.provider.as_ref().map(|p| p.kind()), Some(k) if k == desired_kind) {
             // Create, start, and store a new provider, stop the old one if one existed
-            let mut this = SourcemapProvider::from_kind(desired_kind, self.settings.clone());
+            let mut this = InstanceProvider::from_kind(desired_kind, self.settings.clone());
             match this.start().await {
                 Err(e) => {
-                    error!("failed to start sourcemap provider - {e}");
+                    error!("failed to start provider - {e}");
                 }
                 Ok(_) => {
                     if let Some(mut last) = self.provider.replace(this) {
                         if let Err(e) = last.stop().await {
-                            error!("failed to stop sourcemap provider - {e}");
+                            error!("failed to stop provider - {e}");
                         }
                     }
                 }
             }
         } else if let Some(this) = self.provider.as_mut() {
             // Desired provider kind did not change, update the current one
-            this.update().await?;
+            this.update(self.last_sourcemap.as_ref()).await?;
         }
         Ok(())
     }
@@ -70,7 +70,7 @@ impl SourcemapWatcher {
             .and_then(|s| match serde_json::from_str(s) {
                 Ok(v) => Some(v),
                 Err(e) => {
-                    error!("failed to deserialize sourcemap - {e}");
+                    error!("failed to deserialize sourcemap file - {e}");
                     None
                 }
             });
@@ -83,11 +83,12 @@ impl SourcemapWatcher {
         // We should not update the current provider if it is rojo,
         // we let that take precendence since it is more efficient
         let provider_kind = self.provider.as_ref().map(|p| p.kind());
-        if !matches!(provider_kind, Some(SourcemapProviderKind::Rojo)) {
+        if !matches!(provider_kind, Some(InstanceProviderKind::RojoSourcemap)) {
             if is_some {
-                self.update_provider(SourcemapProviderKind::File).await?;
+                self.update_provider(InstanceProviderKind::FileSourcemap)
+                    .await?;
             } else {
-                self.update_provider(SourcemapProviderKind::None).await?;
+                self.update_provider(InstanceProviderKind::None).await?;
             }
         }
 
@@ -116,18 +117,20 @@ impl SourcemapWatcher {
         }
 
         // Stop / despawn any spawned process
-        self.update_provider(SourcemapProviderKind::None).await?;
+        self.update_provider(InstanceProviderKind::None).await?;
 
         if is_some {
             // We have a project, try to spawn a new process
-            self.update_provider(SourcemapProviderKind::Rojo).await
+            self.update_provider(InstanceProviderKind::RojoSourcemap)
+                .await
         } else {
             // No project, go back to either using manual
             // sourcemaps if we can or simply doing nothing
             if self.last_sourcemap.is_some() {
-                self.update_provider(SourcemapProviderKind::File).await
+                self.update_provider(InstanceProviderKind::FileSourcemap)
+                    .await
             } else {
-                self.update_provider(SourcemapProviderKind::None).await
+                self.update_provider(InstanceProviderKind::None).await
             }
         }
     }

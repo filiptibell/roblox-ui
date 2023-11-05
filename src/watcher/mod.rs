@@ -5,12 +5,12 @@ use tracing::{debug, error};
 
 mod async_cache;
 mod async_watcher;
+mod instances;
 mod settings;
-mod sourcemap;
 
 use async_cache::*;
 use async_watcher::*;
-use sourcemap::*;
+use instances::*;
 
 pub use settings::*;
 
@@ -21,12 +21,12 @@ pub struct WatcherArguments {
 
 pub struct Watcher {
     args: WatcherArguments,
-    smap: SourcemapWatcher,
+    smap: InstanceWatcher,
 }
 
 impl Watcher {
     pub fn new(args: WatcherArguments) -> Self {
-        let smap = SourcemapWatcher::new(args.settings.clone());
+        let smap = InstanceWatcher::new(args.settings.clone());
         Self { args, smap }
     }
 
