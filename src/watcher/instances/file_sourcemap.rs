@@ -7,14 +7,14 @@ use super::*;
 
 #[derive(Debug, Default)]
 pub struct FileSourcemapProvider {
-    settings: Settings,
+    _settings: Settings,
     sourcemap: Option<InstanceNode>,
 }
 
 impl FileSourcemapProvider {
     pub fn new(settings: Settings) -> Self {
         Self {
-            settings,
+            _settings: settings,
             sourcemap: None,
         }
     }
