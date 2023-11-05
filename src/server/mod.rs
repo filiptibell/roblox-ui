@@ -3,34 +3,24 @@ use std::path::Path;
 use anyhow::Result;
 use tracing::{debug, error};
 
-mod async_cache;
-mod async_watcher;
-mod instances;
-mod settings;
+mod config;
+mod notify;
+mod provider;
 
-use async_cache::*;
-use async_watcher::*;
-use instances::*;
+use notify::*;
+use provider::*;
 
-pub use settings::*;
+pub use config::*;
 
-#[derive(Debug, Clone)]
-pub struct WatcherArguments {
-    pub settings: Settings,
+pub struct Server {
+    config: Config,
+    instances: InstanceProvider,
 }
 
-pub struct Watcher {
-    arguments: WatcherArguments,
-    instances: InstanceWatcher,
-}
-
-impl Watcher {
-    pub fn new(arguments: WatcherArguments) -> Self {
-        let instances = InstanceWatcher::new(arguments.settings.clone());
-        Self {
-            arguments,
-            instances,
-        }
+impl Server {
+    pub fn new(config: Config) -> Self {
+        let instances = InstanceProvider::new(config.clone());
+        Self { config, instances }
     }
 
     async fn handle_event(
@@ -39,9 +29,9 @@ impl Watcher {
         file_path: &Path,
         file_contents: Option<&str>,
     ) {
-        let res = if self.arguments.settings.is_sourcemap_path(file_path) {
+        let res = if self.config.is_sourcemap_path(file_path) {
             self.instances.update_file(file_contents).await
-        } else if self.arguments.settings.is_rojo_project_path(file_path) {
+        } else if self.config.is_rojo_project_path(file_path) {
             self.instances.update_rojo(file_contents).await
         } else {
             Ok(())
@@ -52,8 +42,8 @@ impl Watcher {
         }
     }
 
-    pub async fn watch(mut self) -> Result<()> {
-        let paths = self.arguments.settings.paths_to_watch();
+    pub async fn serve(mut self) -> Result<()> {
+        let paths = self.config.paths_to_watch();
         let paths = paths.iter().map(|p| p.to_path_buf()).collect::<Vec<_>>();
 
         // Emit an initial 'null' (meaning no instance data) to

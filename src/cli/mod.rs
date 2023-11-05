@@ -4,21 +4,21 @@ use clap::{Parser, Subcommand};
 mod generate_classes;
 mod generate_icons;
 mod generate_reflection;
+mod serve;
 mod tracing;
-mod watch;
 
 use generate_classes::*;
 use generate_icons::*;
 use generate_reflection::*;
+use serve::*;
 use tracing::*;
-use watch::*;
 
 #[derive(Debug, Clone, Subcommand)]
 pub enum CliSubcommand {
     GenerateClasses(GenerateClassesCommand),
     GenerateIcons(GenerateIconsCommand),
     GenerateReflection(GenerateReflectionCommand),
-    Watch(WatchCommand),
+    Serve(ServeCommand),
 }
 
 #[derive(Debug, Clone, Parser)]
@@ -40,7 +40,7 @@ impl Cli {
             CliSubcommand::GenerateClasses(cmd) => cmd.run().await,
             CliSubcommand::GenerateIcons(cmd) => cmd.run().await,
             CliSubcommand::GenerateReflection(cmd) => cmd.run().await,
-            CliSubcommand::Watch(cmd) => cmd.run().await,
+            CliSubcommand::Serve(cmd) => cmd.run().await,
         }
     }
 }

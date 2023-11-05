@@ -1,7 +1,7 @@
 use anyhow::Result;
 use tracing::trace;
 
-use crate::watcher::Settings;
+use crate::server::Config;
 
 /**
     An instance provider that emits `null` once at startup.
@@ -10,14 +10,12 @@ use crate::watcher::Settings;
 */
 #[derive(Debug, Default)]
 pub struct NoneProvider {
-    _settings: Settings,
+    _config: Config,
 }
 
 impl NoneProvider {
-    pub fn new(settings: Settings) -> Self {
-        Self {
-            _settings: settings,
-        }
+    pub fn new(config: Config) -> Self {
+        Self { _config: config }
     }
 
     pub async fn start(&mut self) -> Result<()> {

@@ -1,7 +1,7 @@
 use anyhow::Result;
 use tracing::trace;
 
-use crate::watcher::Settings;
+use crate::server::Config;
 
 use super::*;
 
@@ -10,14 +10,14 @@ use super::*;
 */
 #[derive(Debug, Default)]
 pub struct FileSourcemapProvider {
-    _settings: Settings,
+    _config: Config,
     sourcemap: Option<InstanceNode>,
 }
 
 impl FileSourcemapProvider {
-    pub fn new(settings: Settings) -> Self {
+    pub fn new(config: Config) -> Self {
         Self {
-            _settings: settings,
+            _config: config,
             sourcemap: None,
         }
     }

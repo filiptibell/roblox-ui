@@ -9,7 +9,7 @@ use path_clean::PathClean;
 use serde::Deserialize;
 
 /**
-    Settings for instance watching.
+    Configuration for the instance server.
 
     Note that all fields are optional for deserializing or parsing
     from a string, but have some defaults that may be surprising:
@@ -20,7 +20,7 @@ use serde::Deserialize;
     - `sourcemap_file` defaults to `sourcemap.json` in the current directory
 */
 #[derive(Debug, Clone)]
-pub struct Settings {
+pub struct Config {
     // TODO: Implement include_non_scripts and ignore_globs where relevant
     pub autogenerate: bool,
     pub include_non_scripts: bool,
@@ -29,7 +29,7 @@ pub struct Settings {
     pub sourcemap_file: PathBuf,
 }
 
-impl Settings {
+impl Config {
     pub fn is_sourcemap_path(&self, path: &Path) -> bool {
         let abs_path = make_absolute_and_clean(path);
         abs_path == self.sourcemap_file
@@ -52,14 +52,14 @@ impl Settings {
     }
 }
 
-impl Default for Settings {
+impl Default for Config {
     fn default() -> Self {
-        SettingsDeserializable::default().into()
+        ConfigDeserializable::default().into()
     }
 }
 
-impl From<SettingsDeserializable> for Settings {
-    fn from(value: SettingsDeserializable) -> Self {
+impl From<ConfigDeserializable> for Config {
+    fn from(value: ConfigDeserializable) -> Self {
         Self {
             autogenerate: value.autogenerate,
             include_non_scripts: value.include_non_scripts,
@@ -70,23 +70,23 @@ impl From<SettingsDeserializable> for Settings {
     }
 }
 
-impl FromStr for Settings {
+impl FromStr for Config {
     type Err = serde_json::Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut this = serde_json::from_str::<SettingsDeserializable>(s)?;
+        let mut this = serde_json::from_str::<ConfigDeserializable>(s)?;
         this.apply_path_defaults_and_clean();
         Ok(this.into())
     }
 }
 
 /**
-    Proxy struct for parsing and/or deserializing a `Settings` struct.
+    Proxy struct for parsing and/or deserializing a `Config` struct.
 
-    All fields are optional and have defaults, check [`Settings`] for additional details.
+    All fields are optional and have defaults, check [`Config`] for additional details.
 */
 #[derive(Deserialize)]
 #[serde(default, rename_all = "camelCase")]
-struct SettingsDeserializable {
+struct ConfigDeserializable {
     autogenerate: bool,
     include_non_scripts: bool,
     ignore_globs: Vec<String>,
@@ -94,7 +94,7 @@ struct SettingsDeserializable {
     sourcemap_file: Option<PathBuf>,
 }
 
-impl SettingsDeserializable {
+impl ConfigDeserializable {
     fn apply_path_defaults_and_clean(&mut self) {
         self.rojo_project_file
             .replace(match &self.rojo_project_file {
@@ -108,7 +108,7 @@ impl SettingsDeserializable {
     }
 }
 
-impl Default for SettingsDeserializable {
+impl Default for ConfigDeserializable {
     fn default() -> Self {
         let mut this = Self {
             autogenerate: true,

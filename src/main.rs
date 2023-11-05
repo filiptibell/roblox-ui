@@ -2,8 +2,8 @@ mod classes;
 mod cli;
 mod icons;
 mod reflection;
+mod server;
 mod util;
-mod watcher;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
