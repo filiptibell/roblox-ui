@@ -3,10 +3,13 @@ use tracing::error;
 
 mod file_sourcemap;
 mod none;
+mod rojo;
+mod rojo_client;
 mod rojo_sourcemap;
 mod shared;
 mod variant;
 
+pub use rojo::*;
 pub use shared::*;
 pub use variant::*;
 
@@ -104,6 +107,13 @@ impl InstanceProvider {
                     None
                 }
             });
+
+        if let Some(proj) = &proj {
+            if let Some(_session) = proj.find_serve_session().await {
+                // FUTURE: Use a "rojo session provider" if we manage to find
+                // info!("found rojo serve session - {session:#?}");
+            }
+        }
 
         // Replace stored project manifest, and check if it changed.
         // If the rojo project did not change substantially or in
