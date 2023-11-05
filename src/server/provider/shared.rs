@@ -1,4 +1,4 @@
-use std::cmp::Ordering;
+use std::{cmp::Ordering, net::SocketAddr};
 
 use serde::{Deserialize, Serialize, Serializer};
 
@@ -7,7 +7,8 @@ use serde::{Deserialize, Serialize, Serializer};
 
     Intentionally omits instance / child definitions.
 */
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
 pub struct RojoProjectFileTree {
     #[serde(rename = "$path")]
     pub path: Option<String>,
@@ -22,16 +23,30 @@ pub struct RojoProjectFileTree {
     care about and determine would need to cause a restart of any rojo
     executable command(s), they will be compared in providers using Eq
 */
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
 pub struct RojoProjectFile {
     pub name: String,
     pub tree: RojoProjectFileTree,
+    pub serve_address: Option<String>,
+    pub serve_port: Option<u16>,
 }
 
 impl RojoProjectFile {
     pub fn from_json(json: impl AsRef<str>) -> Result<Self, serde_json::Error> {
         serde_json::from_str::<Self>(json.as_ref())
+    }
+
+    pub fn _serve_address(&self) -> Option<SocketAddr> {
+        if let Some(addr) = &self.serve_address {
+            if let Ok(parsed) = addr.as_str().parse() {
+                return Some(parsed);
+            }
+        }
+
+        self.serve_port
+            .as_ref()
+            .map(|port| SocketAddr::from(([127, 0, 0, 1], *port)))
     }
 }
 
