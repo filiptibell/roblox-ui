@@ -8,30 +8,55 @@ use super::*;
 #[derive(Debug, Default)]
 pub struct FileSourcemapProvider {
     settings: Settings,
-    current: Option<SourcemapNode>,
+    sourcemap: Option<InstanceNode>,
 }
 
 impl FileSourcemapProvider {
     pub fn new(settings: Settings) -> Self {
         Self {
             settings,
-            current: None,
+            sourcemap: None,
         }
     }
 
-    pub async fn start(&mut self) -> Result<()> {
+    pub async fn start(&mut self, smap: Option<&InstanceNode>) -> Result<()> {
         trace!("starting file provider");
+
+        match smap {
+            None => println!("null"),
+            Some(init) => {
+                self.sourcemap.replace(init.clone());
+                println!("{}", init.diff_full());
+            }
+        }
+
         Ok(())
     }
 
-    pub async fn update(&mut self, smap: Option<&SourcemapNode>) -> Result<()> {
+    pub async fn update(&mut self, smap: Option<&InstanceNode>) -> Result<()> {
         trace!("updating file provider");
-        // TODO: Diff new sourcemap arg against the last known one here, emit changes, etc
+
+        match (self.sourcemap.take(), smap) {
+            (None, None) => {}
+            (Some(_), None) => {
+                println!("null")
+            }
+            (None, Some(new)) => {
+                self.sourcemap.replace(new.clone());
+                println!("{}", new.diff_full())
+            }
+            (Some(old), Some(new)) => {
+                self.sourcemap.replace(new.clone());
+                println!("{}", old.diff_with(new));
+            }
+        }
+
         Ok(())
     }
 
     pub async fn stop(&mut self) -> Result<()> {
         trace!("stopping file provider");
+
         Ok(())
     }
 }
