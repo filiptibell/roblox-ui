@@ -51,13 +51,13 @@ impl FromStr for ValueKind {
 
 #[derive(Debug, Clone, Error)]
 pub enum ValueParseError {
-    #[error("{0}")]
+    #[error("invalid conversion-  {0}")]
     InvalidConversion(&'static str),
-    #[error("{0}")]
+    #[error(transparent)]
     InvalidBool(#[from] ParseBoolError),
-    #[error("{0}")]
+    #[error(transparent)]
     ParseFloat(#[from] ParseFloatError),
-    #[error("{0}")]
+    #[error(transparent)]
     ParseInt(#[from] ParseIntError),
 }
 
