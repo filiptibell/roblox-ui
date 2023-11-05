@@ -41,6 +41,14 @@ fn matching_paths(event: &DebouncedEvent, relevant_paths: &[PathBuf]) -> Vec<Pat
         .collect::<Vec<_>>()
 }
 
+/**
+    An adapter to make the file watcher from `notify_debouncer_full` async.
+
+    Starts watching for file changes when constructed using `AsyncFileWatcher::new`
+    and a list of file paths to watch, and stops watching for file changes when dropped.
+
+    Does not perform any cleanup or canonicalization of file paths.
+*/
 pub struct AsyncFileWatcher {
     // NOTE: We can't drop the debouncer since it would then stop watching,
     // so we keep it in the same struct that the consumer gets events from

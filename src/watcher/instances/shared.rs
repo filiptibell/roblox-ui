@@ -1,7 +1,12 @@
-use std::{cmp::Ordering, path::PathBuf};
+use std::cmp::Ordering;
 
 use serde::{Deserialize, Serialize, Serializer};
 
+/**
+    Stub representing a rojo project configuration file tree.
+
+    Intentionally omits instance / child definitions.
+*/
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct RojoProjectFileTree {
     #[serde(rename = "$path")]
@@ -10,9 +15,13 @@ pub struct RojoProjectFileTree {
     pub class_name: Option<String>,
 }
 
-// NOTE: Project file structs should only contain the information we
-// care about and determine would need to cause a restart of any rojo
-// executable command(s), they will be compared in providers using Eq
+/**
+    Stub representing a rojo project configuration file.
+
+    NOTE: Project file structs should only contain the information we
+    care about and determine would need to cause a restart of any rojo
+    executable command(s), they will be compared in providers using Eq
+*/
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RojoProjectFile {
@@ -26,13 +35,20 @@ impl RojoProjectFile {
     }
 }
 
+/**
+    A node representing an instance and its children.
+
+    Analogous and currently identical in structure to a Rojo sourcemap node.
+*/
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InstanceNode {
+    // TODO: Do some benchmarking and see if it would be better to
+    // use one of Arc<str>, Rc<str>, Cow<str> for all this string data
     pub class_name: String,
     pub name: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub file_paths: Vec<PathBuf>,
+    pub file_paths: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub children: Vec<InstanceNode>,
 }
@@ -68,6 +84,12 @@ impl PartialOrd for InstanceNode {
     }
 }
 
+/**
+    A variant containing the different kinds of node diffs currently implemented.
+
+    - `InstanceNodeDiffVariant::Full` for a full (new) instance tree
+    - `InstanceNodeDiffVariant::Diff` for a diff between an old and new instance tree
+*/
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(tag = "kind", content = "data")]
 enum InstanceNodeDiffVariant<'a> {
@@ -75,6 +97,13 @@ enum InstanceNodeDiffVariant<'a> {
     Diff(InstanceNodeDiff),
 }
 
+/**
+    An instance diff node, which can be one of three variants:
+
+    - `InstanceNodeDiff:Unchanged` which serializes as `"U"`
+    - `InstanceNodeDiff:Removed` which serializes as `"R"`
+    - `InstanceNodeDiff:AddedOrChanged` which serializes as plain data similar to an `InstanceNode`
+*/
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(untagged)]
 enum InstanceNodeDiff {
@@ -88,7 +117,7 @@ enum InstanceNodeDiff {
         #[serde(skip_serializing_if = "Option::is_none")]
         name: Option<String>,
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
-        file_paths: Vec<PathBuf>,
+        file_paths: Vec<String>,
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         children: Vec<InstanceNodeDiff>,
     },
@@ -124,11 +153,17 @@ impl InstanceNodeDiff {
             Vec::new()
         };
 
-        Self::AddedOrChanged {
-            class_name,
-            name,
-            file_paths,
-            children: Self::child_diff(&old.children, &new.children),
+        let children = Self::child_diff(&old.children, &new.children);
+        if class_name.is_some() || name.is_some() || !file_paths.is_empty() || !children.is_empty()
+        {
+            Self::AddedOrChanged {
+                class_name,
+                name,
+                file_paths,
+                children,
+            }
+        } else {
+            Self::Unchanged
         }
     }
 
@@ -144,11 +179,7 @@ impl InstanceNodeDiff {
             let item_old = vec_old.get(index);
             let item_new = vec_new.get(index);
             if len_old > index && len_new > index {
-                if item_new != item_old {
-                    children.push(Self::new_diff(item_old.unwrap(), item_new.unwrap()));
-                } else {
-                    children.push(Self::Unchanged);
-                }
+                children.push(Self::new_diff(item_old.unwrap(), item_new.unwrap()));
             } else if len_old > index {
                 children.push(Self::Removed);
             } else if len_new > index {

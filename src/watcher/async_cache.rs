@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::{
     collections::HashMap,
     env::current_dir,
@@ -9,8 +11,14 @@ use anyhow::{bail, Result};
 use path_clean::PathClean;
 use tokio::fs;
 
-#[derive(Debug, Clone, Default)]
+/**
+    A simple file cache for async file watching.
+
+    Performs cleanup and canonicalization of file paths and stores current contents of files.
+*/
+#[derive(Debug, Clone)]
 pub struct AsyncFileCache {
+    dir: PathBuf,
     files: HashMap<PathBuf, String>,
 }
 
@@ -19,14 +27,15 @@ impl AsyncFileCache {
         Self::default()
     }
 
-    pub fn get(&self, path: &Path) -> Option<&str> {
+    pub fn get_file(&self, path: &Path) -> Option<&str> {
         self.files.get(path).map(|s| s.as_str())
     }
 
-    pub async fn update(&mut self, path: &Path) -> Result<Option<AsyncFileEvent>> {
-        let path = match path.clean() {
-            p if p.is_relative() => current_dir().expect("failed to get current dir").join(p),
-            p => p,
+    pub async fn read_file_at(&mut self, path: &Path) -> Result<Option<AsyncFileEvent>> {
+        let path = if path.is_relative() {
+            self.dir.join(path).clean()
+        } else {
+            path.clean()
         };
 
         let prev = self.files.get(&path);
@@ -47,6 +56,20 @@ impl AsyncFileCache {
     }
 }
 
+impl Default for AsyncFileCache {
+    fn default() -> Self {
+        Self {
+            dir: current_dir().expect("failed to get current dir"),
+            files: HashMap::new(),
+        }
+    }
+}
+
+/**
+    A simplified event variant for file watching.
+
+    Should be used exclusively by `AsyncFileCache`.
+*/
 #[derive(Debug, Clone, Copy)]
 pub enum AsyncFileEvent {
     Created,
@@ -66,6 +89,18 @@ impl fmt::Display for AsyncFileEvent {
 }
 
 impl AsyncFileEvent {
+    pub const fn is_created(&self) -> bool {
+        matches!(self, Self::Created)
+    }
+
+    pub const fn is_modified(&self) -> bool {
+        matches!(self, Self::Modified)
+    }
+
+    pub const fn is_removed(&self) -> bool {
+        matches!(self, Self::Removed)
+    }
+
     fn new(prev: Option<&str>, this: Option<&str>) -> Option<Self> {
         match (prev, this) {
             (None, None) => None,

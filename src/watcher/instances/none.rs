@@ -3,6 +3,11 @@ use tracing::trace;
 
 use crate::watcher::Settings;
 
+/**
+    An instance provider that emits `null` once at startup.
+
+    Used when no other instance providers are available.
+*/
 #[derive(Debug, Default)]
 pub struct NoneProvider {
     _settings: Settings,

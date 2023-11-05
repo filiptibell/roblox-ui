@@ -17,6 +17,10 @@ use super::*;
 const SPAWN_TIMEOUT: Duration = Duration::from_secs(5);
 static REQUIRED_VERSION: Lazy<VersionReq> = Lazy::new(|| VersionReq::parse("7.3.0").unwrap());
 
+/**
+    An instance provider that uses a rojo project
+    file and `rojo sourcemap --watch` to emit diffs.
+*/
 #[derive(Debug, Default)]
 pub struct RojoSourcemapProvider {
     settings: Settings,
@@ -105,15 +109,15 @@ async fn get_rojo_version() -> Result<Version> {
 }
 
 fn spawn_rojo_sourcemap(settings: &Settings) -> Result<Child> {
-    let project_path = settings
-        .rojo_project_file
-        .as_deref()
-        .expect("rojo provider should not be started without a project path");
+    assert!(
+        settings.autogenerate,
+        "autogenerate must be enabled to spawn rojo sourcemap --watch"
+    );
 
     let mut command = Command::new("rojo");
     command
         .arg("sourcemap")
-        .arg(project_path)
+        .arg(&settings.rojo_project_file)
         .arg("--watch")
         .kill_on_drop(true)
         .stdout(Stdio::piped())
