@@ -41,15 +41,15 @@ impl InstanceProvider {
         }
     }
 
-    pub async fn start(&mut self) -> Result<()> {
+    pub async fn start(&mut self, smap: Option<&InstanceNode>) -> Result<()> {
         match self {
             Self::None => Ok(()),
-            Self::FileSourcemap(f) => f.start().await,
+            Self::FileSourcemap(f) => f.start(smap).await,
             Self::RojoSourcemap(r) => r.start().await,
         }
     }
 
-    pub async fn update(&mut self, smap: Option<&SourcemapNode>) -> Result<()> {
+    pub async fn update(&mut self, smap: Option<&InstanceNode>) -> Result<()> {
         match self {
             Self::None => Ok(()),
             Self::FileSourcemap(f) => f.update(smap).await,

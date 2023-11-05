@@ -1,5 +1,5 @@
 use anyhow::Result;
-use tracing::error;
+use tracing::{error, info};
 
 mod file_sourcemap;
 mod provider;
@@ -26,7 +26,7 @@ use super::*;
 #[derive(Debug, Default)]
 pub struct InstanceWatcher {
     settings: Settings,
-    last_sourcemap: Option<SourcemapNode>,
+    last_sourcemap: Option<InstanceNode>,
     last_project: Option<RojoProjectFile>,
     provider: Option<InstanceProvider>,
 }
@@ -42,10 +42,11 @@ impl InstanceWatcher {
     }
 
     async fn update_provider(&mut self, desired_kind: InstanceProviderKind) -> Result<()> {
+        let smap = self.last_sourcemap.as_ref();
         if !matches!(self.provider.as_ref().map(|p| p.kind()), Some(k) if k == desired_kind) {
             // Create, start, and store a new provider, stop the old one if one existed
             let mut this = InstanceProvider::from_kind(desired_kind, self.settings.clone());
-            match this.start().await {
+            match this.start(smap).await {
                 Err(e) => {
                     error!("failed to start provider - {e}");
                 }
@@ -59,15 +60,15 @@ impl InstanceWatcher {
             }
         } else if let Some(this) = self.provider.as_mut() {
             // Desired provider kind did not change, update the current one
-            this.update(self.last_sourcemap.as_ref()).await?;
+            this.update(smap).await?;
         }
         Ok(())
     }
 
     pub async fn update_file(&mut self, contents: Option<&str>) -> Result<()> {
-        let smap: Option<SourcemapNode> = contents
+        let smap = contents
             .and_then(|c| if c.is_empty() { None } else { Some(c) })
-            .and_then(|s| match serde_json::from_str(s) {
+            .and_then(|s| match InstanceNode::from_json(s) {
                 Ok(v) => Some(v),
                 Err(e) => {
                     error!("failed to deserialize sourcemap file - {e}");
@@ -96,9 +97,9 @@ impl InstanceWatcher {
     }
 
     pub async fn update_rojo(&mut self, contents: Option<&str>) -> Result<()> {
-        let proj: Option<RojoProjectFile> = contents
+        let proj = contents
             .and_then(|c| if c.is_empty() { None } else { Some(c) })
-            .and_then(|s| match serde_json::from_str(s) {
+            .and_then(|s| match RojoProjectFile::from_json(s) {
                 Ok(v) => Some(v),
                 Err(e) => {
                     error!("failed to deserialize rojo project file - {e}");

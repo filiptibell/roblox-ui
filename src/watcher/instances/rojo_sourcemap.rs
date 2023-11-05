@@ -55,8 +55,11 @@ impl RojoSourcemapProvider {
         self.version.replace(version);
 
         // Spawn the sourcemap watching command, which
-        // should not fail if our version check is correct
+        // should not fail if our version check was correct
         let mut child = spawn_rojo_sourcemap(&self.settings)?;
+
+        // Emit an initial single "null" to let any consumer know watching started
+        println!("null");
 
         // Grab the output streams to process sourcemaps, and store the
         // child process in our struct so it doesn't drop and get killed
@@ -130,14 +133,19 @@ fn handle_rojo_streams(stdout: ChildStdout, stderr: ChildStderr) {
     // for our tasks here, they will exit when the rojo process dies
 
     task::spawn(async move {
+        let mut current = None::<InstanceNode>;
         let mut reader = BufReader::new(stdout);
         let mut buffer = String::new();
         while reader.read_line(&mut buffer).await.unwrap() > 0 {
             trace!("got sourcemap with {} characters", buffer.len());
-            match serde_json::from_str::<SourcemapNode>(&buffer) {
+            match InstanceNode::from_json(&buffer) {
                 Err(e) => error!("failed to deserialize rojo sourcemap: {e}"),
-                Ok(_) => {
-                    // TODO: Handle new sourcemap
+                Ok(smap) => {
+                    match current.take() {
+                        None => println!("{}", smap.diff_full()),
+                        Some(old) => println!("{}", old.diff_with(&smap)),
+                    }
+                    current.replace(smap);
                 }
             }
             buffer.clear();
