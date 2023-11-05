@@ -15,6 +15,18 @@ pub enum InstanceProviderKind {
     RojoSourcemap,
 }
 
+/**
+    A container enum for different instance providers.
+
+    Should be constructed using [`InstanceProvider::from_kind`], with three main methods:
+
+    - [`InstanceProvider::start`] to start the provider
+    - [`InstanceProvider::update`] to update the provider with new optional instance root node
+    - [`InstanceProvider::stop`] to stop the provider
+
+    The `start` and `stop` methods may only be called once, and the
+    `update` method must be called *after* `start`, but *before* `stop`.
+*/
 #[derive(Debug)]
 pub enum InstanceProvider {
     None(NoneProvider),
@@ -65,5 +77,11 @@ impl InstanceProvider {
             Self::FileSourcemap(f) => f.stop().await,
             Self::RojoSourcemap(r) => r.stop().await,
         }
+    }
+}
+
+impl Default for InstanceProvider {
+    fn default() -> Self {
+        Self::from_kind(InstanceProviderKind::default(), Settings::default())
     }
 }

@@ -20,46 +20,59 @@ pub struct WatcherArguments {
 }
 
 pub struct Watcher {
-    args: WatcherArguments,
-    smap: InstanceWatcher,
+    arguments: WatcherArguments,
+    instances: InstanceWatcher,
 }
 
 impl Watcher {
-    pub fn new(args: WatcherArguments) -> Self {
-        let smap = InstanceWatcher::new(args.settings.clone());
-        Self { args, smap }
+    pub fn new(arguments: WatcherArguments) -> Self {
+        let instances = InstanceWatcher::new(arguments.settings.clone());
+        Self {
+            arguments,
+            instances,
+        }
     }
 
-    async fn handle_event(&mut self, event: AsyncFileEvent, path: &Path, contents: Option<&str>) {
-        let res = if self.args.settings.is_sourcemap_path(path) {
-            self.smap.update_file(contents).await
-        } else if self.args.settings.is_project_path(path) {
-            self.smap.update_rojo(contents).await
+    async fn handle_event(
+        &mut self,
+        event: AsyncFileEvent,
+        file_path: &Path,
+        file_contents: Option<&str>,
+    ) {
+        let res = if self.arguments.settings.is_sourcemap_path(file_path) {
+            self.instances.update_file(file_contents).await
+        } else if self.arguments.settings.is_rojo_project_path(file_path) {
+            self.instances.update_rojo(file_contents).await
         } else {
             Ok(())
         };
         match res {
-            Err(e) => error!("{:?} -> {} -> {e:?}", event, path.display()),
-            Ok(_) => debug!("{:?} -> {}", event, path.display()),
+            Err(e) => error!("{:?} -> {} -> {e:?}", event, file_path.display()),
+            Ok(_) => debug!("{:?} -> {}", event, file_path.display()),
         }
     }
 
     pub async fn watch(mut self) -> Result<()> {
-        let paths = self.args.settings.relevant_paths();
+        let paths = self.arguments.settings.paths_to_watch();
+        let paths = paths.iter().map(|p| p.to_path_buf()).collect::<Vec<_>>();
+
+        // Emit an initial 'null' (meaning no instance data) to
+        // let the consumer know instance watching has started
+        println!("null");
 
         // Update all paths once initially
         let mut cache = AsyncFileCache::new();
         for path in &paths {
-            if let Some(event) = cache.update(path).await? {
-                self.handle_event(event, path, cache.get(path)).await;
+            if let Some(event) = cache.read_file_at(path).await? {
+                self.handle_event(event, path, cache.get_file(path)).await;
             }
         }
 
         // Watch for further changes to the paths
         let mut watcher = AsyncFileWatcher::new(paths)?;
         while let Some(path) = watcher.recv().await {
-            if let Some(event) = cache.update(&path).await? {
-                self.handle_event(event, &path, cache.get(&path)).await;
+            if let Some(event) = cache.read_file_at(&path).await? {
+                self.handle_event(event, &path, cache.get_file(&path)).await;
             }
         }
 

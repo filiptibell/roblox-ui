@@ -5,6 +5,9 @@ use crate::watcher::Settings;
 
 use super::*;
 
+/**
+    An instance provider that uses a `sourcemap.json` file to emit diffs.
+*/
 #[derive(Debug, Default)]
 pub struct FileSourcemapProvider {
     _settings: Settings,

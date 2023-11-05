@@ -4,68 +4,141 @@ use std::{
     str::FromStr,
 };
 
+use once_cell::sync::Lazy;
 use path_clean::PathClean;
 use serde::Deserialize;
 
-#[derive(Debug, Clone, Default, Deserialize)]
-#[serde(default, rename_all = "camelCase")]
+/**
+    Settings for instance watching.
+
+    Note that all fields are optional for deserializing or parsing
+    from a string, but have some defaults that may be surprising:
+
+    - `autogenerate` defaults to `true`
+    - `include_non_scripts` defaults to `true`
+    - `rojo_project_file` defaults to `default.project.json` in the current directory
+    - `sourcemap_file` defaults to `sourcemap.json` in the current directory
+*/
+#[derive(Debug, Clone)]
 pub struct Settings {
+    // TODO: Implement include_non_scripts and ignore_globs where relevant
     pub autogenerate: bool,
-    pub ignore_globs: Vec<String>,
     pub include_non_scripts: bool,
-    pub rojo_project_file: Option<PathBuf>,
+    pub ignore_globs: Vec<String>,
+    pub rojo_project_file: PathBuf,
+    pub sourcemap_file: PathBuf,
+}
+
+impl Settings {
+    pub fn is_sourcemap_path(&self, path: &Path) -> bool {
+        let abs_path = make_absolute_and_clean(path);
+        abs_path == self.sourcemap_file
+    }
+
+    pub fn is_rojo_project_path(&self, path: &Path) -> bool {
+        let abs_path = make_absolute_and_clean(path);
+        abs_path == self.rojo_project_file
+    }
+
+    pub fn paths_to_watch(&self) -> Vec<&Path> {
+        if self.autogenerate {
+            vec![
+                self.sourcemap_file.as_ref(),
+                self.rojo_project_file.as_ref(),
+            ]
+        } else {
+            vec![self.sourcemap_file.as_ref()]
+        }
+    }
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        SettingsDeserializable::default().into()
+    }
+}
+
+impl From<SettingsDeserializable> for Settings {
+    fn from(value: SettingsDeserializable) -> Self {
+        Self {
+            autogenerate: value.autogenerate,
+            include_non_scripts: value.include_non_scripts,
+            ignore_globs: value.ignore_globs,
+            rojo_project_file: value.rojo_project_file.expect("missing rojo_project_file"),
+            sourcemap_file: value.sourcemap_file.expect("missing sourcemap_file"),
+        }
+    }
 }
 
 impl FromStr for Settings {
     type Err = serde_json::Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        serde_json::from_str(s)
+        let mut this = serde_json::from_str::<SettingsDeserializable>(s)?;
+        this.apply_path_defaults_and_clean();
+        Ok(this.into())
     }
 }
 
-impl Settings {
-    pub fn is_sourcemap_path(&self, path: &Path) -> bool {
-        let smap = PathBuf::from("sourcemap.json");
+/**
+    Proxy struct for parsing and/or deserializing a `Settings` struct.
 
-        let abs_smap = clean_and_make_absolute(&smap);
-        let abs_path = clean_and_make_absolute(path);
+    All fields are optional and have defaults, check [`Settings`] for additional details.
+*/
+#[derive(Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+struct SettingsDeserializable {
+    autogenerate: bool,
+    include_non_scripts: bool,
+    ignore_globs: Vec<String>,
+    rojo_project_file: Option<PathBuf>,
+    sourcemap_file: Option<PathBuf>,
+}
 
-        abs_smap == abs_path
-    }
-
-    pub fn is_project_path(&self, path: &Path) -> bool {
-        if !self.autogenerate {
-            false
-        } else if let Some(project_path) = &self.rojo_project_file {
-            let abs_proj = clean_and_make_absolute(project_path);
-            let abs_path = clean_and_make_absolute(path);
-
-            abs_proj == abs_path
-        } else {
-            false
-        }
-    }
-
-    pub fn relevant_paths(&self) -> Vec<PathBuf> {
-        let mut paths = vec![PathBuf::from("sourcemap.json")];
-
-        if self.autogenerate {
-            if let Some(project_path) = &self.rojo_project_file {
-                paths.push(project_path.to_path_buf());
-            }
-        }
-
-        for path in paths.iter_mut() {
-            *path = clean_and_make_absolute(path);
-        }
-
-        paths
+impl SettingsDeserializable {
+    fn apply_path_defaults_and_clean(&mut self) {
+        self.rojo_project_file
+            .replace(match &self.rojo_project_file {
+                Some(proj) => make_absolute_and_clean(proj),
+                None => DEFAULT_ROJO_PROJECT_PATH.to_path_buf(),
+            });
+        self.sourcemap_file.replace(match &self.sourcemap_file {
+            Some(smap) => make_absolute_and_clean(smap),
+            None => DEFAULT_SOURCEMAP_PATH.to_path_buf(),
+        });
     }
 }
 
-fn clean_and_make_absolute(path: &Path) -> PathBuf {
-    match path.clean() {
-        p if p.is_relative() => current_dir().expect("failed to get current dir").join(p),
-        p => p,
+impl Default for SettingsDeserializable {
+    fn default() -> Self {
+        let mut this = Self {
+            autogenerate: true,
+            include_non_scripts: true,
+            ignore_globs: vec![],
+            rojo_project_file: None,
+            sourcemap_file: None,
+        };
+        this.apply_path_defaults_and_clean();
+        this
+    }
+}
+
+static DEFAULT_SOURCEMAP_PATH: Lazy<PathBuf> = Lazy::new(|| {
+    let path = PathBuf::from("sourcemap.json");
+    make_absolute_and_clean(&path)
+});
+
+static DEFAULT_ROJO_PROJECT_PATH: Lazy<PathBuf> = Lazy::new(|| {
+    let path = PathBuf::from("default.project.json");
+    make_absolute_and_clean(&path)
+});
+
+fn make_absolute_and_clean(path: &Path) -> PathBuf {
+    if path.is_relative() {
+        current_dir()
+            .expect("failed to get current dir")
+            .join(path)
+            .clean()
+    } else {
+        path.clean()
     }
 }
