@@ -3,7 +3,6 @@ use std::{process::Stdio, time::Duration};
 use anyhow::{bail, Context, Result};
 use once_cell::sync::Lazy;
 use semver::{Version, VersionReq};
-use serde::Deserialize;
 use tracing::{debug, error, trace};
 
 use tokio::{
@@ -13,37 +12,19 @@ use tokio::{
     time::sleep,
 };
 
-use crate::watcher::{sourcemap::SourcemapNode, Settings};
+use super::*;
 
 const SPAWN_TIMEOUT: Duration = Duration::from_secs(5);
 static REQUIRED_VERSION: Lazy<VersionReq> = Lazy::new(|| VersionReq::parse("7.3.0").unwrap());
 
-// NOTE: Project file structs should only contain the information we
-// care about and determine would need to cause a restart of the rojo
-// sourcemap watch command, they will be compared in provider using Eq
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RojoProjectFile {
-    name: String,
-    tree: RojoProjectFileTree,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
-pub struct RojoProjectFileTree {
-    #[serde(rename = "$path")]
-    path: Option<String>,
-    #[serde(rename = "$className")]
-    class_name: Option<String>,
-}
-
 #[derive(Debug, Default)]
-pub struct RojoProvider {
+pub struct RojoSourcemapProvider {
     settings: Settings,
     version: Option<Version>,
     child: Option<Child>,
 }
 
-impl RojoProvider {
+impl RojoSourcemapProvider {
     pub fn new(settings: Settings) -> Self {
         Self {
             settings,
@@ -67,7 +48,7 @@ impl RojoProvider {
         let version = Version::new(version.major, version.minor, version.patch);
         if !REQUIRED_VERSION.matches(&version) {
             bail!(
-                "installed rojo version does not meet the requirement {}",
+                "installed rojo version does not meet the {} requirement",
                 *REQUIRED_VERSION
             );
         }

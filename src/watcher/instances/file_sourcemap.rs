@@ -3,15 +3,15 @@ use tracing::trace;
 
 use crate::watcher::Settings;
 
-use super::SourcemapNode;
+use super::*;
 
 #[derive(Debug, Default)]
-pub struct FileProvider {
+pub struct FileSourcemapProvider {
     settings: Settings,
     current: Option<SourcemapNode>,
 }
 
-impl FileProvider {
+impl FileSourcemapProvider {
     pub fn new(settings: Settings) -> Self {
         Self {
             settings,
@@ -24,10 +24,9 @@ impl FileProvider {
         Ok(())
     }
 
-    pub async fn update(&mut self) -> Result<()> {
+    pub async fn update(&mut self, smap: Option<&SourcemapNode>) -> Result<()> {
         trace!("updating file provider");
-        // TODO: Grab the stored sourcemap, diff it against
-        // the last known one here, emit changes, etc
+        // TODO: Diff new sourcemap arg against the last known one here, emit changes, etc
         Ok(())
     }
 
