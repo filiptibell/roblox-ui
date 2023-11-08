@@ -8,11 +8,12 @@ use tracing::{debug, error, trace};
 use tokio::{
     io::{AsyncBufReadExt, AsyncReadExt, BufReader},
     process::{Child, ChildStderr, ChildStdout, Command},
+    sync::mpsc::UnboundedSender,
     task::{self},
     time::sleep,
 };
 
-use super::*;
+use super::{super::config::Config, InstanceNode};
 
 const SPAWN_TIMEOUT: Duration = Duration::from_secs(5);
 static REQUIRED_VERSION: Lazy<VersionReq> = Lazy::new(|| VersionReq::parse("7.3.0").unwrap());
@@ -21,17 +22,19 @@ static REQUIRED_VERSION: Lazy<VersionReq> = Lazy::new(|| VersionReq::parse("7.3.
     An instance provider that uses a rojo project
     file and `rojo sourcemap --watch` to emit diffs.
 */
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct RojoSourcemapProvider {
     config: Config,
+    sender: UnboundedSender<Option<InstanceNode>>,
     version: Option<Version>,
     child: Option<Child>,
 }
 
 impl RojoSourcemapProvider {
-    pub fn new(config: Config) -> Self {
+    pub fn new(config: Config, sender: UnboundedSender<Option<InstanceNode>>) -> Self {
         Self {
             config,
+            sender,
             version: None,
             child: None,
         }
@@ -63,13 +66,13 @@ impl RojoSourcemapProvider {
         let mut child = spawn_rojo_sourcemap(&self.config)?;
 
         // Emit an initial single "null" to let any consumer know watching started
-        println!("null");
+        self.sender.send(None).ok();
 
         // Grab the output streams to process sourcemaps, and store the
         // child process in our struct so it doesn't drop and get killed
         let stdout = child.stdout.take().unwrap();
         let stderr = child.stderr.take().unwrap();
-        handle_rojo_streams(stdout, stderr);
+        handle_rojo_streams(stdout, stderr, self.sender.clone());
         self.child.replace(child);
 
         Ok(())
@@ -132,12 +135,15 @@ fn spawn_rojo_sourcemap(config: &Config) -> Result<Child> {
         .context("failed to spawn rojo sourcemap --watch")
 }
 
-fn handle_rojo_streams(stdout: ChildStdout, stderr: ChildStderr) {
+fn handle_rojo_streams(
+    stdout: ChildStdout,
+    stderr: ChildStderr,
+    sender: UnboundedSender<Option<InstanceNode>>,
+) {
     // Note that we don' really need to care about the join handles
     // for our tasks here, they will exit when the rojo process dies
 
     task::spawn(async move {
-        let mut current = None::<InstanceNode>;
         let mut reader = BufReader::new(stdout);
         let mut buffer = String::new();
         while reader.read_line(&mut buffer).await.unwrap() > 0 {
@@ -145,11 +151,7 @@ fn handle_rojo_streams(stdout: ChildStdout, stderr: ChildStderr) {
             match InstanceNode::from_json(&buffer) {
                 Err(e) => error!("failed to deserialize rojo sourcemap: {e}"),
                 Ok(smap) => {
-                    match current.take() {
-                        None => println!("{}", smap.diff_full()),
-                        Some(old) => println!("{}", old.diff_with(&smap)),
-                    }
-                    current.replace(smap);
+                    sender.send(Some(smap)).ok();
                 }
             }
             buffer.clear();

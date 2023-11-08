@@ -1,37 +1,30 @@
 use anyhow::Result;
+use tokio::sync::mpsc::UnboundedSender;
 use tracing::trace;
 
-use crate::server::Config;
-
-use super::*;
+use super::{super::config::Config, InstanceNode};
 
 /**
     An instance provider that uses a `sourcemap.json` file to emit diffs.
 */
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct FileSourcemapProvider {
     _config: Config,
-    sourcemap: Option<InstanceNode>,
+    sender: UnboundedSender<Option<InstanceNode>>,
 }
 
 impl FileSourcemapProvider {
-    pub fn new(config: Config) -> Self {
+    pub fn new(config: Config, sender: UnboundedSender<Option<InstanceNode>>) -> Self {
         Self {
             _config: config,
-            sourcemap: None,
+            sender,
         }
     }
 
     pub async fn start(&mut self, smap: Option<&InstanceNode>) -> Result<()> {
         trace!("starting file provider");
 
-        match smap {
-            None => println!("null"),
-            Some(init) => {
-                self.sourcemap.replace(init.clone());
-                println!("{}", init.diff_full());
-            }
-        }
+        self.sender.send(smap.cloned()).ok();
 
         Ok(())
     }
@@ -39,20 +32,7 @@ impl FileSourcemapProvider {
     pub async fn update(&mut self, smap: Option<&InstanceNode>) -> Result<()> {
         trace!("updating file provider");
 
-        match (self.sourcemap.take(), smap) {
-            (None, None) => {}
-            (Some(_), None) => {
-                println!("null")
-            }
-            (None, Some(new)) => {
-                self.sourcemap.replace(new.clone());
-                println!("{}", new.diff_full())
-            }
-            (Some(old), Some(new)) => {
-                self.sourcemap.replace(new.clone());
-                println!("{}", old.diff_with(new));
-            }
-        }
+        self.sender.send(smap.cloned()).ok();
 
         Ok(())
     }
