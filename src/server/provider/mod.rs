@@ -1,4 +1,5 @@
 use anyhow::Result;
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tracing::error;
 
 mod file_sourcemap;
@@ -13,7 +14,7 @@ pub use rojo::*;
 pub use shared::*;
 pub use variant::*;
 
-use super::*;
+use super::config::Config;
 
 /**
     A fault-tolerant instance provider & watcher.
@@ -24,9 +25,11 @@ use super::*;
     2. Using a `sourcemap.json` file, if available and valid
     3. Using empty data, which should display as blank in an explorer
 */
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct InstanceProvider {
     config: Config,
+    instance_tx: UnboundedSender<Option<InstanceNode>>,
+    instance_rx: Option<UnboundedReceiver<Option<InstanceNode>>>,
     last_sourcemap: Option<InstanceNode>,
     last_project: Option<RojoProjectFile>,
     provider: Option<InstanceProviderVariant>,
@@ -34,8 +37,11 @@ pub struct InstanceProvider {
 
 impl InstanceProvider {
     pub fn new(config: Config) -> Self {
+        let (instance_tx, instance_rx) = unbounded_channel();
         Self {
             config,
+            instance_tx,
+            instance_rx: Some(instance_rx),
             last_sourcemap: None,
             last_project: None,
             provider: None,
@@ -46,7 +52,11 @@ impl InstanceProvider {
         let smap = self.last_sourcemap.as_ref();
         if !matches!(self.provider.as_ref().map(|p| p.kind()), Some(k) if k == desired_kind) {
             // Create, start, and store a new provider, stop the old one if one existed
-            let mut this = InstanceProviderVariant::from_kind(desired_kind, self.config.clone());
+            let mut this = InstanceProviderVariant::from_kind(
+                desired_kind,
+                self.config.clone(),
+                self.instance_tx.clone(),
+            );
             match this.start(smap).await {
                 Err(e) => {
                     error!("failed to start provider - {e}");
@@ -140,5 +150,9 @@ impl InstanceProvider {
                 self.update_inner(InstanceProviderKind::None).await
             }
         }
+    }
+
+    pub fn take_instance_receiver(&mut self) -> Option<UnboundedReceiver<Option<InstanceNode>>> {
+        self.instance_rx.take()
     }
 }

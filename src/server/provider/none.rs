@@ -1,27 +1,32 @@
 use anyhow::Result;
+use tokio::sync::mpsc::UnboundedSender;
 use tracing::trace;
 
-use crate::server::Config;
+use super::{super::config::Config, InstanceNode};
 
 /**
     An instance provider that emits `null` once at startup.
 
     Used when no other instance providers are available.
 */
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct NoneProvider {
     _config: Config,
+    sender: UnboundedSender<Option<InstanceNode>>,
 }
 
 impl NoneProvider {
-    pub fn new(config: Config) -> Self {
-        Self { _config: config }
+    pub fn new(config: Config, sender: UnboundedSender<Option<InstanceNode>>) -> Self {
+        Self {
+            _config: config,
+            sender,
+        }
     }
 
     pub async fn start(&mut self) -> Result<()> {
         trace!("starting none provider");
 
-        println!("null");
+        self.sender.send(None).ok();
 
         Ok(())
     }

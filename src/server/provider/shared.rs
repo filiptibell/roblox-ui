@@ -1,4 +1,4 @@
-use std::cmp::Ordering;
+use std::{cmp::Ordering, path::PathBuf};
 
 use serde::{Deserialize, Serialize, Serializer};
 
@@ -15,7 +15,7 @@ pub struct InstanceNode {
     pub class_name: String,
     pub name: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub file_paths: Vec<String>,
+    pub file_paths: Vec<PathBuf>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub children: Vec<InstanceNode>,
 }
@@ -27,15 +27,13 @@ impl InstanceNode {
         Ok(node)
     }
 
-    pub fn diff_full(&self) -> String {
-        serde_json::to_string(&InstanceNodeDiffVariant::Full(self))
-            .expect("instance node diff should always be serializable")
+    pub fn diff_full(&self) -> InstanceNodeDiffVariant {
+        InstanceNodeDiffVariant::Full(self)
     }
 
-    pub fn diff_with(&self, other: &Self) -> String {
+    pub fn diff_with(&self, other: &Self) -> InstanceNodeDiffVariant<'_> {
         let changes = InstanceNodeDiff::new_diff(self, other);
-        serde_json::to_string(&InstanceNodeDiffVariant::Diff(changes))
-            .expect("instance node diff should always be serializable")
+        InstanceNodeDiffVariant::Diff(changes)
     }
 }
 
@@ -59,7 +57,7 @@ impl PartialOrd for InstanceNode {
 */
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(tag = "kind", content = "data")]
-enum InstanceNodeDiffVariant<'a> {
+pub enum InstanceNodeDiffVariant<'a> {
     Full(&'a InstanceNode),
     Diff(InstanceNodeDiff),
 }
@@ -73,7 +71,7 @@ enum InstanceNodeDiffVariant<'a> {
 */
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(untagged)]
-enum InstanceNodeDiff {
+pub enum InstanceNodeDiff {
     #[serde(serialize_with = "ser_diff_unchanged")]
     Unchanged,
     #[serde(serialize_with = "ser_diff_removed")]
@@ -84,7 +82,7 @@ enum InstanceNodeDiff {
         #[serde(skip_serializing_if = "Option::is_none")]
         name: Option<String>,
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
-        file_paths: Vec<String>,
+        file_paths: Vec<PathBuf>,
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         children: Vec<InstanceNodeDiff>,
     },

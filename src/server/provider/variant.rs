@@ -1,4 +1,5 @@
 use anyhow::Result;
+use tokio::sync::mpsc::UnboundedSender;
 
 use crate::server::Config;
 
@@ -16,13 +17,13 @@ pub enum InstanceProviderKind {
 }
 
 /**
-    A container enum for different instance providers.
+    A container enum abstracting over different instance providers.
 
-    Should be constructed using [`InstanceProvider::from_kind`], with three main methods:
+    Should be constructed using [`InstanceProviderVariant::from_kind`], with three main methods:
 
-    - [`InstanceProvider::start`] to start the provider
-    - [`InstanceProvider::update`] to update the provider with new optional instance root node
-    - [`InstanceProvider::stop`] to stop the provider
+    - [`InstanceProviderVariant::start`] to start the provider
+    - [`InstanceProviderVariant::update`] to update the provider with new optional instance root node
+    - [`InstanceProviderVariant::stop`] to stop the provider
 
     The `start` and `stop` methods may only be called once, and the
     `update` method must be called *after* `start`, but *before* `stop`.
@@ -35,14 +36,18 @@ pub enum InstanceProviderVariant {
 }
 
 impl InstanceProviderVariant {
-    pub fn from_kind(kind: InstanceProviderKind, config: Config) -> Self {
+    pub fn from_kind(
+        kind: InstanceProviderKind,
+        config: Config,
+        sender: UnboundedSender<Option<InstanceNode>>,
+    ) -> Self {
         match kind {
-            InstanceProviderKind::None => Self::None(NoneProvider::new(config)),
+            InstanceProviderKind::None => Self::None(NoneProvider::new(config, sender)),
             InstanceProviderKind::FileSourcemap => {
-                Self::FileSourcemap(FileSourcemapProvider::new(config))
+                Self::FileSourcemap(FileSourcemapProvider::new(config, sender))
             }
             InstanceProviderKind::RojoSourcemap => {
-                Self::RojoSourcemap(RojoSourcemapProvider::new(config))
+                Self::RojoSourcemap(RojoSourcemapProvider::new(config, sender))
             }
         }
     }
@@ -77,11 +82,5 @@ impl InstanceProviderVariant {
             Self::FileSourcemap(f) => f.stop().await,
             Self::RojoSourcemap(r) => r.stop().await,
         }
-    }
-}
-
-impl Default for InstanceProviderVariant {
-    fn default() -> Self {
-        Self::from_kind(InstanceProviderKind::default(), Config::default())
     }
 }

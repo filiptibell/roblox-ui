@@ -1,69 +1,52 @@
-use std::path::Path;
+use std::sync::Arc;
 
-use anyhow::Result;
-use tracing::{debug, error};
+use anyhow::{Context, Result};
+use tokio::{
+    sync::{mpsc::unbounded_channel, Mutex as AsyncMutex},
+    task::JoinSet,
+};
 
 mod config;
 mod notify;
 mod provider;
-
-use notify::*;
-use provider::*;
+mod rpc;
+mod tasks;
 
 pub use config::*;
 
 pub struct Server {
     config: Config,
-    instances: InstanceProvider,
 }
 
 impl Server {
     pub fn new(config: Config) -> Self {
-        let instances = InstanceProvider::new(config.clone());
-        Self { config, instances }
+        Self { config }
     }
 
-    async fn handle_event(
-        &mut self,
-        event: AsyncFileEvent,
-        file_path: &Path,
-        file_contents: Option<&str>,
-    ) {
-        let res = if self.config.is_sourcemap_path(file_path) {
-            self.instances.update_file(file_contents).await
-        } else if self.config.is_rojo_project_path(file_path) {
-            self.instances.update_rojo(file_contents).await
-        } else {
-            Ok(())
-        };
-        match res {
-            Err(e) => error!("{:?} -> {} -> {e:?}", event, file_path.display()),
-            Ok(_) => debug!("{:?} -> {}", event, file_path.display()),
-        }
-    }
+    pub async fn serve(self) -> Result<()> {
+        let (file_event_tx, file_event_rx) = unbounded_channel();
 
-    pub async fn serve(mut self) -> Result<()> {
-        let paths = self.config.paths_to_watch();
-        let paths = paths.iter().map(|p| p.to_path_buf()).collect::<Vec<_>>();
+        let instance_provider = provider::InstanceProvider::new(self.config.clone());
+        let instance_provider = Arc::new(AsyncMutex::new(instance_provider));
 
-        // Emit an initial 'null' (meaning no instance data) to
-        // let the consumer know instance watching has started
-        println!("null");
+        // Spawn all of our tasks: watch files -> provide instances -> serve instances
+        let mut set = JoinSet::new();
+        set.spawn(tasks::serve_instances(
+            self.config.clone(),
+            Arc::clone(&instance_provider),
+        ));
+        set.spawn(tasks::provide_instances(
+            self.config.clone(),
+            Arc::clone(&instance_provider),
+            file_event_rx,
+        ));
+        set.spawn(tasks::watch_files(self.config.clone(), file_event_tx));
 
-        // Update all paths once initially
-        let mut cache = AsyncFileCache::new();
-        for path in &paths {
-            if let Some(event) = cache.read_file_at(path).await? {
-                self.handle_event(event, path, cache.get_file(path)).await;
-            }
-        }
-
-        // Watch for further changes to the paths
-        let mut watcher = AsyncFileWatcher::new(paths)?;
-        while let Some(path) = watcher.recv().await {
-            if let Some(event) = cache.read_file_at(&path).await? {
-                self.handle_event(event, &path, cache.get_file(&path)).await;
-            }
+        // Whenever a task errors fatally, we should bubble that up, which
+        // will drop our JoinSet and cancel all of our other tasks as well
+        while let Some(res) = set.join_next().await {
+            res.context("failed to join task")?
+                .context("task errored")?;
         }
 
         Ok(())
