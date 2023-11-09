@@ -70,10 +70,12 @@ pub async fn serve_instances(
             }
             Some(root_node) => {
                 RpcMessage::new_notification("InstanceDiff")
-                    .with_data(match current_node.as_ref() {
-                        None => root_node.diff_full(),
-                        Some(c) => c.diff_with(&root_node),
-                    })?
+                    .with_data(root_node.diff_full())?
+                    // TODO: Enable granular diffs when extension supports it
+                    // .with_data(match current_node.as_ref() {
+                    //     None => root_node.diff_full(),
+                    //     Some(c) => c.diff_with(&root_node),
+                    // })?
                     .write_to(&mut stdout)
                     .await?;
                 current_node.replace(root_node);

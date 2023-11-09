@@ -571,10 +571,3 @@ const forceCloseTextDocument = async (
 	}
 	return [wasClosed, hadFocus];
 };
-
-const forceShowTextDocument = async (uri: vscode.Uri) => {
-	if ((await pathMetadata(uri.fsPath)).isFile) {
-		const textDoc = await vscode.workspace.openTextDocument(uri);
-		await vscode.window.showTextDocument(textDoc);
-	}
-};
