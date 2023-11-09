@@ -70,14 +70,14 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.workspace.onDidChangeWorkspaceFolders((event) => {
 			for (const addedFolder of event.added) {
-				connectWorkspace(addedFolder, settings, treeProvider);
+				connectWorkspace(context, addedFolder, settings, treeProvider);
 			}
 			for (const removedFolder of event.removed) {
 				disconnectWorkspace(removedFolder);
 			}
 		})
 	);
-	connectAllWorkspaces(settings, treeProvider);
+	connectAllWorkspaces(context, settings, treeProvider);
 }
 
 export function deactivate() {

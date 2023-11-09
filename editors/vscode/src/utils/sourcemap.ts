@@ -1,29 +1,19 @@
 import * as vscode from "vscode";
 import * as path from "path";
-import * as cp from "child_process";
-
-const fs = vscode.workspace.fs;
 
 const anymatch = require("anymatch");
 
 import { SettingsProvider } from "../providers/settings";
 import { RojoTreeProvider } from "../providers/explorer";
 
-import {
-	ProjectRootNode,
-	isInitFilePath,
-	mergeProjectIntoSourcemap,
-	cacheProjectFileSystemPaths,
-	rojoSourcemapWatch,
-	isBinaryFilePath,
-} from "./rojo";
-import { pathMetadata } from "./files";
+import { isInitFilePath, isBinaryFilePath } from "./rojo";
 import {
 	findPackageSource,
 	findPackageSourceNode,
 	parseWallySpec,
 } from "./wally";
 import { MetadataProvider } from "../providers/metadata";
+import { RpcMessage, startServer } from "./server";
 
 const PACKAGE_CLASS_NAME = "Package";
 
@@ -346,163 +336,35 @@ export const areSourcemapNodesEqual = (
 	return true;
 };
 
-export const connectSourcemapUsingRojo = (
+export const connectSourcemapUsingServer = (
+	context: vscode.ExtensionContext,
 	workspacePath: string,
 	settings: SettingsProvider,
 	treeProvider: RojoTreeProvider
 ): [() => boolean, () => void, () => void] => {
-	let destroyed: boolean = false;
-	let projectFileContents: string | null = null;
-	let currentChildProcess: cp.ChildProcessWithoutNullStreams | null = null;
-
-	// Create a file watcher for the project file
-	const projectFilePath = `${workspacePath}/${
-		settings.get("sourcemap.rojoProjectFile") || "default.project.json"
-	}`;
-	const projectFileWatcher =
-		vscode.workspace.createFileSystemWatcher(projectFilePath);
-
-	// Create the callback that will watch
-	// and generate a sourcemap for our tree
-	let lastSourcemap: SourcemapNode | undefined;
-	const updateProjectFile = async (contents: string | null) => {
-		if (projectFileContents !== contents) {
-			projectFileContents = contents;
-			// Kill any previous child process
-			if (currentChildProcess) {
-				currentChildProcess.kill();
-				currentChildProcess = null;
-			}
-			// If we got a project file, spawn a new rojo process
-			// that will generate sourcemaps and watch for changes
-			if (projectFileContents && !destroyed) {
-				// Parse the project file and get rid of file paths (not directories)
-				let projectFileNode: ProjectRootNode | undefined;
-				try {
-					projectFileNode = JSON.parse(projectFileContents);
-					if (projectFileNode) {
-						await cacheProjectFileSystemPaths(
-							workspacePath,
-							projectFilePath,
-							projectFileNode
-						);
-					}
-				} catch (e) {
-					vscode.window.showWarningMessage(
-						`Failed to read the project file at ${projectFilePath}` +
-							"\nSome explorer functionality may not be available" +
-							`\n${e}`
-					);
-				}
-				if (destroyed) {
-					return;
-				}
-				// Spawn the rojo process
-				const callbacks = {
-					loading: (_: any) =>
-						treeProvider.setLoading(workspacePath, projectFilePath),
-					errored: (_: any, errorMessage: string) =>
-						treeProvider.setError(workspacePath, errorMessage),
-					update: async (_: any, sourcemap: SourcemapNode) => {
-						if (projectFileNode) {
-							mergeProjectIntoSourcemap(
-								workspacePath,
-								projectFileNode,
-								sourcemap
-							);
-						}
-						await postprocessSourcemap(
-							workspacePath,
-							settings,
-							sourcemap
-						);
-						lastSourcemap = sourcemap;
-						treeProvider.clearError(workspacePath);
-						treeProvider.update(workspacePath, sourcemap);
-					},
-				};
-				currentChildProcess = rojoSourcemapWatch(
-					workspacePath,
-					settings,
-					callbacks
-				);
-			}
-		}
-	};
-
-	// Create callback for manually refreshing and reloading the sourcemap
-	const refresh = () => {
-		if (lastSourcemap) {
-			treeProvider.update(workspacePath, lastSourcemap, true);
-			return true;
-		} else {
-			return false;
-		}
-	};
-	const reload = () => {
-		if (destroyed) {
-			return;
-		}
-		rojoSourcemapWatch(workspacePath, settings, {
-			loading: () =>
-				treeProvider.setLoading(workspacePath, projectFilePath),
-			errored: () => {},
-			update: (childProcess, sourcemap) => {
+	// Create a callback for handling rpc messages
+	let lastSourcemap: SourcemapNode | null = null;
+	const callback = (_: any, message: RpcMessage) => {
+		if (
+			message.kind === "Notification" &&
+			message.data.method === "InstanceDiff"
+		) {
+			const sourcemap: SourcemapNode | null =
+				message.data.value?.data ?? null;
+			if (sourcemap !== null) {
+				postprocessSourcemap(workspacePath, settings, sourcemap);
 				treeProvider.update(workspacePath, sourcemap);
-				childProcess.kill();
-			},
-		});
-	};
-
-	// Create callback for disconnecting (destroying)
-	// everything created for this workspace folder
-	const destroy = () => {
-		if (!destroyed) {
-			destroyed = true;
-			updateProjectFile(null);
-			projectFileWatcher.dispose();
-			treeProvider.delete(workspacePath);
-		}
-	};
-
-	// Listen to the project file changing and also read it once initially
-	const readProjectFile = async () => {
-		if ((await pathMetadata(projectFilePath)).isFile) {
-			treeProvider.setLoading(workspacePath, projectFilePath);
-			try {
-				await fs
-					.readFile(vscode.Uri.file(projectFilePath))
-					.then((bytes) => bytes.toString())
-					.then(updateProjectFile);
-			} catch (e) {
+			} else {
 				treeProvider.delete(workspacePath);
-				vscode.window.showErrorMessage(
-					`Failed to read the project file at ${projectFilePath}\n${e}`
-				);
 			}
-		} else {
-			treeProvider.delete(workspacePath);
+			lastSourcemap = sourcemap;
 		}
 	};
-	projectFileWatcher.onDidCreate(readProjectFile);
-	projectFileWatcher.onDidChange(readProjectFile);
-	projectFileWatcher.onDidDelete(readProjectFile);
-	readProjectFile();
 
-	return [refresh, reload, destroy];
-};
+	// Start the server
+	let childProcess = startServer(context, workspacePath, settings, callback);
 
-export const connectSourcemapUsingFile = (
-	workspacePath: string,
-	settings: SettingsProvider,
-	treeProvider: RojoTreeProvider
-): [() => boolean, () => void, () => void] => {
-	// Create a file watcher for the sourcemap
-	const sourcemapPath = `${workspacePath}/sourcemap.json`;
-	const fileWatcher = vscode.workspace.createFileSystemWatcher(sourcemapPath);
-
-	// Create callback for refreshing & reloading sourcemap
-	let lastSourcemap: SourcemapNode | undefined;
+	// Create callback for refreshing & reloading server
 	const refresh = () => {
 		if (lastSourcemap) {
 			treeProvider.update(workspacePath, lastSourcemap, true);
@@ -512,32 +374,19 @@ export const connectSourcemapUsingFile = (
 		}
 	};
 	const reload = async () => {
-		treeProvider.setLoading(workspacePath, sourcemapPath);
-		try {
-			const sourcemap: SourcemapNode = await fs
-				.readFile(vscode.Uri.file(sourcemapPath))
-				.then((bytes) => bytes.toString())
-				.then(JSON.parse);
-			postprocessSourcemap(workspacePath, settings, sourcemap);
-			lastSourcemap = sourcemap;
-			treeProvider.clearError(workspacePath);
-			treeProvider.update(workspacePath, sourcemap);
-		} catch (err) {
-			const errorMessage = `${err ?? ""}`;
-			treeProvider.setError(workspacePath, errorMessage);
-		}
+		childProcess.kill();
+		childProcess = startServer(context, workspacePath, settings, callback);
 	};
 
 	// Create callback for disconnecting (destroying)
 	// everything created for this workspace folder
 	const destroy = () => {
 		treeProvider.delete(workspacePath);
-		fileWatcher.dispose();
+		childProcess.kill();
 	};
 
-	// Start watching the sourcemap for changes and update once initially
-	fileWatcher.onDidChange(reload);
-	reload();
+	// Set as initially loading
+	treeProvider.setLoading(workspacePath, undefined);
 
 	return [refresh, reload, destroy];
 };
