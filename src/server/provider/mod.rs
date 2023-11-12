@@ -7,6 +7,7 @@ mod none;
 mod rojo;
 mod rojo_client;
 mod rojo_sourcemap;
+mod rojo_stub;
 mod shared;
 mod variant;
 
@@ -50,6 +51,7 @@ impl InstanceProvider {
 
     async fn update_inner(&mut self, desired_kind: InstanceProviderKind) -> Result<()> {
         let smap = self.last_sourcemap.as_ref();
+        let proj = self.last_project.as_ref();
         if !matches!(self.provider.as_ref().map(|p| p.kind()), Some(k) if k == desired_kind) {
             // Create, start, and store a new provider, stop the old one if one existed
             let mut this = InstanceProviderVariant::from_kind(
@@ -57,7 +59,7 @@ impl InstanceProvider {
                 self.config.clone(),
                 self.instance_tx.clone(),
             );
-            match this.start(smap).await {
+            match this.start(smap, proj).await {
                 Err(e) => {
                     error!("failed to start provider - {e}");
                 }
@@ -71,7 +73,7 @@ impl InstanceProvider {
             }
         } else if let Some(this) = self.provider.as_mut() {
             // Desired provider kind did not change, update the current one
-            this.update(smap).await?;
+            this.update(smap, proj).await?;
         }
         Ok(())
     }

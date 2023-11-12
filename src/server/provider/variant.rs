@@ -5,7 +5,7 @@ use crate::server::Config;
 
 use super::{
     file_sourcemap::FileSourcemapProvider, none::NoneProvider,
-    rojo_sourcemap::RojoSourcemapProvider, InstanceNode,
+    rojo_sourcemap::RojoSourcemapProvider, InstanceNode, RojoProjectFile,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -60,19 +60,27 @@ impl InstanceProviderVariant {
         }
     }
 
-    pub async fn start(&mut self, smap: Option<&InstanceNode>) -> Result<()> {
+    pub async fn start(
+        &mut self,
+        smap: Option<&InstanceNode>,
+        proj: Option<&RojoProjectFile>,
+    ) -> Result<()> {
         match self {
             Self::None(n) => n.start().await,
             Self::FileSourcemap(f) => f.start(smap).await,
-            Self::RojoSourcemap(r) => r.start().await,
+            Self::RojoSourcemap(r) => r.start(proj).await,
         }
     }
 
-    pub async fn update(&mut self, smap: Option<&InstanceNode>) -> Result<()> {
+    pub async fn update(
+        &mut self,
+        smap: Option<&InstanceNode>,
+        proj: Option<&RojoProjectFile>,
+    ) -> Result<()> {
         match self {
             Self::None(n) => n.update().await,
             Self::FileSourcemap(f) => f.update(smap).await,
-            Self::RojoSourcemap(r) => r.update().await,
+            Self::RojoSourcemap(r) => r.update(proj).await,
         }
     }
 
