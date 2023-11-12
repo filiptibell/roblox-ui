@@ -1,13 +1,14 @@
 use std::{process::Stdio, time::Duration};
 
 use anyhow::{bail, Context, Result};
+use command_group::{AsyncCommandGroup, AsyncGroupChild};
 use once_cell::sync::Lazy;
 use semver::{Version, VersionReq};
 use tracing::{debug, error, trace};
 
 use tokio::{
     io::{AsyncBufReadExt, AsyncReadExt, BufReader},
-    process::{Child, ChildStderr, ChildStdout, Command},
+    process::{ChildStderr, ChildStdout, Command},
     sync::mpsc::UnboundedSender,
     task::{self},
     time::sleep,
@@ -30,7 +31,7 @@ pub struct RojoSourcemapProvider {
     config: Config,
     sender: UnboundedSender<Option<InstanceNode>>,
     version: Option<Version>,
-    child: Option<Child>,
+    child: Option<AsyncGroupChild>,
 }
 
 impl RojoSourcemapProvider {
@@ -80,8 +81,8 @@ impl RojoSourcemapProvider {
 
         // Grab the output streams to process sourcemaps, and store the
         // child process in our struct so it doesn't drop and get killed
-        let stdout = child.stdout.take().unwrap();
-        let stderr = child.stderr.take().unwrap();
+        let stdout = child.inner().stdout.take().unwrap();
+        let stderr = child.inner().stderr.take().unwrap();
         handle_rojo_streams(stdout, stderr, self.sender.clone());
         self.child.replace(child);
 
@@ -104,15 +105,20 @@ impl RojoSourcemapProvider {
 }
 
 async fn get_rojo_version() -> Result<Version> {
-    let version_bytes = Command::new("rojo")
+    let child = Command::new("rojo")
         .arg("--version")
         .kill_on_drop(true)
-        .output()
-        .await
-        .context("failed to spawn rojo --version")?
-        .stdout;
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .group_spawn()
+        .context("failed to execute rojo --version")?;
 
-    let version_string = String::from_utf8(version_bytes)
+    let output = child
+        .wait_with_output()
+        .await
+        .context("failed to wait on rojo --version")?;
+
+    let version_string = String::from_utf8(output.stdout)
         .context("failed to parse rojo --version output into string")?;
 
     version_string
@@ -121,7 +127,7 @@ async fn get_rojo_version() -> Result<Version> {
         .context("failed to parse rojo --version output")
 }
 
-fn spawn_rojo_sourcemap(config: &Config) -> Result<Child> {
+fn spawn_rojo_sourcemap(config: &Config) -> Result<AsyncGroupChild> {
     assert!(
         config.autogenerate,
         "autogenerate must be enabled to spawn rojo sourcemap --watch"
@@ -141,7 +147,7 @@ fn spawn_rojo_sourcemap(config: &Config) -> Result<Child> {
     }
 
     command
-        .spawn()
+        .group_spawn()
         .context("failed to spawn rojo sourcemap --watch")
 }
 
@@ -150,7 +156,7 @@ fn handle_rojo_streams(
     stderr: ChildStderr,
     sender: UnboundedSender<Option<InstanceNode>>,
 ) {
-    // Note that we don' really need to care about the join handles
+    // Note that we don't really need to care about the join handles
     // for our tasks here, they will exit when the rojo process dies
 
     task::spawn(async move {

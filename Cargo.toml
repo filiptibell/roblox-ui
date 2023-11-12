@@ -43,6 +43,7 @@ futures = "0.3"
 tokio = { version = "1.25", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+command-group = { version = "4.1.0", features = ["with-tokio"] }
 
 rbx_reflection = "4.4"
 rbx_reflection_database = "0.2.9"

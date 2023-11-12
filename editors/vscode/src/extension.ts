@@ -80,6 +80,6 @@ export async function activate(context: vscode.ExtensionContext) {
 	connectAllWorkspaces(context, settings, treeProvider);
 }
 
-export function deactivate() {
-	disconnectAllWorkspaces();
+export async function deactivate() {
+	await disconnectAllWorkspaces();
 }

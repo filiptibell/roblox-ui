@@ -4,9 +4,9 @@ import { RojoTreeProvider } from "./providers/explorer";
 import { SettingsProvider } from "./providers/settings";
 import { connectSourcemapUsingServer } from "./utils/sourcemap";
 
-const workspaceRefreshers: Map<string, Function> = new Map();
-const workspaceReloaders: Map<string, Function> = new Map();
-const workspaceDestructors: Map<string, Function> = new Map();
+const workspaceRefreshers: Map<string, () => boolean> = new Map();
+const workspaceReloaders: Map<string, () => void> = new Map();
+const workspaceDestructors: Map<string, () => Promise<void>> = new Map();
 
 export const refreshWorkspace = (folder: vscode.WorkspaceFolder) => {
 	const update = workspaceRefreshers.get(folder.uri.fsPath);
@@ -56,34 +56,46 @@ export const connectWorkspace = async (
 	workspaceDestructors.set(workspacePath, destroy);
 };
 
-export const connectAllWorkspaces = (
+export const connectAllWorkspaces = async (
 	context: vscode.ExtensionContext,
 	settings: SettingsProvider,
 	provider: RojoTreeProvider
 ) => {
+	let promisesDisconnect = new Array<Promise<void>>();
+	let promisesConnect = new Array<Promise<void>>();
+
 	if (vscode.workspace.workspaceFolders) {
 		vscode.workspace.workspaceFolders.forEach((folder) => {
-			disconnectWorkspace(folder);
+			promisesDisconnect.push(disconnectWorkspace(folder));
 		});
 		vscode.workspace.workspaceFolders.forEach((folder) => {
-			connectWorkspace(context, folder, settings, provider);
+			promisesConnect.push(
+				connectWorkspace(context, folder, settings, provider)
+			);
 		});
 	}
+
+	await Promise.all(promisesDisconnect);
+	await Promise.all(promisesConnect);
 };
 
-export const disconnectWorkspace = (folder: vscode.WorkspaceFolder) => {
+export const disconnectWorkspace = async (folder: vscode.WorkspaceFolder) => {
 	const destroy = workspaceDestructors.get(folder.uri.fsPath);
 	if (destroy) {
-		destroy();
+		await destroy();
 	}
 };
 
-export const disconnectAllWorkspaces = () => {
+export const disconnectAllWorkspaces = async () => {
 	let workspacePaths = [...workspaceDestructors.keys()];
+	let workspacePromises = new Array<Promise<void>>();
+
 	workspacePaths.forEach((workspacePath) => {
 		const destroy = workspaceDestructors.get(workspacePath);
 		if (destroy) {
-			destroy();
+			workspacePromises.push(destroy());
 		}
 	});
+
+	await Promise.all(workspacePromises);
 };
