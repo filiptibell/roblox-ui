@@ -43,8 +43,16 @@ impl Config {
     pub fn paths_to_watch(&self) -> Vec<&Path> {
         if self.autogenerate {
             vec![
-                self.sourcemap_file.as_ref(),
+                /*
+                    NOTE: Order here is important! We should put the project
+                    file first, since during initialization these paths and their
+                    corresponding instance providers are started & checked in order.
+
+                    The rojo project provider will take precedence and ensure we never
+                    use the sourcemap, and emit an initial massive instance tree diff.
+                */
                 self.rojo_project_file.as_ref(),
+                self.sourcemap_file.as_ref(),
             ]
         } else {
             vec![self.sourcemap_file.as_ref()]
