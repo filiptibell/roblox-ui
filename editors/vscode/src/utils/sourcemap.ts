@@ -402,9 +402,28 @@ export const connectSourcemapUsingServer = (
 };
 
 const superkill = (cp: cp.ChildProcessWithoutNullStreams) => {
-	cp.kill("SIGHUP");
-	cp.kill("SIGINT");
-	cp.kill("SIGKILL");
-	cp.kill("SIGTERM");
-	cp.kill();
+	if (cp.pid !== undefined) {
+		groupkill(cp.pid, "SIGHUP");
+		groupkill(cp.pid, "SIGINT");
+		groupkill(cp.pid, "SIGKILL");
+		groupkill(cp.pid, "SIGTERM");
+		groupkill(cp.pid);
+		if (cp.exitCode === null) {
+			console.error("Failed to kill Roblox UI process (no exitCode)");
+		}
+	} else {
+		console.error("Failed to kill Roblox UI process (no pid)");
+	}
+};
+
+const groupkill = (pid: number, signal?: string | number) => {
+	try {
+		if (process.platform === "win32") {
+			cp.execSync(`taskkill /PID ${pid} /T /F`);
+		} else {
+			process.kill(-pid, signal);
+		}
+	} catch (e: any) {
+		console.error("Failed to kill process (" + e.toString() + ")");
+	}
 };
