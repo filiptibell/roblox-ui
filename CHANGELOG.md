@@ -8,6 +8,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## `0.2.2` - November 12th, 2023
+
+### Changed
+
+- Roblox UI now starts up in less than 40 milliseconds when using Rojo, eliminating most of the "loading" process and letting you interact with your instances and the Explorer right away.
+
+### Fixed
+
+- Fixed Rojo processes being left running in the background even when VSCode and the Roblox UI extension are closed.
+
 ## `0.2.1` - November 1st, 2023
 
 ### Added
