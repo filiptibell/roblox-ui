@@ -1,19 +1,25 @@
 use std::path::{Path, PathBuf};
 
-use futures::future::{join_all, BoxFuture, FutureExt};
-use once_cell::sync::Lazy;
-use rbx_reflection::{ClassTag, ReflectionDatabase};
-use tokio::fs;
+use futures::future::join_all;
+use tokio::fs::{metadata, read_dir};
 
 use super::{InstanceNode, RojoProjectFile, RojoProjectFileNode};
 
-static CLASS_DATABASE: Lazy<&ReflectionDatabase> = Lazy::new(rbx_reflection_database::get);
+/**
+    Max generation depth is limited here since the user will probably not navigate
+    more than this amount of levels deep before we get some real info back from Rojo,
+    and limiting the depth also limits any filesystem traversal that we have to do
+*/
+const MAX_DEPTH: usize = 4;
 
-// Max generation depth is limited here since the user will probably not navigate
-// more than this amount of levels deep before we get some real info back from Rojo,
-// and limiting the depth also limits any filesystem traversal that we have to do
-const MAX_DEPTH: usize = 3;
+/**
+    File extension -> class name conversions as defined by the Rojo spec:
 
+    https://rojo.space/docs/v7/sync-details/
+
+    Note that we intentionally mark any model / meta files as plain instances
+    here, since we would have to read their contents to get proper class name
+*/
 const CLASS_NAME_SUFFIXES: &[(&str, &str)] = &[
     (".server.luau", "Script"),
     (".server.lua", "Script"),
@@ -21,6 +27,14 @@ const CLASS_NAME_SUFFIXES: &[(&str, &str)] = &[
     (".client.lua", "LocalScript"),
     (".luau", "ModuleScript"),
     (".lua", "ModuleScript"),
+    (".rbxmx", "Instance"),
+    (".rbxm", "Instance"),
+    (".txt", "StringValue"),
+    (".csv", "LocalizationTable"),
+    (".model.json", "Instance"),
+    (".project.json", "Instance"),
+    (".meta.json", "Instance"),
+    (".json", "ModuleScript"),
 ];
 
 /**
@@ -35,89 +49,95 @@ const CLASS_NAME_SUFFIXES: &[(&str, &str)] = &[
 pub async fn generate_project_file_instance_tree(
     project_file: &RojoProjectFile,
 ) -> Option<InstanceNode> {
-    generate_project_node_instance(&project_file.name, project_file.tree.clone(), 1, false).await
+    generate_project_node_instance(
+        project_file.name.to_string(),
+        project_file.tree.clone(),
+        1,
+        false,
+    )
+    .await
 }
 
-fn generate_project_node_instance(
-    name: impl Into<String>,
+#[async_recursion::async_recursion]
+async fn generate_project_node_instance(
+    name: String,
     node: RojoProjectFileNode,
     current_depth: usize,
     parent_is_datamodel: bool,
-) -> BoxFuture<'static, Option<InstanceNode>> {
-    let name = name.into();
+) -> Option<InstanceNode> {
     let mut class_name = node.class_name.clone().or_else(|| {
-        if parent_is_datamodel && is_service_class_name(&name) {
+        // HACK: We assume that all children of a DataModel are services which have
+        // class names that are the same as their names, this is not necessarily
+        // accurate, but to verify this we would have to deserialize and parse
+        // the entire rbx-dom database which unnecessarily adds ~10ms to startup
+        if parent_is_datamodel {
             Some(name.clone())
         } else {
             None
         }
     });
 
-    let fut = async move {
-        // NOTE: If we can't figure out the class name from the project node,
-        // we will try to use any file path it has to figure it out instead
-        if class_name.is_none() {
-            if let Some(path) = node.path.as_deref() {
-                if let Some(class) = class_name_from_path(path).await {
-                    class_name.replace(class.to_string());
-                }
+    // NOTE: If we can't figure out the class name from the project node,
+    // we will try to use any file path it has to figure it out instead
+    if class_name.is_none() {
+        if let Some(path) = node.path.as_deref() {
+            if let Some(class) = class_name_from_path(path).await {
+                class_name.replace(class.to_owned());
             }
         }
+    }
 
-        let class_name = class_name?;
-        let is_data_model = class_name == "DataModel";
+    let class_name = class_name?;
+    let mut children = Vec::new();
+    let mut file_paths = Vec::new();
+    if let Some(path) = node.path.as_deref() {
+        file_paths.push(path.to_path_buf())
+    }
 
-        let mut file_paths = Vec::new();
-        if let Some(path) = node.path.as_deref() {
-            file_paths.push(path.to_path_buf())
-        }
-
-        let mut children = Vec::new();
-
-        if current_depth > MAX_DEPTH {
-            Some(InstanceNode {
-                class_name,
-                name,
-                children,
-                file_paths,
-            })
-        } else {
-            // Add children from direct project nodes
-            let mut child_futs = Vec::new();
-            for (key, value) in &node.other_fields {
-                // Misc metadata keys that we can skip are prefixed with $
-                if matches!(key, s if s.starts_with('$')) {
-                    continue;
+    if current_depth > MAX_DEPTH {
+        Some(InstanceNode {
+            class_name,
+            name,
+            children,
+            file_paths,
+        })
+    } else {
+        // Add children from direct project nodes
+        let child_futs = node
+            .other_fields
+            .into_iter()
+            .filter(|(key, _)| !matches!(key, s if s.starts_with('$')))
+            .filter_map(|(key, value)| {
+                match serde_json::from_value::<RojoProjectFileNode>(value.clone()) {
+                    Ok(val) => Some((key, val)),
+                    Err(_) => None,
                 }
-                let child_node: RojoProjectFileNode = match serde_json::from_value(value.clone()) {
-                    Err(_) => continue,
-                    Ok(node) => node,
-                };
-                child_futs.push(generate_project_node_instance(
+            })
+            .map(|(key, child_node)| {
+                generate_project_node_instance(
                     key,
                     child_node,
                     current_depth + 1,
-                    is_data_model,
-                ));
-            }
-            children.extend(join_all(child_futs).await.into_iter().flatten());
-
-            // Add children by simple file name matching if we got a dir path
-            if let Some(path) = node.path.as_deref() {
-                children.extend(child_nodes_for_path(path).await);
-            }
-
-            // Return the new full node with children
-            Some(InstanceNode {
-                class_name,
-                name,
-                children,
-                file_paths,
+                    class_name == "DataModel",
+                )
             })
-        }
-    };
+            .collect::<Vec<_>>();
+        children.extend(join_all(child_futs).await.into_iter().flatten());
 
-    fut.boxed()
+        // Add instances from filesystem if we got a path,
+        // replicating some very basic behavior from Rojo
+        if let Some(path) = node.path.as_deref() {
+            children.extend(instance_nodes_at_path(path.to_path_buf(), current_depth).await);
+        }
+
+        // Return the new full node with children
+        Some(InstanceNode {
+            class_name,
+            name,
+            children,
+            file_paths,
+        })
+    }
 }
 
 // Please don't look at anything below, it is mostly hacked together ... thank you
@@ -128,7 +148,7 @@ fn file_name_str(path: &Path) -> Option<&str> {
 
 async fn read_dir_all(path: &Path) -> Vec<PathBuf> {
     let mut paths = Vec::new();
-    let mut entries = match fs::read_dir(path).await {
+    let mut entries = match read_dir(path).await {
         Err(_) => return paths,
         Ok(e) => e,
     };
@@ -149,18 +169,9 @@ fn parse_name_and_class_name(path: &Path) -> Option<(&str, &'static str)> {
     None
 }
 
-fn is_service_class_name(name: impl AsRef<str>) -> bool {
-    if let Some(desc) = CLASS_DATABASE.classes.get(name.as_ref()) {
-        if desc.tags.contains(&ClassTag::Service) {
-            return true;
-        }
-    }
-    false
-}
-
 async fn class_name_from_path(path: impl AsRef<Path>) -> Option<&'static str> {
     let path = path.as_ref();
-    let meta = match fs::metadata(path).await {
+    let meta = match metadata(path).await {
         Err(_) => return None,
         Ok(m) => m,
     };
@@ -189,22 +200,29 @@ async fn class_name_from_path(path: impl AsRef<Path>) -> Option<&'static str> {
     }
 }
 
-async fn child_nodes_for_path(path: impl AsRef<Path>) -> Vec<InstanceNode> {
+#[async_recursion::async_recursion]
+async fn instance_nodes_at_path(path: PathBuf, current_depth: usize) -> Vec<InstanceNode> {
     let mut children = Vec::new();
 
-    let path = path.as_ref();
-    let meta = match fs::metadata(path).await {
+    let meta = match metadata(&path).await {
         Err(_) => return children,
         Ok(m) => m,
     };
 
-    if meta.is_dir() {
-        for child_path in read_dir_all(path).await {
-            if let Some((name, class_name)) = parse_name_and_class_name(&child_path) {
+    if meta.is_dir() && current_depth <= MAX_DEPTH {
+        let child_futs = read_dir_all(&path)
+            .await
+            .into_iter()
+            .map(|child_path| instance_nodes_at_path(child_path, current_depth + 1))
+            .collect::<Vec<_>>();
+        children.extend(join_all(child_futs).await.into_iter().flatten());
+    } else if meta.is_file() {
+        if let Some((name, class_name)) = parse_name_and_class_name(&path) {
+            if name != "init" {
                 children.push(InstanceNode {
                     class_name: class_name.to_string(),
                     name: name.to_string(),
-                    file_paths: vec![child_path],
+                    file_paths: vec![path],
                     children: vec![],
                 })
             }
