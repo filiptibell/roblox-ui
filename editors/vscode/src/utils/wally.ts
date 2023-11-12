@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import * as path from "path";
+
 import { SourcemapNode } from "./sourcemap";
 
 const fs = vscode.workspace.fs;

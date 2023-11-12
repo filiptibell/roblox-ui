@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import * as path from "path";
+import * as cp from "child_process";
 
 const anymatch = require("anymatch");
 
@@ -341,7 +342,7 @@ export const connectSourcemapUsingServer = (
 	workspacePath: string,
 	settings: SettingsProvider,
 	treeProvider: RojoTreeProvider
-): [() => boolean, () => void, () => void] => {
+): [() => boolean, () => void, () => Promise<void>] => {
 	// Create a callback for handling rpc messages
 	let lastSourcemap: SourcemapNode | null = null;
 	const callback = (_: any, message: RpcMessage) => {
@@ -373,8 +374,8 @@ export const connectSourcemapUsingServer = (
 			return false;
 		}
 	};
-	const reload = async () => {
-		childProcess.kill();
+	const reload = () => {
+		superkill(childProcess);
 		childProcess = startServer(context, workspacePath, settings, callback);
 	};
 
@@ -382,11 +383,28 @@ export const connectSourcemapUsingServer = (
 	// everything created for this workspace folder
 	const destroy = () => {
 		treeProvider.delete(workspacePath);
-		childProcess.kill();
+		superkill(childProcess);
+		return new Promise<void>((resolve, reject) => {
+			if (childProcess.exitCode) {
+				resolve();
+			} else {
+				childProcess.on("exit", () => {
+					resolve();
+				});
+			}
+		});
 	};
 
 	// Set as initially loading
 	treeProvider.setLoading(workspacePath, undefined);
 
 	return [refresh, reload, destroy];
+};
+
+const superkill = (cp: cp.ChildProcessWithoutNullStreams) => {
+	cp.kill("SIGHUP");
+	cp.kill("SIGINT");
+	cp.kill("SIGKILL");
+	cp.kill("SIGTERM");
+	cp.kill();
 };
