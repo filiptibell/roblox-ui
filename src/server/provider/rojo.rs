@@ -1,36 +1,33 @@
-use std::net::SocketAddr;
+use std::{net::SocketAddr, path::PathBuf};
 
 use anyhow::Result;
 use serde::Deserialize;
+use serde_json::{Map as JsonMap, Value as JsonValue};
 
 use super::rojo_client::{RojoSessionClient, RojoSessionInfo};
 
 /**
-    Stub representing a rojo project configuration file tree.
-
-    Intentionally omits instance / child definitions.
+    Stub representing a rojo project file instance node.
 */
 #[derive(Debug, Clone, PartialEq, Eq, Default, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
-pub struct RojoProjectFileTree {
+pub struct RojoProjectFileNode {
     #[serde(rename = "$path")]
-    pub path: Option<String>,
+    pub path: Option<PathBuf>,
     #[serde(rename = "$className")]
     pub class_name: Option<String>,
+    #[serde(flatten)]
+    pub other_fields: JsonMap<String, JsonValue>,
 }
 
 /**
-    Stub representing a rojo project configuration file.
-
-    NOTE: Project file structs should only contain the information we
-    care about and determine would need to cause a restart of any rojo
-    executable command(s), they will be compared in providers using Eq
+    Stub representing a rojo project file.
 */
 #[derive(Debug, Clone, PartialEq, Eq, Default, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct RojoProjectFile {
     pub name: String,
-    pub tree: RojoProjectFileTree,
+    pub tree: RojoProjectFileNode,
     pub serve_address: Option<String>,
     pub serve_port: Option<u16>,
 }

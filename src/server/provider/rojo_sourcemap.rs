@@ -13,7 +13,10 @@ use tokio::{
     time::sleep,
 };
 
-use super::{super::config::Config, InstanceNode};
+use super::{
+    super::config::Config, rojo_stub::generate_project_file_instance_tree, InstanceNode,
+    RojoProjectFile,
+};
 
 const SPAWN_TIMEOUT: Duration = Duration::from_secs(5);
 static REQUIRED_VERSION: Lazy<VersionReq> = Lazy::new(|| VersionReq::parse("7.3.0").unwrap());
@@ -40,7 +43,7 @@ impl RojoSourcemapProvider {
         }
     }
 
-    pub async fn start(&mut self) -> Result<()> {
+    pub async fn start(&mut self, project_file: Option<&RojoProjectFile>) -> Result<()> {
         trace!("starting rojo provider");
 
         // Spawn rojo to figure out what version
@@ -65,8 +68,15 @@ impl RojoSourcemapProvider {
         // should not fail if our version check was correct
         let mut child = spawn_rojo_sourcemap(&self.config)?;
 
-        // Emit an initial single "null" to let any consumer know watching started
-        self.sender.send(None).ok();
+        // Emit an initial instance tree to let any consumer know watching started,
+        // we will try our best to construct a top-level tree stub here using only
+        // the rojo project file and parsing its 'tree' field, but this may fail
+        if let Some(project_file) = project_file {
+            let tree = generate_project_file_instance_tree(project_file).await;
+            self.sender.send(tree).ok();
+        } else {
+            self.sender.send(None).ok();
+        }
 
         // Grab the output streams to process sourcemaps, and store the
         // child process in our struct so it doesn't drop and get killed
@@ -78,7 +88,7 @@ impl RojoSourcemapProvider {
         Ok(())
     }
 
-    pub async fn update(&mut self) -> Result<()> {
+    pub async fn update(&mut self, _project_file: Option<&RojoProjectFile>) -> Result<()> {
         trace!("updating rojo provider");
         Ok(())
     }
