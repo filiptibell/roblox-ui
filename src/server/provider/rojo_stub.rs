@@ -158,20 +158,6 @@ fn is_service_class_name(name: impl AsRef<str>) -> bool {
     false
 }
 
-fn class_name_from_file_name(name: impl AsRef<str>) -> Option<&'static str> {
-    let parts = name.as_ref().split('.').collect::<Vec<_>>();
-    let last = parts.iter().nth_back(0).copied()?;
-    let second_last = parts.iter().nth_back(1).copied();
-    match last {
-        "luau" | "lua" => Some(match second_last {
-            Some("server") => "Script",
-            Some("client") => "LocalScript",
-            _ => "ModuleScript",
-        }),
-        _ => None,
-    }
-}
-
 async fn class_name_from_path(path: impl AsRef<Path>) -> Option<&'static str> {
     let path = path.as_ref();
     let meta = match fs::metadata(path).await {
@@ -193,8 +179,11 @@ async fn class_name_from_path(path: impl AsRef<Path>) -> Option<&'static str> {
                 .unwrap_or("Folder"),
         )
     } else if meta.is_file() {
-        let file_name = file_name_str(path)?;
-        class_name_from_file_name(file_name)
+        if let Some((_, class_name)) = parse_name_and_class_name(path) {
+            Some(class_name)
+        } else {
+            None
+        }
     } else {
         None
     }
