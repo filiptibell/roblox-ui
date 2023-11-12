@@ -3,6 +3,7 @@ import * as path from "path";
 import * as cp from "child_process";
 
 const anymatch = require("anymatch");
+const kill = require("tree-kill");
 
 import { SettingsProvider } from "../providers/settings";
 import { RojoTreeProvider } from "../providers/explorer";
@@ -15,6 +16,8 @@ import {
 } from "./wally";
 import { MetadataProvider } from "../providers/metadata";
 import { RpcMessage, startServer } from "./server";
+
+const KILL_SIGNALS = ["SIGHUP", "SIGINT", "SIGKILL", "SIGTERM"];
 
 const PACKAGE_CLASS_NAME = "Package";
 
@@ -381,18 +384,9 @@ export const connectSourcemapUsingServer = (
 
 	// Create callback for disconnecting (destroying)
 	// everything created for this workspace folder
-	const destroy = () => {
+	const destroy = async () => {
 		treeProvider.delete(workspacePath);
-		superkill(childProcess);
-		return new Promise<void>((resolve, reject) => {
-			if (childProcess.exitCode) {
-				resolve();
-			} else {
-				childProcess.on("exit", () => {
-					resolve();
-				});
-			}
-		});
+		await superkill(childProcess);
 	};
 
 	// Set as initially loading
@@ -401,29 +395,44 @@ export const connectSourcemapUsingServer = (
 	return [refresh, reload, destroy];
 };
 
-const superkill = (cp: cp.ChildProcessWithoutNullStreams) => {
-	if (cp.pid !== undefined) {
-		groupkill(cp.pid, "SIGHUP");
-		groupkill(cp.pid, "SIGINT");
-		groupkill(cp.pid, "SIGKILL");
-		groupkill(cp.pid, "SIGTERM");
-		groupkill(cp.pid);
-		if (cp.exitCode === null) {
-			console.error("Failed to kill Roblox UI process (no exitCode)");
+const superkill = (cp: cp.ChildProcessWithoutNullStreams): Promise<void> => {
+	return new Promise((resolve, reject) => {
+		if (cp.pid === undefined) {
+			reject("Failed to superkill process: no pid");
+			return;
 		}
-	} else {
-		console.error("Failed to kill Roblox UI process (no pid)");
-	}
-};
 
-const groupkill = (pid: number, signal?: string | number) => {
-	try {
-		if (process.platform === "win32") {
-			cp.execSync(`taskkill /PID ${pid} /T /F`);
-		} else {
-			process.kill(-pid, signal);
+		if (KILL_SIGNALS.length <= 0) {
+			reject("Failed to superkill process: no signals");
+			return;
 		}
-	} catch (e: any) {
-		console.error("Failed to kill process (" + e.toString() + ")");
-	}
+
+		let killErrors = 0;
+		let killSuccess = false;
+		let killErrorLines = "";
+
+		for (const signal of KILL_SIGNALS) {
+			kill(cp.pid, signal, (err: Error | undefined) => {
+				if (err) {
+					killErrors += 1;
+					killErrorLines += "- ";
+					killErrorLines += err.toString();
+					killErrorLines += "\n";
+					if (killErrors === KILL_SIGNALS.length) {
+						reject(
+							new Error(
+								"Failed to superkill process:\n" +
+									killErrorLines
+							)
+						);
+					}
+				} else {
+					if (killSuccess !== true) {
+						killSuccess = true;
+						resolve();
+					}
+				}
+			});
+		}
+	});
 };
