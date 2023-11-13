@@ -6,7 +6,7 @@ use crate::server::{Config, Server};
 
 #[derive(Debug, Clone, Parser)]
 pub struct ServeCommand {
-    #[arg(long)]
+    #[arg(long, env)]
     pub settings: Option<Config>,
 }
 

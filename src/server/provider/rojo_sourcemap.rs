@@ -133,20 +133,14 @@ fn spawn_rojo_sourcemap(config: &Config) -> Result<AsyncGroupChild> {
         "autogenerate must be enabled to spawn rojo sourcemap --watch"
     );
 
-    let mut command = Command::new("rojo");
-    command
+    Command::new("rojo")
         .arg("sourcemap")
         .arg(&config.rojo_project_file)
         .arg("--watch")
+        .arg("--include-non-scripts")
         .kill_on_drop(true)
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-
-    if config.include_non_scripts {
-        command.arg("--include-non-scripts");
-    }
-
-    command
+        .stderr(Stdio::piped())
         .group_spawn()
         .context("failed to spawn rojo sourcemap --watch")
 }

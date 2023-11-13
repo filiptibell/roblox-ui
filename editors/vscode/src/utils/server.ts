@@ -118,11 +118,15 @@ export const startServer = (
 	});
 
 	const command = findServerExecutable(context);
-	const commandArgs = ["serve", "--settings", "'" + settingsJson + "'"];
+	const commandArgs = ["serve"];
+	const commandEnv = {
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		SETTINGS: settingsJson,
+	};
 
 	const childProcess = cp.spawn(command, commandArgs, {
 		cwd: workspacePath,
-		env: process.env,
+		env: { ...process.env, ...commandEnv },
 		shell: true,
 	});
 

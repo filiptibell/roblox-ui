@@ -21,10 +21,7 @@ use serde::Deserialize;
 */
 #[derive(Debug, Clone)]
 pub struct Config {
-    // TODO: Implement include_non_scripts and ignore_globs where relevant
     pub autogenerate: bool,
-    pub include_non_scripts: bool,
-    pub ignore_globs: Vec<String>,
     pub rojo_project_file: PathBuf,
     pub sourcemap_file: PathBuf,
 }
@@ -70,8 +67,6 @@ impl From<ConfigDeserializable> for Config {
     fn from(value: ConfigDeserializable) -> Self {
         Self {
             autogenerate: value.autogenerate,
-            include_non_scripts: value.include_non_scripts,
-            ignore_globs: value.ignore_globs,
             rojo_project_file: value.rojo_project_file.expect("missing rojo_project_file"),
             sourcemap_file: value.sourcemap_file.expect("missing sourcemap_file"),
         }
@@ -81,10 +76,40 @@ impl From<ConfigDeserializable> for Config {
 impl FromStr for Config {
     type Err = serde_json::Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut this = serde_json::from_str::<ConfigDeserializable>(s)?;
-        this.apply_path_defaults_and_clean();
-        Ok(this.into())
+        let trimmed = s.trim();
+        let trimmed = if (trimmed.starts_with('\'') && trimmed.ends_with('\''))
+            || (trimmed.starts_with('\"') && trimmed.ends_with('\"'))
+        {
+            &trimmed[1..trimmed.len() - 1]
+        } else {
+            trimmed
+        };
+        if trimmed.is_empty() || trimmed == "null" {
+            Ok(Self::default())
+        } else {
+            let mut this = serde_json::from_str::<ConfigDeserializable>(trimmed)?;
+            this.apply_path_defaults_and_clean();
+            Ok(this.into())
+        }
     }
+}
+
+#[test]
+fn parse_config() {
+    let full_conf = r#"
+    {
+        "autogenerate": true,
+        "ignoreNonScripts": false,
+        "rojoProjectFile": "default.project.json",
+        "sourcemapFile": "sourcemap.json"
+    }
+    "#;
+    assert!("".parse::<Config>().is_ok());
+    assert!("''".parse::<Config>().is_ok());
+    assert!("null".parse::<Config>().is_ok());
+    assert!("{}".parse::<Config>().is_ok());
+    assert!("'{}'".parse::<Config>().is_ok());
+    assert!(full_conf.parse::<Config>().is_ok());
 }
 
 /**
@@ -96,8 +121,6 @@ impl FromStr for Config {
 #[serde(default, rename_all = "camelCase")]
 struct ConfigDeserializable {
     autogenerate: bool,
-    include_non_scripts: bool,
-    ignore_globs: Vec<String>,
     rojo_project_file: Option<PathBuf>,
     sourcemap_file: Option<PathBuf>,
 }
@@ -120,8 +143,6 @@ impl Default for ConfigDeserializable {
     fn default() -> Self {
         let mut this = Self {
             autogenerate: true,
-            include_non_scripts: true,
-            ignore_globs: vec![],
             rojo_project_file: None,
             sourcemap_file: None,
         };
