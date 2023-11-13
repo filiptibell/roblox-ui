@@ -1,9 +1,7 @@
 import * as vscode from "vscode";
 import * as path from "path";
-import * as cp from "child_process";
 
 const anymatch = require("anymatch");
-const kill = require("tree-kill");
 
 import { SettingsProvider } from "../providers/settings";
 import { RojoTreeProvider } from "../providers/explorer";
@@ -15,9 +13,7 @@ import {
 	parseWallySpec,
 } from "./wally";
 import { MetadataProvider } from "../providers/metadata";
-import { RpcMessage, startServer } from "./server";
-
-const KILL_SIGNALS = ["SIGHUP", "SIGINT", "SIGKILL", "SIGTERM"];
+import { RpcMessage, startServer, stopServer } from "./server";
 
 const PACKAGE_CLASS_NAME = "Package";
 
@@ -378,7 +374,7 @@ export const connectSourcemapUsingServer = (
 		}
 	};
 	const reload = () => {
-		superkill(childProcess);
+		stopServer(childProcess);
 		childProcess = startServer(context, workspacePath, settings, callback);
 	};
 
@@ -386,53 +382,11 @@ export const connectSourcemapUsingServer = (
 	// everything created for this workspace folder
 	const destroy = async () => {
 		treeProvider.delete(workspacePath);
-		await superkill(childProcess);
+		await stopServer(childProcess);
 	};
 
 	// Set as initially loading
 	treeProvider.setLoading(workspacePath, undefined);
 
 	return [refresh, reload, destroy];
-};
-
-const superkill = (cp: cp.ChildProcessWithoutNullStreams): Promise<void> => {
-	return new Promise((resolve, reject) => {
-		if (cp.pid === undefined) {
-			reject("Failed to superkill process: no pid");
-			return;
-		}
-
-		if (KILL_SIGNALS.length <= 0) {
-			reject("Failed to superkill process: no signals");
-			return;
-		}
-
-		let killErrors = 0;
-		let killSuccess = false;
-		let killErrorLines = "";
-
-		for (const signal of KILL_SIGNALS) {
-			kill(cp.pid, signal, (err: Error | undefined) => {
-				if (err) {
-					killErrors += 1;
-					killErrorLines += "- ";
-					killErrorLines += err.toString();
-					killErrorLines += "\n";
-					if (killErrors === KILL_SIGNALS.length) {
-						reject(
-							new Error(
-								"Failed to superkill process:\n" +
-									killErrorLines
-							)
-						);
-					}
-				} else {
-					if (killSuccess !== true) {
-						killSuccess = true;
-						resolve();
-					}
-				}
-			});
-		}
-	});
 };

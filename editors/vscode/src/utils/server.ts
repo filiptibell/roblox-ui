@@ -3,9 +3,13 @@ import * as cp from "child_process";
 import * as os from "os";
 import * as fs from "fs";
 
+const kill = require("tree-kill");
+
 import { SettingsProvider } from "../providers/settings";
 
 let outputChannel: vscode.OutputChannel;
+
+const KILL_SIGNALS = ["SIGHUP", "SIGINT", "SIGKILL", "SIGTERM"];
 
 export type RpcMessageKind = "Request" | "Response" | "Notification";
 export type RpcMessageData = {
@@ -151,4 +155,48 @@ export const startServer = (
 	});
 
 	return childProcess;
+};
+
+export const stopServer = (
+	server: cp.ChildProcessWithoutNullStreams
+): Promise<void> => {
+	return new Promise((resolve, reject) => {
+		if (server.pid === undefined) {
+			reject("Failed to superkill process: no pid");
+			return;
+		}
+
+		if (KILL_SIGNALS.length <= 0) {
+			reject("Failed to superkill process: no signals");
+			return;
+		}
+
+		let killErrors = 0;
+		let killSuccess = false;
+		let killErrorLines = "";
+
+		for (const signal of KILL_SIGNALS) {
+			kill(server.pid, signal, (err: Error | undefined) => {
+				if (err) {
+					killErrors += 1;
+					killErrorLines += "- ";
+					killErrorLines += err.toString();
+					killErrorLines += "\n";
+					if (killErrors === KILL_SIGNALS.length) {
+						reject(
+							new Error(
+								"Failed to superkill process:\n" +
+									killErrorLines
+							)
+						);
+					}
+				} else {
+					if (killSuccess !== true) {
+						killSuccess = true;
+						resolve();
+					}
+				}
+			});
+		}
+	});
 };
