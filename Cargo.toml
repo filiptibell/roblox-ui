@@ -45,6 +45,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 command-group = { version = "5.0", features = ["with-tokio"] }
 
+rbx_dom_weak = "2.6"
 rbx_reflection = "4.4"
 rbx_reflection_database = "0.2.9"
 

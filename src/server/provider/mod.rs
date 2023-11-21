@@ -8,14 +8,13 @@ mod rojo;
 mod rojo_client;
 mod rojo_sourcemap;
 mod rojo_stub;
-mod shared;
 mod variant;
 
 pub use rojo::*;
-pub use shared::*;
 pub use variant::*;
 
 use super::config::Config;
+use super::dom::InstanceNode;
 
 /**
     A fault-tolerant instance provider & watcher.

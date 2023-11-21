@@ -1245,6 +1245,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "rbx_dom_weak"
+version = "2.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "843a2e0e1446623625943f7228d9d4b5cf3883017e3964733600682506864b34"
+dependencies = [
+ "rbx_types",
+ "serde",
+]
+
+[[package]]
 name = "rbx_reflection"
 version = "4.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1446,6 +1456,7 @@ dependencies = [
  "once_cell",
  "path-clean",
  "quick-xml",
+ "rbx_dom_weak",
  "rbx_reflection",
  "rbx_reflection_database",
  "reqwest",

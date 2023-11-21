@@ -7,6 +7,7 @@ use tokio::{
 };
 
 mod config;
+mod dom;
 mod notify;
 mod provider;
 mod rpc;
@@ -26,6 +27,9 @@ impl Server {
     pub async fn serve(self) -> Result<()> {
         let (file_event_tx, file_event_rx) = unbounded_channel();
 
+        let instance_dom = dom::Dom::new(self.config.clone());
+        let instance_dom = Arc::new(AsyncMutex::new(instance_dom));
+
         let instance_provider = provider::InstanceProvider::new(self.config.clone());
         let instance_provider = Arc::new(AsyncMutex::new(instance_provider));
 
@@ -33,10 +37,12 @@ impl Server {
         let mut set = JoinSet::new();
         set.spawn(tasks::serve_instances(
             self.config.clone(),
+            Arc::clone(&instance_dom),
             Arc::clone(&instance_provider),
         ));
         set.spawn(tasks::provide_instances(
             self.config.clone(),
+            Arc::clone(&instance_dom),
             Arc::clone(&instance_provider),
             file_event_rx,
         ));

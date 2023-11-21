@@ -13,8 +13,9 @@ use tracing::{debug, error, info};
 
 use super::{
     config::Config,
+    dom::Dom,
     notify::{AsyncFileCache, AsyncFileEvent, AsyncFileWatcher},
-    provider::{InstanceNode, InstanceProvider},
+    provider::InstanceProvider,
     rpc::RpcMessage,
 };
 
@@ -25,6 +26,7 @@ type FileEvent = (AsyncFileEvent, PathBuf, Option<String>);
 */
 pub async fn serve_instances(
     _config: Config,
+    instance_dom: Arc<AsyncMutex<Dom>>,
     instances: Arc<AsyncMutex<InstanceProvider>>,
 ) -> Result<()> {
     let stdin = tokio::io::stdin();
@@ -50,37 +52,20 @@ pub async fn serve_instances(
 
     // Emit an initial 'null' (meaning no instance data) to
     // let the consumer know instance watching has started
-    RpcMessage::new_notification("InstanceDiff")
+    RpcMessage::new_notification("DOM")
         .with_data(JsonValue::Null)?
         .write_to(&mut stdout)
         .await?;
 
     // Watch for further changes received from instance provider(s)
-    let mut current_node = None::<InstanceNode>;
     while let Some(root_node_opt) = instance_receiver.recv().await {
-        match root_node_opt {
-            None => {
-                if current_node.is_some() {
-                    RpcMessage::new_notification("InstanceDiff")
-                        .with_data(JsonValue::Null)?
-                        .write_to(&mut stdout)
-                        .await?;
-                }
-                current_node.take();
-            }
-            Some(root_node) => {
-                RpcMessage::new_notification("InstanceDiff")
-                    .with_data(root_node.diff_full())?
-                    // TODO: Enable granular diffs when extension supports it
-                    // .with_data(match current_node.as_ref() {
-                    //     None => root_node.diff_full(),
-                    //     Some(c) => c.diff_with(&root_node),
-                    // })?
-                    .write_to(&mut stdout)
-                    .await?;
-                current_node.replace(root_node);
-            }
-        };
+        let mut dom = instance_dom.lock().await;
+        for notification in dom.apply_new_root(root_node_opt) {
+            RpcMessage::new_notification("DOM")
+                .with_data(notification)?
+                .write_to(&mut stdout)
+                .await?;
+        }
     }
 
     // Since our stdin task was spawned in the background
@@ -99,10 +84,13 @@ pub async fn serve_instances(
 */
 pub async fn provide_instances(
     config: Config,
+    _instance_dom: Arc<AsyncMutex<Dom>>,
     instances: Arc<AsyncMutex<InstanceProvider>>,
     mut file_event_rx: UnboundedReceiver<FileEvent>,
 ) -> Result<()> {
     while let Some((event, file_path, file_contents)) = file_event_rx.recv().await {
+        // TODO: Make the dom aware of this file event, to add it to root metadata (for rojo, wally, ...)
+
         let res = if config.is_sourcemap_path(&file_path) {
             let mut instances = instances.lock().await;
             instances.update_file(file_contents.as_deref()).await
