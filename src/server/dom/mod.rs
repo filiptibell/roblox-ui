@@ -28,14 +28,18 @@ enum MatchFilter {
 pub enum DomNotification {
     Changed {
         id: Ref,
+        #[serde(skip_serializing_if = "Option::is_none")]
         class_name: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
         name: Option<String>,
     },
     Added {
+        #[serde(skip_serializing_if = "Option::is_none")]
         parent_id: Option<Ref>,
         child_id: Ref,
     },
     Removed {
+        #[serde(skip_serializing_if = "Option::is_none")]
         parent_id: Option<Ref>,
         child_id: Ref,
     },
