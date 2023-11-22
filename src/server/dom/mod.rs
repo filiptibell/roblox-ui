@@ -319,6 +319,18 @@ impl Dom {
         }
     }
 
+    pub fn get_root_instance(&self) -> Option<&Instance> {
+        if self.inner.root().name != DOM_ROOT_NAME_NONE {
+            Some(self.inner.root())
+        } else {
+            None
+        }
+    }
+
+    pub fn get_root_metadata(&self) -> Option<&InstanceMetadata> {
+        self.get_metadata(self.inner.root_ref())
+    }
+
     pub fn apply_new_root(&mut self, node: Option<InstanceNode>) -> Vec<DomNotification> {
         let root_ids = if self.inner.root().name != DOM_ROOT_NAME_NONE {
             vec![self.inner.root_ref()]

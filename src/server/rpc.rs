@@ -45,7 +45,6 @@ impl RpcData {
 pub enum RpcMessage {
     Request(RpcData),
     Response(RpcData),
-    Notification(RpcData),
 }
 
 impl RpcMessage {
@@ -57,20 +56,12 @@ impl RpcMessage {
         Self::Response(RpcData::new(method))
     }
 
-    pub fn new_notification(method: impl Into<String>) -> Self {
-        Self::Notification(RpcData::new(method))
-    }
-
     pub const fn is_request(&self) -> bool {
         matches!(self, Self::Request(_))
     }
 
     pub const fn is_response(&self) -> bool {
         matches!(self, Self::Response(_))
-    }
-
-    pub const fn is_notification(&self) -> bool {
-        matches!(self, Self::Notification(_))
     }
 
     pub fn respond(&self) -> Self {
@@ -88,7 +79,6 @@ impl RpcMessage {
         let inner = match self {
             Self::Request(ref mut d) => &mut d.value,
             Self::Response(ref mut d) => &mut d.value,
-            Self::Notification(ref mut d) => &mut d.value,
         };
         inner.replace(value);
         Ok(self)
@@ -101,12 +91,19 @@ impl RpcMessage {
         let inner = match self {
             Self::Request(d) => d,
             Self::Response(d) => d,
-            Self::Notification(d) => d,
         };
         Ok(serde_json::from_value(match inner.value.as_ref() {
             None => JsonValue::Null,
             Some(v) => v.clone(),
         })?)
+    }
+
+    pub fn get_method(&self) -> &str {
+        let inner = match self {
+            Self::Request(d) => d,
+            Self::Response(d) => d,
+        };
+        &inner.method
     }
 
     pub async fn read_from<R>(reader: &mut R) -> Option<RpcResult<Self>>

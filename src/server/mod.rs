@@ -8,6 +8,7 @@ use tokio::{
 
 mod config;
 mod dom;
+mod handlers;
 mod notify;
 mod provider;
 mod rpc;

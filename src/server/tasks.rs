@@ -9,11 +9,12 @@ use tokio::{
         Mutex as AsyncMutex,
     },
 };
-use tracing::{debug, error, info};
+use tracing::{debug, error};
 
 use super::{
     config::Config,
     dom::Dom,
+    handlers::handle_rpc_message,
     notify::{AsyncFileCache, AsyncFileEvent, AsyncFileWatcher},
     provider::InstanceProvider,
     rpc::RpcMessage,
@@ -33,13 +34,19 @@ pub async fn serve_instances(
     let mut stdout = tokio::io::stdout();
 
     // Spawn a task to listen for requests over stdin
+    let stdin_dom = Arc::clone(&instance_dom);
     let stdin_handle = tokio::spawn(async move {
         let mut reader = BufReader::new(stdin);
         while let Some(res) = RpcMessage::read_from(&mut reader).await {
-            // TODO: Forward messages to different handlers
             match res {
                 Err(e) => error!("error reading stdio message: {e:?}"),
-                Ok(msg) => info!("got stdio message: {msg:?}"),
+                Ok(msg) => {
+                    debug!("got stdio message: {msg:?}");
+                    let mut dom = stdin_dom.lock().await;
+                    if let Err(e) = handle_rpc_message(msg, &mut dom).await {
+                        error!("failed to respond to message: {e:?}")
+                    }
+                }
             }
         }
     });
@@ -52,7 +59,7 @@ pub async fn serve_instances(
 
     // Emit an initial 'null' (meaning no instance data) to
     // let the consumer know instance watching has started
-    RpcMessage::new_notification("DOM")
+    RpcMessage::new_request("dom/notification")
         .with_data(JsonValue::Null)?
         .write_to(&mut stdout)
         .await?;
@@ -61,7 +68,7 @@ pub async fn serve_instances(
     while let Some(root_node_opt) = instance_receiver.recv().await {
         let mut dom = instance_dom.lock().await;
         for notification in dom.apply_new_root(root_node_opt) {
-            RpcMessage::new_notification("DOM")
+            RpcMessage::new_request("dom/notification")
                 .with_data(notification)?
                 .write_to(&mut stdout)
                 .await?;
