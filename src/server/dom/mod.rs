@@ -329,7 +329,7 @@ impl Dom {
         }
     }
 
-    pub fn get_root_metadata(&self) -> Option<&InstanceMetadata> {
+    pub fn _get_root_metadata(&self) -> Option<&InstanceMetadata> {
         self.get_metadata(self.inner.root_ref())
     }
 
