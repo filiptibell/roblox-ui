@@ -13,7 +13,7 @@ import {
 	parseWallySpec,
 } from "./wally";
 import { MetadataProvider } from "../providers/metadata";
-import { RpcMessage, startServer, stopServer } from "./server";
+import { RpcServer } from "../server";
 
 const PACKAGE_CLASS_NAME = "Package";
 
@@ -341,52 +341,17 @@ export const connectSourcemapUsingServer = (
 	workspacePath: string,
 	settings: SettingsProvider,
 	treeProvider: RojoTreeProvider
-): [() => boolean, () => void, () => Promise<void>] => {
-	// Create a callback for handling rpc messages
-	let lastSourcemap: SourcemapNode | null = null;
-	const callback = (_: any, message: RpcMessage) => {
-		if (
-			message.kind === "Notification" &&
-			message.data.method === "InstanceDiff"
-		) {
-			const sourcemap: SourcemapNode | null =
-				message.data.value?.data ?? null;
-			if (sourcemap !== null) {
-				postprocessSourcemap(workspacePath, settings, sourcemap);
-				treeProvider.update(workspacePath, sourcemap);
-			} else {
-				treeProvider.delete(workspacePath);
-			}
-			lastSourcemap = sourcemap;
-		}
-	};
+): [() => void, () => void, () => Promise<void>] => {
+	const server = new RpcServer(context, workspacePath, settings);
 
-	// Start the server
-	let childProcess = startServer(context, workspacePath, settings, callback);
-
-	// Create callback for refreshing & reloading server
-	const refresh = () => {
-		if (lastSourcemap) {
-			treeProvider.update(workspacePath, lastSourcemap, true);
-			return true;
-		} else {
-			return false;
-		}
+	const refresh = () => {};
+	const reload = async () => {
+		await server.restart();
 	};
-	const reload = () => {
-		stopServer(childProcess);
-		childProcess = startServer(context, workspacePath, settings, callback);
-	};
-
-	// Create callback for disconnecting (destroying)
-	// everything created for this workspace folder
 	const destroy = async () => {
 		treeProvider.delete(workspacePath);
-		await stopServer(childProcess);
+		await server.stop();
 	};
-
-	// Set as initially loading
-	treeProvider.setLoading(workspacePath, undefined);
 
 	return [refresh, reload, destroy];
 };

@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::server::{dom::Dom, rpc::RpcMessage};
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub(super) struct ResponseInstance {
     id: Ref,
     class_name: String,
@@ -24,6 +25,7 @@ impl ResponseInstance {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub(super) struct RootRequest {}
 
 impl RootRequest {
@@ -38,6 +40,7 @@ impl RootRequest {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub(super) struct GetRequest {
     id: Ref,
 }
@@ -54,6 +57,7 @@ impl GetRequest {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub(super) struct ChildrenRequest {
     id: Ref,
 }
