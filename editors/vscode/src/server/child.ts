@@ -7,7 +7,7 @@ const treekill = require("tree-kill");
 const readline = require("linebyline");
 
 import { SettingsProvider } from "../providers/settings";
-import { RpcMessage, validateRpcMessage } from "./message";
+import { RpcMessage, isRpcMessage } from "./message";
 
 let outputChannel: vscode.OutputChannel;
 
@@ -91,13 +91,11 @@ export const start = (
 		maxLineLength: 1024 * 256, // 256 KiB should be enough for any message
 		retainBuffer: false,
 	}).on("line", (stdout: string) => {
-		const result = validateRpcMessage(stdout);
-		if (result.valid) {
-			callback(result.message);
+		const message = JSON.parse(stdout);
+		if (isRpcMessage(message)) {
+			callback(message);
 		} else {
-			outputChannel.appendLine(
-				"Failed to parse rpc message:\n" + result.err
-			);
+			outputChannel.appendLine("Failed to parse rpc message:\n" + stdout);
 		}
 	});
 

@@ -4,7 +4,7 @@ import { RojoTreeProvider } from "./providers/explorer";
 import { SettingsProvider } from "./providers/settings";
 import { connectSourcemapUsingServer } from "./utils/sourcemap";
 
-const workspaceRefreshers: Map<string, () => boolean> = new Map();
+const workspaceRefreshers: Map<string, () => void> = new Map();
 const workspaceReloaders: Map<string, () => void> = new Map();
 const workspaceDestructors: Map<string, () => Promise<void>> = new Map();
 
