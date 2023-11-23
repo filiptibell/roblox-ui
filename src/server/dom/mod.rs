@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 
 mod meta;
 mod node;
+mod util;
 
 pub use meta::*;
 pub use node::*;
@@ -68,12 +69,17 @@ impl Dom {
     fn insert_instance(&mut self, parent_id: Ref, node: InstanceNode) -> Ref {
         let inst = InstanceBuilder::new(node.class_name).with_name(node.name);
         let id = self.inner.insert(parent_id, inst);
-        if let Some(meta) = InstanceMetadata::from_paths(&node.file_paths) {
+
+        if let Some(meta) = InstanceMetadata::new(id, self, &node.file_paths) {
             self.metas.insert(id, meta);
         }
+
+        // NOTE: Children must be inserted *after* this new instance, since proper
+        // metadata creation may depend on the already existing metadata of a parent
         for child_node in node.children {
             self.insert_instance(id, child_node);
         }
+
         id
     }
 
@@ -133,49 +139,50 @@ impl Dom {
     }
 
     fn apply_changes(&mut self, id: Ref, node: &InstanceNode) -> Option<DomNotification> {
-        let inst = self
-            .inner
-            .get_by_ref_mut(id)
-            .expect("tried to diff/apply changes for nonexistent node");
+        let inst = self.inner.get_by_ref(id).unwrap();
 
         let changed_class_name = if inst.class != node.class_name {
-            Some(node.class_name.to_owned())
-        } else {
-            None
-        };
-        let changed_name = if inst.name != node.name {
-            Some(node.name.to_owned())
+            Some(node.class_name.as_str())
         } else {
             None
         };
 
-        if changed_class_name.is_some() || changed_name.is_some() {
-            if let Some(new_class_name) = &changed_class_name {
-                inst.class = new_class_name.to_owned();
-            }
-            if let Some(new_name) = &changed_name {
-                inst.name = new_name.to_owned();
-            }
-            Some(DomNotification::Changed {
-                id,
-                class_name: changed_class_name,
-                name: changed_name,
-            })
-        } else if id != self.inner.root_ref() {
-            let new_meta = InstanceMetadata::from_paths(&node.file_paths);
+        let changed_name = if inst.name != node.name {
+            Some(node.name.as_str())
+        } else {
+            None
+        };
+
+        let changed_meta = if id != self.inner.root_ref() {
+            let new_meta = InstanceMetadata::new(id, self, &node.file_paths);
             if self.get_metadata(id) != new_meta.as_ref() {
                 match new_meta {
                     Some(meta) => self.metas.insert(id, meta),
                     None => self.metas.remove(&id),
                 };
-                Some(DomNotification::Changed {
-                    id,
-                    class_name: None,
-                    name: None,
-                })
+                true
             } else {
-                None
+                false
             }
+        } else {
+            false
+        };
+
+        if changed_class_name.is_some() || changed_name.is_some() || changed_meta {
+            let inst_mut = self.inner.get_by_ref_mut(id).unwrap();
+
+            if let Some(new_class_name) = changed_class_name {
+                inst_mut.class = new_class_name.to_owned();
+            }
+            if let Some(new_name) = changed_name {
+                inst_mut.name = new_name.to_owned();
+            }
+
+            Some(DomNotification::Changed {
+                id,
+                class_name: changed_class_name.map(ToOwned::to_owned),
+                name: changed_name.map(ToOwned::to_owned),
+            })
         } else {
             None
         }
@@ -321,16 +328,12 @@ impl Dom {
         }
     }
 
-    pub fn get_root_instance(&self) -> Option<&Instance> {
+    pub fn get_root_id(&self) -> Option<Ref> {
         if self.inner.root().name != DOM_ROOT_NAME_NONE {
-            Some(self.inner.root())
+            Some(self.inner.root_ref())
         } else {
             None
         }
-    }
-
-    pub fn _get_root_metadata(&self) -> Option<&InstanceMetadata> {
-        self.get_metadata(self.inner.root_ref())
     }
 
     pub fn apply_new_root(&mut self, node: Option<InstanceNode>) -> Vec<DomNotification> {
