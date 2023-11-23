@@ -4,17 +4,22 @@ import * as cp from "child_process";
 import { SettingsProvider } from "../providers/settings";
 import { kill, log, start } from "./child";
 import { RpcMessage, createRpcRequest, respondToRpcMessage } from "./message";
+import { MethodRequestTypes, MethodResponseTypes } from "./dom";
 
 export * from "./dom";
 export * from "./message";
 
-type RpcCallback = (response: RpcMessage) => void;
-export type RpcHandler = (data?: any) => any | undefined;
+type RpcHandler<M extends keyof MethodRequestTypes> = (
+	request: MethodRequestTypes[M]
+) => MethodResponseTypes[M];
+type RpcResolver<M extends keyof MethodResponseTypes> = (
+	response: MethodResponseTypes[M]
+) => void;
 
 export class RpcServer {
 	private child: cp.ChildProcessWithoutNullStreams;
-	private handlers: Map<string, RpcHandler> = new Map();
-	private resolvers: Map<number, RpcCallback> = new Map();
+	private handlers: Map<string, RpcHandler<any>> = new Map();
+	private resolvers: Map<number, RpcResolver<any>> = new Map();
 	private idCounter: number = 0;
 
 	constructor(
@@ -50,17 +55,17 @@ export class RpcServer {
 		);
 	}
 
-	public async sendRequest(
-		method: string,
-		requestValue?: any
-	): Promise<any | undefined> {
+	public async sendRequest<M extends keyof MethodRequestTypes>(
+		method: M,
+		request: MethodRequestTypes[M]
+	): Promise<MethodResponseTypes[M]> {
 		this.idCounter += 1;
 		const id = this.idCounter;
 		return new Promise((resolve) => {
 			this.resolvers.set(id, resolve);
 			const requestRpc =
-				requestValue !== undefined
-					? createRpcRequest(method, id, requestValue)
+				request !== undefined
+					? createRpcRequest(method, id, request)
 					: createRpcRequest(method, id, null);
 			const requestJson = JSON.stringify(requestRpc);
 			this.child.stdin.write(requestJson);
@@ -68,7 +73,10 @@ export class RpcServer {
 		});
 	}
 
-	public onRequest(method: string, handler: RpcHandler) {
+	public onRequest<M extends keyof MethodRequestTypes>(
+		method: M,
+		handler: RpcHandler<M>
+	) {
 		this.handlers.set(method, handler);
 	}
 
