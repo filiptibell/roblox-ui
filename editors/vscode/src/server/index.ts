@@ -77,7 +77,19 @@ export class RpcServer {
 		method: M,
 		handler: RpcHandler<M>
 	) {
+		if (this.handlers.has(method)) {
+			throw new Error("Handler already exists");
+		}
 		this.handlers.set(method, handler);
+		let disconnected = false;
+		return () => {
+			if (!disconnected) {
+				disconnected = true;
+				this.handlers.delete(method);
+				return true;
+			}
+			return false;
+		};
 	}
 
 	private onMessage(message: RpcMessage) {

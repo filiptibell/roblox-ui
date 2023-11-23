@@ -1,17 +1,9 @@
 import * as vscode from "vscode";
 
-import {
-	deleteExistingInstance,
-	promptNewInstanceCreation,
-	promptRenameExistingInstance,
-} from "../utils/instances";
-
 import { reloadAllWorkspaces } from "../workspaces";
 
-import { RojoTreeItem, RojoTreeProvider } from "./explorer";
-
-import { findPrimaryFilePath } from "../utils/sourcemap";
 import { MetadataProvider } from "./metadata";
+import { ExplorerItem, ExplorerTreeProvider } from "../explorer";
 
 export class CommandsProvider implements vscode.Disposable {
 	private commands: Map<string, (...args: any[]) => any> = new Map();
@@ -36,64 +28,85 @@ export class CommandsProvider implements vscode.Disposable {
 		context: vscode.ExtensionContext,
 		metadata: MetadataProvider,
 		treeView: vscode.TreeView<vscode.TreeItem>,
-		treeDataProvider: RojoTreeProvider
+		treeDataProvider: ExplorerTreeProvider
 	) {
-		this.register("refresh", reloadAllWorkspaces);
-		this.register("openProjectFile", (item: RojoTreeItem) => {
-			item.openFile();
-		});
-		/*
-			The below commands modify tree items and are somewhat special:
+		this.register("explorer.refresh", reloadAllWorkspaces);
 
-			The sourcemap might need a bit of time to regenerate after
-			an item is changed, but since we know exactly what got changed
-			and have direct access to the tree item that was changed and
-			its parent we can manually change it in the sourcemap too
-			and update the item to give the user instant feedback
-		*/
+		this.register("explorer.focus", (item: ExplorerItem) => {
+			treeView.reveal(item, {
+				expand: false,
+				select: false,
+				focus: true,
+			});
+		});
+
+		this.register("explorer.openRojoManifest", (item: ExplorerItem) => {
+			const filePath = item.domInstance.metadata?.paths.rojo;
+			if (filePath) {
+				vscode.commands.executeCommand(
+					"vscode.open",
+					vscode.Uri.file(filePath)
+				);
+			}
+		});
+		this.register("explorer.openWallyManifest", (item: ExplorerItem) => {
+			const filePath = item.domInstance.metadata?.paths.wally;
+			if (filePath) {
+				vscode.commands.executeCommand(
+					"vscode.open",
+					vscode.Uri.file(filePath)
+				);
+			}
+		});
+
 		const createInstance = async (
-			item: RojoTreeItem,
+			item: ExplorerItem,
 			classNameOrInsertService: string | boolean | void
 		) => {
-			const [created, creationResult] = await promptNewInstanceCreation(
-				treeDataProvider.settingsProvider,
-				treeDataProvider.metadataProvider,
-				treeDataProvider.iconsProvider,
-				item.getFolderPath(),
-				item.getFilePath(),
-				classNameOrInsertService
-			);
-			if (created && creationResult) {
-				// Open the new file path in the editor (if any)
-				const filePath = findPrimaryFilePath(creationResult);
-				if (filePath) {
-					vscode.commands.executeCommand(
-						"vscode.open",
-						vscode.Uri.file(filePath)
-					);
-				}
-			}
+			// TODO: Re-implement this
+			// const [created, creationResult] = await promptNewInstanceCreation(
+			// 	treeDataProvider.settingsProvider,
+			// 	treeDataProvider.metadataProvider,
+			// 	treeDataProvider.iconsProvider,
+			// 	item.getFolderPath(),
+			// 	item.getFilePath(),
+			// 	classNameOrInsertService
+			// );
+			// if (created && creationResult) {
+			// 	// Open the new file path in the editor (if any)
+			// 	const filePath = findPrimaryFilePath(creationResult);
+			// 	if (filePath) {
+			// 		vscode.commands.executeCommand(
+			// 			"vscode.open",
+			// 			vscode.Uri.file(filePath)
+			// 		);
+			// 	}
+			// }
 		};
-		this.register("insertObject", (item: RojoTreeItem) => {
+
+		this.register("explorer.insertObject", (item: ExplorerItem) => {
 			createInstance(item);
 		});
-		this.register("insertFolder", (item: RojoTreeItem) => {
+		this.register("explorer.insertFolder", (item: ExplorerItem) => {
 			createInstance(item, "Folder");
 		});
-		this.register("insertService", (item: RojoTreeItem) => {
+		this.register("explorer.insertService", (item: ExplorerItem) => {
 			createInstance(item, true);
 		});
-		this.register("renameObject", async (item: RojoTreeItem) => {
-			await promptRenameExistingInstance(
-				item.getFolderPath(),
-				item.getFilePath()
-			);
+
+		this.register("explorer.renameObject", async (item: ExplorerItem) => {
+			// TODO: Re-implement this
+			// await promptRenameExistingInstance(
+			// 	item.getFolderPath(),
+			// 	item.getFilePath()
+			// );
 		});
-		this.register("deleteObject", async (item: RojoTreeItem) => {
-			await deleteExistingInstance(
-				item.getFolderPath(),
-				item.getFilePath()
-			);
+		this.register("explorer.deleteObject", async (item: ExplorerItem) => {
+			// TODO: Re-implement this
+			// await deleteExistingInstance(
+			// 	item.getFolderPath(),
+			// 	item.getFilePath()
+			// );
 		});
 	}
 }

@@ -3,6 +3,7 @@ export type Option<T> = None | T;
 
 export type DomInstance = {
 	id: string;
+	parentId?: string;
 	className: string;
 	name: string;
 	children?: string[];

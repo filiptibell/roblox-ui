@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 
 import { RojoTreeProvider } from "./explorer";
+import { ExplorerTreeProvider } from "../explorer";
 
 export class SelectionProvider implements vscode.Disposable {
 	private disposables: Array<vscode.Disposable> = new Array();
@@ -8,7 +9,7 @@ export class SelectionProvider implements vscode.Disposable {
 
 	constructor(
 		private treeView: vscode.TreeView<vscode.TreeItem>,
-		private treeDataProvider: RojoTreeProvider
+		private treeDataProvider: ExplorerTreeProvider
 	) {
 		const revealCurrentlyVisibleEditorsInTree = async () => {
 			const promises: Promise<boolean>[] = [];
@@ -45,37 +46,6 @@ export class SelectionProvider implements vscode.Disposable {
 				revealCurrentlyVisibleEditorsInTree();
 			}
 		});
-
-		// Loading the tree view is asynchronous since it may call out to another
-		// process or wait for fil I/O, so we also need to listen for it loading
-		// since the user may have had a file open before the tree had loaded
-		this.disposables.push(
-			treeDataProvider.onInitialWorkspaceLoaded(async () => {
-				// HACK: I don't know why this works, there seems to be
-				// some race conditions here, but this will do for now
-				let tries = 0;
-				const retryRevealUntilSuccessOrTimeout = async () => {
-					if (await revealCurrentlyVisibleEditorsInTree()) {
-						setTimeout(revealCurrentlyVisibleEditorsInTree, 10);
-						setTimeout(revealCurrentlyVisibleEditorsInTree, 25);
-						return;
-					}
-					tries += 1;
-					if (tries < 20) {
-						setTimeout(retryRevealUntilSuccessOrTimeout, 50);
-					}
-				};
-				retryRevealUntilSuccessOrTimeout();
-			})
-		);
-
-		// If we only load one workspace, it is desirable to automatically
-		// expand its root, since it is usually a single DataModel / game
-		this.disposables.push(
-			treeDataProvider.onAutoExpandRootDesired((root) => {
-				this.expand(root);
-			})
-		);
 	}
 
 	async expand(item: vscode.TreeItem) {
@@ -97,10 +67,11 @@ export class SelectionProvider implements vscode.Disposable {
 	async revealEditor(editor: vscode.TextEditor): Promise<boolean> {
 		let path = editor.document.uri.fsPath;
 		if (path.endsWith(".lua") || path.endsWith(".luau")) {
-			const treeItem = await this.treeDataProvider.findTreeItem(path);
-			if (treeItem) {
-				return await this.reveal(treeItem);
-			}
+			// TODO: Re-implement this
+			// const treeItem = await this.treeDataProvider.findTreeItem(path);
+			// if (treeItem) {
+			// 	return await this.reveal(treeItem);
+			// }
 		}
 		return false;
 	}

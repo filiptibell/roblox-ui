@@ -72,18 +72,20 @@ impl RojoSourcemapProvider {
         // Emit an initial instance tree to let any consumer know watching started,
         // we will try our best to construct a top-level tree stub here using only
         // the rojo project file and parsing its 'tree' field, but this may fail
-        if let Some(project_file) = project_file {
+        let tree_stub = if let Some(project_file) = project_file {
             let tree = generate_project_file_instance_tree(project_file).await;
-            self.sender.send(tree).ok();
+            self.sender.send(tree.clone()).ok();
+            tree
         } else {
             self.sender.send(None).ok();
-        }
+            None
+        };
 
         // Grab the output streams to process sourcemaps, and store the
         // child process in our struct so it doesn't drop and get killed
         let stdout = child.inner().stdout.take().unwrap();
         let stderr = child.inner().stderr.take().unwrap();
-        handle_rojo_streams(stdout, stderr, self.sender.clone());
+        handle_rojo_streams(stdout, stderr, self.sender.clone(), tree_stub);
         self.child.replace(child);
 
         Ok(())
@@ -149,6 +151,7 @@ fn handle_rojo_streams(
     stdout: ChildStdout,
     stderr: ChildStderr,
     sender: UnboundedSender<Option<InstanceNode>>,
+    tree_stub: Option<InstanceNode>,
 ) {
     // Note that we don't really need to care about the join handles
     // for our tasks here, they will exit when the rojo process dies
@@ -160,7 +163,10 @@ fn handle_rojo_streams(
             trace!("got sourcemap with {} characters", buffer.len());
             match InstanceNode::from_json(&buffer) {
                 Err(e) => error!("failed to deserialize rojo sourcemap: {e}"),
-                Ok(smap) => {
+                Ok(mut smap) => {
+                    if let Some(stub) = &tree_stub {
+                        smap.merge_stub(stub);
+                    }
                     sender.send(Some(smap)).ok();
                 }
             }

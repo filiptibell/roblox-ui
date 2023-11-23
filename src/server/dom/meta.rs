@@ -25,12 +25,6 @@ impl InstanceMetadata {
         which would have also meant that no useful props would have been serializable.
     */
     pub fn new(id: Ref, dom: &Dom, file_paths: &[PathBuf]) -> Option<Self> {
-        // OPTIMIZATION: if we got no file paths, we already know that metadata
-        // will be empty, since actions all also depend on file paths existing
-        if file_paths.is_empty() {
-            return None;
-        }
-
         let mut actions = InstanceMetadataActions::default();
         let mut paths = InstanceMetadataPaths::default();
 
@@ -50,7 +44,21 @@ impl InstanceMetadata {
             }
         }
 
-        // For actions metadata we need to check this instance and its parents metadata
+        // If we got a file path then that means we should also
+        // know the parent folder path, so use that as a backup
+        if paths.folder.is_none() {
+            let any_file_path = paths
+                .file
+                .as_ref()
+                .or(paths.file_meta.as_ref())
+                .or(paths.rojo.as_ref())
+                .or(paths.wally.as_ref());
+            if let Some(file_parent) = any_file_path.and_then(|p| p.parent()) {
+                paths.folder = Some(file_parent.to_path_buf());
+            }
+        }
+
+        // For some more metadata we need to check this instance and its parents metadata
         let instance = dom
             .get_instance(id)
             .expect("tried to create metadata for nonexistent instance");
@@ -59,6 +67,14 @@ impl InstanceMetadata {
 
         let is_root = matches!(dom.get_root_id(), Some(i) if i == id);
         let is_datamodel = instance.class == "DataModel";
+
+        // If we *still* don't have a file or folder path, but we know that this instance
+        // is a folder, and the parent has a folder path, we can derive a folder path
+        if paths.folder.is_none() && instance.class == "Folder" {
+            if let Some(parent_folder) = parent_meta.and_then(|meta| meta.paths.folder.as_deref()) {
+                paths.folder = Some(parent_folder.join(instance.name.clone()))
+            }
+        }
 
         /*
             A file can be opened by clicking it if it is an "openable" file, this

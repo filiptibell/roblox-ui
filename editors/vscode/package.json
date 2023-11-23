@@ -91,99 +91,105 @@
         },
         "commands": [
             {
-                "command": "roblox-ui.refresh",
-                "title": "Roblox UI: Refresh",
+                "command": "roblox-ui.explorer.refresh",
+                "title": "Roblox UI: Refresh Explorer",
                 "icon": "$(refresh)"
             },
             {
-                "command": "roblox-ui.insertObject",
+                "command": "roblox-ui.explorer.insertObject",
                 "title": "New Instance...",
                 "icon": "$(file-add)",
-                "enablement": "view == roblox-ui.explorer && (viewItem =~ /instance/ && viewItem =~ /canInsertObject/)"
+                "enablement": "view == roblox-ui.explorer && viewItem =~ /canInsertObject/"
             },
             {
-                "command": "roblox-ui.insertFolder",
+                "command": "roblox-ui.explorer.insertFolder",
                 "title": "New Folder...",
                 "icon": "$(file-add)",
-                "enablement": "view == roblox-ui.explorer && (viewItem =~ /instance/ && viewItem =~ /canInsertObject/)"
+                "enablement": "view == roblox-ui.explorer && viewItem =~ /canInsertObject/"
             },
             {
-                "command": "roblox-ui.insertService",
+                "command": "roblox-ui.explorer.insertService",
                 "title": "New Service...",
                 "icon": "$(file-add)",
-                "enablement": "view == roblox-ui.explorer && (viewItem =~ /projectFile/ && viewItem =~ /canInsertService/)"
+                "enablement": "view == roblox-ui.explorer && viewItem =~ /canInsertService/"
             },
             {
-                "command": "roblox-ui.instanceCut",
+                "command": "roblox-ui.explorer.instanceCut",
                 "title": "Cut",
                 "icon": "$(file)",
                 "enablement": "view == roblox-ui.explorer && viewItem =~ /canMove/"
             },
             {
-                "command": "roblox-ui.instanceCopy",
+                "command": "roblox-ui.explorer.instanceCopy",
                 "title": "Copy",
                 "icon": "$(files)",
                 "enablement": "view == roblox-ui.explorer && viewItem =~ /canMove/"
             },
             {
-                "command": "roblox-ui.instancePaste",
+                "command": "roblox-ui.explorer.instancePaste",
                 "title": "Paste",
                 "icon": "$(file)",
                 "enablement": "view == roblox-ui.explorer && viewItem =~ /canPasteSibling/"
             },
             {
-                "command": "roblox-ui.instancePasteInto",
+                "command": "roblox-ui.explorer.instancePasteInto",
                 "title": "Paste Into",
                 "icon": "$(file)",
                 "enablement": "view == roblox-ui.explorer && viewItem =~ /canPasteInto/"
             },
             {
-                "command": "roblox-ui.renameObject",
+                "command": "roblox-ui.explorer.renameObject",
                 "title": "Rename...",
                 "icon": "$(file-rename)",
                 "enablement": "view == roblox-ui.explorer && viewItem =~ /instance/"
             },
             {
-                "command": "roblox-ui.deleteObject",
+                "command": "roblox-ui.explorer.deleteObject",
                 "title": "Delete",
                 "icon": "$(file-remove)",
                 "enablement": "view == roblox-ui.explorer && viewItem =~ /instance/"
             },
             {
-                "command": "roblox-ui.openProjectFile",
-                "title": "Open Project File",
+                "command": "roblox-ui.explorer.openRojoManifest",
+                "title": "Open Rojo Project File",
                 "icon": "$(arrow-right)",
-                "enablement": "view == roblox-ui.explorer && viewItem =~ /projectFile/"
+                "enablement": "view == roblox-ui.explorer && viewItem =~ /rojoManifest/"
+            },
+            {
+                "command": "roblox-ui.explorer.openWallyManifest",
+                "title": "Open Wally Manifest File",
+                "icon": "$(arrow-right)",
+                "enablement": "view == roblox-ui.explorer && viewItem =~ /wallyManifest/"
             }
         ],
         "keybindings": [
             {
-                "command": "roblox-ui.instanceCut",
+                "command": "roblox-ui.explorer.instanceCut",
                 "key": "ctrl+X",
                 "mac": "cmd+X"
             },
             {
-                "command": "roblox-ui.instanceCopy",
+                "command": "roblox-ui.explorer.instanceCopy",
                 "key": "ctrl+C",
                 "mac": "cmd+C"
             },
             {
-                "command": "roblox-ui.instancePaste",
+                "command": "roblox-ui.explorer.instancePaste",
                 "key": "ctrl+V",
                 "mac": "cmd+V"
             },
             {
-                "command": "roblox-ui.instancePasteInto",
+                "command": "roblox-ui.explorer.instancePasteInto",
                 "key": "shift+ctrl+V",
                 "mac": "shift+cmd+V"
             },
             {
-                "command": "roblox-ui.renameObject",
+                "command": "roblox-ui.explorer.renameObject",
                 "key": "F2",
                 "mac": "enter"
             },
             {
-                "command": "roblox-ui.deleteObject",
+                "command": "roblox-ui.explorer.deleteObject",
                 "key": "backspace",
                 "mac": "cmd+backspace"
             }
@@ -191,54 +197,59 @@
         "menus": {
             "view/title": [
                 {
-                    "command": "roblox-ui.refresh",
+                    "command": "roblox-ui.explorer.refresh",
                     "when": "view == roblox-ui.explorer",
                     "group": "navigation"
                 }
             ],
             "view/item/context": [
                 {
-                    "command": "roblox-ui.insertObject",
-                    "when": "view == roblox-ui.explorer && viewItem =~ /instance/",
+                    "command": "roblox-ui.explorer.insertObject",
+                    "when": "view == roblox-ui.explorer && !(viewItem =~ /canInsertService/)",
                     "group": "navigation_1@1"
                 },
                 {
-                    "command": "roblox-ui.insertFolder",
-                    "when": "view == roblox-ui.explorer && viewItem =~ /instance/",
+                    "command": "roblox-ui.explorer.insertFolder",
+                    "when": "view == roblox-ui.explorer && !(viewItem =~ /canInsertService/)",
                     "group": "navigation_1@2"
                 },
                 {
-                    "command": "roblox-ui.insertService",
-                    "when": "view == roblox-ui.explorer && viewItem =~ /projectFile/",
+                    "command": "roblox-ui.explorer.insertService",
+                    "when": "view == roblox-ui.explorer && viewItem =~ /canInsertService/",
                     "group": "navigation_1@3"
                 },
                 {
-                    "command": "roblox-ui.instanceCut",
+                    "command": "roblox-ui.explorer.instanceCut",
                     "group": "navigation_2@1"
                 },
                 {
-                    "command": "roblox-ui.instanceCopy",
+                    "command": "roblox-ui.explorer.instanceCopy",
                     "group": "navigation_2@2"
                 },
                 {
-                    "command": "roblox-ui.instancePaste",
+                    "command": "roblox-ui.explorer.instancePaste",
                     "group": "navigation_2@3"
                 },
                 {
-                    "command": "roblox-ui.instancePasteInto",
+                    "command": "roblox-ui.explorer.instancePasteInto",
                     "group": "navigation_2@4"
                 },
                 {
-                    "command": "roblox-ui.openProjectFile",
-                    "when": "view == roblox-ui.explorer && viewItem =~ /projectFile/",
+                    "command": "roblox-ui.explorer.openRojoManifest",
+                    "when": "view == roblox-ui.explorer && viewItem =~ /rojoManifest/",
                     "group": "navigation_3@3"
                 },
                 {
-                    "command": "roblox-ui.renameObject",
+                    "command": "roblox-ui.explorer.openWallyManifest",
+                    "when": "view == roblox-ui.explorer && viewItem =~ /wallyManifest/",
+                    "group": "navigation_3@3"
+                },
+                {
+                    "command": "roblox-ui.explorer.renameObject",
                     "group": "navigation_4@1"
                 },
                 {
-                    "command": "roblox-ui.deleteObject",
+                    "command": "roblox-ui.explorer.deleteObject",
                     "group": "navigation_4@2"
                 }
             ]

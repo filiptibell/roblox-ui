@@ -11,6 +11,8 @@ use crate::server::{
 #[serde(rename_all = "camelCase")]
 pub(super) struct ResponseInstance {
     id: Ref,
+    #[serde(skip_serializing_if = "Ref::is_none")]
+    parent_id: Ref,
     class_name: String,
     name: String,
     children: Vec<Ref>,
@@ -21,6 +23,7 @@ impl ResponseInstance {
     fn from_dom_instance(inst: &Instance) -> Self {
         Self {
             id: inst.referent(),
+            parent_id: inst.parent(),
             class_name: inst.class.to_owned(),
             name: inst.name.to_owned(),
             children: inst.children().to_vec(),

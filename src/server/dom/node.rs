@@ -33,6 +33,31 @@ impl InstanceNode {
         node.sort_inner();
         Ok(node)
     }
+
+    /**
+        Merges a different stub instance node into this one.
+
+        This will add file paths from the other instance node to
+        this one and the children of this node, recursively, if
+        this node does not have any file paths present.
+
+        Used for Rojo sourcemaps where some paths may be missing in
+        the sourcemap but can be found in the project manifest stub.
+    */
+    pub(crate) fn merge_stub(&mut self, other: &Self) {
+        if self.file_paths.is_empty() && !other.file_paths.is_empty() {
+            self.file_paths.extend_from_slice(&other.file_paths);
+        }
+        for child in self.children.iter_mut() {
+            let other_child = other
+                .children
+                .iter()
+                .find(|c| c.class_name == child.class_name && c.name == child.name);
+            if let Some(other_child) = other_child {
+                child.merge_stub(other_child);
+            }
+        }
+    }
 }
 
 impl Ord for InstanceNode {

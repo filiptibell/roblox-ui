@@ -9,13 +9,13 @@ import {
 	reloadAllWorkspaces,
 } from "./workspaces";
 
-import { RojoTreeProvider } from "./providers/explorer";
 import { SettingsProvider } from "./providers/settings";
 import { SelectionProvider } from "./providers/selection";
 import { CommandsProvider } from "./providers/commands";
 
 import { MetadataProvider } from "./providers/metadata";
 import { IconsProvider } from "./providers/icons";
+import { ExplorerTreeProvider } from "./explorer";
 
 export async function activate(context: vscode.ExtensionContext) {
 	// Create settings provider first, it is used by other providers
@@ -31,7 +31,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	// Create the main tree view and data providers
 	// TODO: Create drag & drop provider here
-	const treeProvider = new RojoTreeProvider(settings, metadata, icons);
+	const treeProvider = new ExplorerTreeProvider(settings, metadata, icons);
 	const treeView = vscode.window.createTreeView("roblox-ui.explorer", {
 		treeDataProvider: treeProvider,
 		showCollapseAll: true,

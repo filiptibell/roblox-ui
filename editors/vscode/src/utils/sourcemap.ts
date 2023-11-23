@@ -1,10 +1,9 @@
 import * as vscode from "vscode";
 import * as path from "path";
 
-const anymatch = require("anymatch");
-
 import { SettingsProvider } from "../providers/settings";
-import { RojoTreeProvider } from "../providers/explorer";
+import { MetadataProvider } from "../providers/metadata";
+import { ExplorerTreeProvider } from "../explorer";
 
 import { isInitFilePath, isBinaryFilePath } from "./rojo";
 import {
@@ -12,7 +11,6 @@ import {
 	findPackageSourceNode,
 	parseWallySpec,
 } from "./wally";
-import { MetadataProvider } from "../providers/metadata";
 import { RpcServer } from "../server";
 
 const PACKAGE_CLASS_NAME = "Package";
@@ -155,32 +153,6 @@ const postprocessSourcemapNode = async (
 		}
 	}
 	return node;
-};
-
-const postprocessSourcemap = async (
-	workspacePath: string,
-	settings: SettingsProvider,
-	sourcemap: SourcemapNode
-) => {
-	const ignoreGlobs = settings.get("sourcemap.ignoreGlobs");
-	const modifyWally = settings.get("wally.modifyPackagesDir");
-	if (ignoreGlobs && ignoreGlobs.length > 0) {
-		await postprocessSourcemapNode(
-			workspacePath,
-			anymatch(ignoreGlobs),
-			sourcemap,
-			undefined,
-			modifyWally
-		);
-	} else {
-		await postprocessSourcemapNode(
-			workspacePath,
-			null,
-			sourcemap,
-			undefined,
-			modifyWally
-		);
-	}
 };
 
 const PRIMARY_FILE_PRIORITIES = new Map([
@@ -340,7 +312,7 @@ export const connectSourcemapUsingServer = (
 	context: vscode.ExtensionContext,
 	workspacePath: string,
 	settings: SettingsProvider,
-	treeProvider: RojoTreeProvider
+	treeProvider: ExplorerTreeProvider
 ): [() => void, () => void, () => Promise<void>] => {
 	const server = new RpcServer(context, workspacePath, settings);
 
@@ -349,9 +321,11 @@ export const connectSourcemapUsingServer = (
 		await server.restart();
 	};
 	const destroy = async () => {
-		treeProvider.delete(workspacePath);
+		treeProvider.disconnectServer(workspacePath);
 		await server.stop();
 	};
+
+	treeProvider.connectServer(workspacePath, server);
 
 	return [refresh, reload, destroy];
 };

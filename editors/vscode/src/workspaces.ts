@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 
-import { RojoTreeProvider } from "./providers/explorer";
 import { SettingsProvider } from "./providers/settings";
+import { ExplorerTreeProvider } from "./explorer";
 import { connectSourcemapUsingServer } from "./utils/sourcemap";
 
 const workspaceRefreshers: Map<string, () => void> = new Map();
@@ -40,7 +40,7 @@ export const connectWorkspace = async (
 	context: vscode.ExtensionContext,
 	folder: vscode.WorkspaceFolder,
 	settings: SettingsProvider,
-	treeProvider: RojoTreeProvider
+	treeProvider: ExplorerTreeProvider
 ) => {
 	const workspacePath = folder.uri.fsPath;
 
@@ -59,7 +59,7 @@ export const connectWorkspace = async (
 export const connectAllWorkspaces = async (
 	context: vscode.ExtensionContext,
 	settings: SettingsProvider,
-	provider: RojoTreeProvider
+	provider: ExplorerTreeProvider
 ) => {
 	let promisesDisconnect = new Array<Promise<void>>();
 	let promisesConnect = new Array<Promise<void>>();
