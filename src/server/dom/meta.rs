@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 
 use rbx_dom_weak::types::Ref;
 
+use crate::util::path::make_absolute_and_clean;
+
 use super::util::*;
 use super::Dom;
 
@@ -115,7 +117,10 @@ impl InstanceMetadata {
         actions.can_paste_into = actions.can_insert_object;
 
         if actions.contains_serializable_props() || paths.contains_serializable_props() {
-            Some(Self { actions, paths })
+            Some(Self {
+                actions,
+                paths: paths.make_absolute_and_clean(),
+            })
         } else {
             None
         }
@@ -207,6 +212,16 @@ impl InstanceMetadataPaths {
             .iter()
             .filter_map(|path| *path)
             .collect::<Vec<_>>()
+    }
+
+    fn make_absolute_and_clean(mut self) -> Self {
+        self.folder = self.folder.map(make_absolute_and_clean);
+        self.file = self.file.map(make_absolute_and_clean);
+        self.file_meta = self.file_meta.map(make_absolute_and_clean);
+        self.rojo = self.rojo.map(make_absolute_and_clean);
+        self.wally = self.wally.map(make_absolute_and_clean);
+        self.wally_lock = self.wally_lock.map(make_absolute_and_clean);
+        self
     }
 }
 

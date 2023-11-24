@@ -26,13 +26,13 @@ pub async fn handle_rpc_message(msg: RpcMessage, dom: &mut Dom) -> Result<()> {
                     .context("failed to deserialize dom/children")?;
                 req.respond_to(msg, dom).await?
             }
-            "dom/findByPath" => {
+            "dom/findbypath" => {
                 let req = msg
                     .get_data::<dom::FindByPathRequest>()
                     .context("failed to deserialize dom/findByPath")?;
                 req.respond_to(msg, dom).await?
             }
-            "dom/findByQuery" => {
+            "dom/findbyquery" => {
                 let req = msg
                     .get_data::<dom::FindByQueryRequest>()
                     .context("failed to deserialize dom/findByQuery")?;

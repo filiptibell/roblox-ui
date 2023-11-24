@@ -66,12 +66,20 @@ export class SelectionProvider implements vscode.Disposable {
 
 	async revealEditor(editor: vscode.TextEditor): Promise<boolean> {
 		let path = editor.document.uri.fsPath;
-		if (path.endsWith(".lua") || path.endsWith(".luau")) {
-			// TODO: Re-implement this
-			// const treeItem = await this.treeDataProvider.findTreeItem(path);
-			// if (treeItem) {
-			// 	return await this.reveal(treeItem);
-			// }
+		for (const workspacePath of this.treeDataProvider.getWorkspacePaths()) {
+			const domInstance = await this.treeDataProvider.findByPath(
+				workspacePath,
+				path
+			);
+			if (domInstance) {
+				const treeItem = await this.treeDataProvider.findExplorerItem(
+					workspacePath,
+					domInstance.id
+				);
+				if (treeItem) {
+					return await this.reveal(treeItem);
+				}
+			}
 		}
 		return false;
 	}

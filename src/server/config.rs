@@ -1,12 +1,12 @@
 use std::{
-    env::current_dir,
     path::{Path, PathBuf},
     str::FromStr,
 };
 
 use once_cell::sync::Lazy;
-use path_clean::PathClean;
 use serde::Deserialize;
+
+use crate::util::path::make_absolute_and_clean;
 
 /**
     Configuration for the instance server.
@@ -153,21 +153,10 @@ impl Default for ConfigDeserializable {
 
 static DEFAULT_SOURCEMAP_PATH: Lazy<PathBuf> = Lazy::new(|| {
     let path = PathBuf::from("sourcemap.json");
-    make_absolute_and_clean(&path)
+    make_absolute_and_clean(path)
 });
 
 static DEFAULT_ROJO_PROJECT_PATH: Lazy<PathBuf> = Lazy::new(|| {
     let path = PathBuf::from("default.project.json");
-    make_absolute_and_clean(&path)
+    make_absolute_and_clean(path)
 });
-
-fn make_absolute_and_clean(path: &Path) -> PathBuf {
-    if path.is_relative() {
-        current_dir()
-            .expect("failed to get current dir")
-            .join(path)
-            .clean()
-    } else {
-        path.clean()
-    }
-}

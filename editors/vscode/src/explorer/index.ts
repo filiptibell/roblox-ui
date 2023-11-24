@@ -43,7 +43,7 @@ export class ExplorerTreeProvider
 		const items = new Array<ExplorerItem>();
 		if (parent) {
 			// We got an explorer item to get the children of, so request that from the server
-			const idMap = this.explorerIdMaps.get(parent.workspacePath);
+			const idMap = this.explorerIdMaps.get(parent.workspacePath)!;
 			const server = this.servers.get(parent.workspacePath)!;
 			const children = await server.sendRequest("dom/children", {
 				id: parent.domInstance.id,
@@ -56,7 +56,7 @@ export class ExplorerTreeProvider
 						childInstance,
 						false
 					);
-					idMap!.set(item.domInstance.id, item);
+					idMap.set(item.domInstance.id, item);
 					items.push(item);
 				}
 			}
@@ -74,10 +74,8 @@ export class ExplorerTreeProvider
 						rootInstance,
 						true
 					);
-					const idMap = this.explorerIdMaps.get(workspacePath);
-					if (idMap) {
-						idMap.set(item.domInstance.id, item);
-					}
+					const idMap = this.explorerIdMaps.get(workspacePath)!;
+					idMap.set(item.domInstance.id, item);
 					items.push(item);
 				}
 			}
@@ -181,6 +179,20 @@ export class ExplorerTreeProvider
 		this.servers.set(workspacePath, server);
 		this.loaded.set(workspacePath, false);
 		this._onDidChangeTreeData.fire();
+	}
+
+	public async findExplorerItem(
+		workspacePath: string,
+		domId: string
+	): Promise<ExplorerItem | null> {
+		const idMap = this.explorerIdMaps.get(workspacePath);
+		if (idMap) {
+			const item = idMap.get(domId);
+			if (item) {
+				return item;
+			}
+		}
+		return null;
 	}
 
 	public async findByPath(

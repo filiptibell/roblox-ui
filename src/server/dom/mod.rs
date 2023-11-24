@@ -19,6 +19,7 @@ pub use node::*;
 use query::*;
 
 use super::Config;
+use crate::util::path::make_absolute_and_clean;
 
 // NOTE: If anyone ever names their root instance this, things may break... let's hope they don't
 const DOM_ROOT_NAME_NONE: &str = "<|<|<|ROOT|>|>|>";
@@ -353,7 +354,7 @@ impl Dom {
     }
 
     pub fn find_by_path(&self, path: impl AsRef<Path>) -> Option<Ref> {
-        self.path_map.get(path.as_ref()).cloned()
+        self.path_map.get(&make_absolute_and_clean(path)).cloned()
     }
 
     pub fn find_by_query(&self, query: impl AsRef<str>, limit: Option<usize>) -> Vec<Ref> {

@@ -16,11 +16,10 @@ export class ExplorerItem extends vscode.TreeItem {
 		// Set new resource uri for git / diagnostics decorations
 		const filePath = domInstance.metadata?.paths.file;
 		const folderPath = domInstance.metadata?.paths.folder;
-		const workspaceUri = vscode.Uri.file(workspacePath);
 		const resourceUri = filePath
-			? vscode.Uri.joinPath(workspaceUri, filePath)
+			? vscode.Uri.file(filePath)
 			: folderPath
-			? vscode.Uri.joinPath(workspaceUri, folderPath)
+			? vscode.Uri.file(folderPath)
 			: isRoot
 			? vscode.Uri.file(workspacePath)
 			: undefined;
@@ -124,10 +123,7 @@ const getInitialTreeItemState = (
 					if (filePath && editorPath.endsWith(filePath)) {
 						break;
 					}
-					const editorRelative = editorPath.startsWith(workspacePath)
-						? editorPath.slice(workspacePath.length + 1)
-						: editorPath;
-					if (editorRelative.startsWith(folderPath)) {
+					if (editorPath.startsWith(folderPath)) {
 						state = vscode.TreeItemCollapsibleState.Expanded;
 						break;
 					}
@@ -142,11 +138,8 @@ const getInitialTreeItemState = (
 	*/
 	let shouldFocus = false;
 	const editor = vscode.window.activeTextEditor;
-	if (editor && filePath) {
-		const editorPath = editor.document.uri.fsPath;
-		if (editorPath.endsWith(filePath)) {
-			shouldFocus = true;
-		}
+	if (editor && filePath === editor.document.uri.fsPath) {
+		shouldFocus = true;
 	}
 
 	return [state, shouldFocus];
