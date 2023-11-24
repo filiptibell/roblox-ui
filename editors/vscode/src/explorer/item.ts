@@ -5,7 +5,10 @@ import { DomInstance } from "../server";
 import { ExplorerTreeProvider } from ".";
 
 export class ExplorerItem extends vscode.TreeItem {
+	private childReferences: ExplorerItem[] = [];
+
 	constructor(
+		public readonly parent: ExplorerItem | null,
 		public readonly workspacePath: string,
 		public readonly treeProvider: ExplorerTreeProvider,
 		public readonly domInstance: DomInstance,
@@ -26,7 +29,7 @@ export class ExplorerItem extends vscode.TreeItem {
 		this.resourceUri = resourceUri;
 
 		// Set collapsible state to show expansion arrow for children, or not
-		const [collapsibleState, shouldFocus] = getInitialTreeItemState(
+		const [collapsibleState, shouldSelect] = getInitialTreeItemState(
 			workspacePath,
 			domInstance,
 			isRoot
@@ -65,8 +68,12 @@ export class ExplorerItem extends vscode.TreeItem {
 		);
 
 		// Finally, select the tree item if wanted
-		if (shouldFocus) {
-			vscode.commands.executeCommand("roblox-ui.explorer.focus", this);
+		if (shouldSelect) {
+			vscode.commands.executeCommand(
+				"roblox-ui.explorer.select",
+				this.workspacePath,
+				this.domInstance.id
+			);
 		}
 	}
 
@@ -78,11 +85,57 @@ export class ExplorerItem extends vscode.TreeItem {
 			throw new Error("Missing server for explorer tree item");
 		}
 	}
+
+	public setChildReferences(children: ExplorerItem[]) {
+		this.childReferences = children;
+	}
+
+	public expandRevealPath(fsPath: string): ExplorerItem | null {
+		if (
+			fsPath === this.domInstance.metadata?.paths.file ||
+			fsPath === this.domInstance.metadata?.paths.folder
+		) {
+			return this;
+		}
+
+		let found: ExplorerItem | null = null;
+
+		// Check for an exact child match
+		for (const child of this.childReferences) {
+			if (
+				fsPath === child.domInstance.metadata?.paths.file ||
+				fsPath === child.domInstance.metadata?.paths.folder
+			) {
+				found = child;
+				break;
+			}
+		}
+
+		// Check for folder partial match if there was no exact child match
+		if (found === null) {
+			for (const child of this.childReferences) {
+				const folderPath = child.domInstance.metadata?.paths.folder;
+				if (folderPath && fsPath.startsWith(folderPath)) {
+					found = child;
+					break;
+				}
+			}
+		}
+
+		// If we found a child, expand this, and keep looking
+		if (found !== null) {
+			// FIXME: Setting state here does not seem to actually expand in explorer view ...
+			this.collapsibleState = vscode.TreeItemCollapsibleState.Expanded;
+			return found.expandRevealPath(fsPath);
+		}
+
+		return null;
+	}
 }
 
 /**
 	Gets the initial `vscode.TreeItemCollapsibleState` for an instance,
-	as well as if the instance should be initially focused or not.
+	as well as if the instance should be initially selected or not.
 */
 const getInitialTreeItemState = (
 	workspacePath: string,
@@ -134,15 +187,15 @@ const getInitialTreeItemState = (
 
 	/*
 		If this explorer item has a file path that is currently
-		open and active in an editor, we should make it focused
+		open and active in an editor, we should make it selected
 	*/
-	let shouldFocus = false;
+	let shouldSelect = false;
 	const editor = vscode.window.activeTextEditor;
 	if (editor && filePath === editor.document.uri.fsPath) {
-		shouldFocus = true;
+		shouldSelect = true;
 	}
 
-	return [state, shouldFocus];
+	return [state, shouldSelect];
 };
 
 /**

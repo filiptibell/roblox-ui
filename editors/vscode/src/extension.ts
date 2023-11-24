@@ -31,22 +31,26 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	// Create the main tree view and data providers
 	// TODO: Create drag & drop provider here
-	const treeProvider = new ExplorerTreeProvider(settings, metadata, icons);
-	const treeView = vscode.window.createTreeView("roblox-ui.explorer", {
-		treeDataProvider: treeProvider,
+	const explorerTreeProvider = new ExplorerTreeProvider(
+		settings,
+		metadata,
+		icons
+	);
+	const explorerView = vscode.window.createTreeView("roblox-ui.explorer", {
+		treeDataProvider: explorerTreeProvider,
 		showCollapseAll: true,
 		canSelectMany: false,
 	});
-	context.subscriptions.push(treeView);
+	context.subscriptions.push(explorerView);
 
 	// Create other providers for things such as selection handling, ...
 	const commands = new CommandsProvider(
 		context,
 		metadata,
-		treeView,
-		treeProvider
+		explorerView,
+		explorerTreeProvider
 	);
-	const selection = new SelectionProvider(treeView, treeProvider);
+	const selection = new SelectionProvider(explorerTreeProvider);
 	context.subscriptions.push(commands);
 	context.subscriptions.push(selection);
 
@@ -70,14 +74,19 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.workspace.onDidChangeWorkspaceFolders((event) => {
 			for (const addedFolder of event.added) {
-				connectWorkspace(context, addedFolder, settings, treeProvider);
+				connectWorkspace(
+					context,
+					addedFolder,
+					settings,
+					explorerTreeProvider
+				);
 			}
 			for (const removedFolder of event.removed) {
 				disconnectWorkspace(removedFolder);
 			}
 		})
 	);
-	connectAllWorkspaces(context, settings, treeProvider);
+	connectAllWorkspaces(context, settings, explorerTreeProvider);
 }
 
 export async function deactivate() {

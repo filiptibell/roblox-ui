@@ -16,6 +16,7 @@ export class ExplorerTreeProvider
 	private loaded: Map<string, boolean> = new Map();
 	private servers: Map<string, RpcServer> = new Map();
 	private disconnects: Map<string, () => boolean> = new Map();
+	private explorerRoots: Map<string, ExplorerItem | null> = new Map();
 	private explorerIdMaps: Map<string, Map<string, ExplorerItem>> = new Map();
 
 	readonly _onDidChangeTreeData: vscode.EventEmitter<void | ExplorerItem> =
@@ -41,6 +42,7 @@ export class ExplorerTreeProvider
 
 	public async getChildren(parent?: ExplorerItem) {
 		const items = new Array<ExplorerItem>();
+
 		if (parent) {
 			// We got an explorer item to get the children of, so request that from the server
 			const idMap = this.explorerIdMaps.get(parent.workspacePath)!;
@@ -51,6 +53,7 @@ export class ExplorerTreeProvider
 			if (children && children.length > 0) {
 				for (const childInstance of children) {
 					const item = new ExplorerItem(
+						parent,
 						parent.workspacePath,
 						this,
 						childInstance,
@@ -65,10 +68,12 @@ export class ExplorerTreeProvider
 			// we fetch the root items for all known workspace paths
 			// TODO: Re-implement the explorer.showDataModel setting, if not set to true
 			// then we should show datamodel children directly for single-root workspaces
+			this.explorerRoots.clear();
 			for (const [workspacePath, server] of this.servers) {
 				const rootInstance = await server.sendRequest("dom/root", null);
 				if (rootInstance) {
 					const item = new ExplorerItem(
+						null,
 						workspacePath,
 						this,
 						rootInstance,
@@ -77,22 +82,22 @@ export class ExplorerTreeProvider
 					const idMap = this.explorerIdMaps.get(workspacePath)!;
 					idMap.set(item.domInstance.id, item);
 					items.push(item);
+					this.explorerRoots.set(workspacePath, item);
 				}
 			}
 		}
+
 		items.sort(compareExplorerItemOrder);
+
+		if (parent) {
+			parent.setChildReferences(items);
+		}
+
 		return items;
 	}
 
 	public getParent(item: ExplorerItem) {
-		const parentId = item.domInstance.parentId;
-		if (parentId && parentId.length > 0) {
-			const idMap = this.explorerIdMaps.get(item.workspacePath);
-			if (idMap) {
-				return idMap.get(parentId);
-			}
-		}
-		return undefined;
+		return item.parent;
 	}
 
 	private refreshItemById(workspacePath: string, id: string) {
@@ -133,6 +138,7 @@ export class ExplorerTreeProvider
 			if (disconnect !== undefined) {
 				disconnect();
 			}
+			this.explorerRoots.delete(workspacePath);
 			this.explorerIdMaps.delete(workspacePath);
 			this.disconnects.delete(workspacePath);
 			this.servers.delete(workspacePath);
@@ -181,10 +187,16 @@ export class ExplorerTreeProvider
 		this._onDidChangeTreeData.fire();
 	}
 
-	public async findExplorerItem(
-		workspacePath: string,
-		domId: string
-	): Promise<ExplorerItem | null> {
+	public expandRevealPath(fsPath: string): ExplorerItem | null {
+		for (const [workspacePath, root] of this.explorerRoots) {
+			if (root && fsPath.startsWith(workspacePath)) {
+				return root.expandRevealPath(fsPath);
+			}
+		}
+		return null;
+	}
+
+	public findById(workspacePath: string, domId: string): ExplorerItem | null {
 		const idMap = this.explorerIdMaps.get(workspacePath);
 		if (idMap) {
 			const item = idMap.get(domId);

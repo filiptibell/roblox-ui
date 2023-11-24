@@ -32,21 +32,19 @@ export class CommandsProvider implements vscode.Disposable {
 	) {
 		this.register("explorer.refresh", reloadAllWorkspaces);
 
-		this.register("explorer.focus", (item: ExplorerItem) => {
-			treeView.reveal(item, {
-				expand: false,
-				select: false,
-				focus: true,
-			});
-		});
-
-		this.register("explorer.select", (item: ExplorerItem) => {
-			treeView.reveal(item, {
-				expand: false,
-				select: true,
-				focus: true,
-			});
-		});
+		this.register(
+			"explorer.select",
+			async (workspacePath: string, domId: string) => {
+				const item = treeDataProvider.findById(workspacePath, domId);
+				if (item) {
+					await treeView.reveal(item, {
+						expand: false,
+						select: true,
+						focus: true,
+					});
+				}
+			}
+		);
 
 		const revealFileInOS = (item: ExplorerItem) => {
 			const uri = item.resourceUri;
