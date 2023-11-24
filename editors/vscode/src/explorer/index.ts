@@ -4,7 +4,7 @@ import { IconsProvider } from "../providers/icons";
 import { MetadataProvider } from "../providers/metadata";
 import { SettingsProvider } from "../providers/settings";
 
-import { RpcServer } from "../server";
+import { DomInstance, RpcServer } from "../server";
 
 import { ExplorerItem, compareExplorerItemOrder } from "./item";
 
@@ -120,6 +120,14 @@ export class ExplorerTreeProvider
 		}
 	}
 
+	public getWorkspacePaths() {
+		return Array.from(this.servers.keys());
+	}
+
+	public getServer(workspacePath: string) {
+		return this.servers.get(workspacePath);
+	}
+
 	public disconnectServer(workspacePath: string) {
 		const server = this.servers.get(workspacePath);
 		if (server !== undefined) {
@@ -173,5 +181,39 @@ export class ExplorerTreeProvider
 		this.servers.set(workspacePath, server);
 		this.loaded.set(workspacePath, false);
 		this._onDidChangeTreeData.fire();
+	}
+
+	public async findByPath(
+		workspacePath: string,
+		path: string
+	): Promise<DomInstance | null> {
+		const server = this.servers.get(workspacePath);
+		if (server) {
+			const response = await server.sendRequest("dom/findByPath", {
+				path,
+			});
+			if (response) {
+				return response;
+			}
+		}
+		return null;
+	}
+
+	public async findByQuery(
+		workspacePath: string,
+		query: string,
+		limit?: number
+	): Promise<DomInstance[]> {
+		const server = this.servers.get(workspacePath);
+		if (server) {
+			const response = await server.sendRequest("dom/findByQuery", {
+				query,
+				limit,
+			});
+			if (response && response.length > 0) {
+				return response;
+			}
+		}
+		return [];
 	}
 }

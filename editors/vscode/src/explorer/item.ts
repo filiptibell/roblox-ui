@@ -70,6 +70,15 @@ export class ExplorerItem extends vscode.TreeItem {
 			vscode.commands.executeCommand("roblox-ui.explorer.focus", this);
 		}
 	}
+
+	public getServer() {
+		const server = this.treeProvider.getServer(this.workspacePath);
+		if (server !== undefined) {
+			return server;
+		} else {
+			throw new Error("Missing server for explorer tree item");
+		}
+	}
 }
 
 /**
