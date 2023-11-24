@@ -8,6 +8,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- Added a "Reveal in File Explorer" / "Reveal in Finder" context menu item in the explorer. This will reveal an instance using the native OS file explorer, if that instance has a file path available.
+
+### Changed
+
+- The backend for the file explorer has been completely rewritten! This has been a long time coming, and all new features since version `0.2.0` have been added as a direct result of partial progress being made on this rewrite. Here's what's new:
+
+  - Much improved general performance and responsiveness
+  - More accurate git & diagnostics decorations on instances
+  - Fixes several long-standing bugs (check full list below)
+
+### Fixed
+
+- Fixed instances sometimes getting duplicated in the explorer view.
+- Fixed instances sometimes not being revealed in the explorer view when the extension starts up.
+- Fixed context menu items such as "rename" and "delete" not always being available when they should be.
+- Fixed the explorer view forcefully stealing focus when opening a file by other means, eg. clicking it in search or the default VSCode explorer.
+
 ## `0.2.2` - November 12th, 2023
 
 ### Changed
