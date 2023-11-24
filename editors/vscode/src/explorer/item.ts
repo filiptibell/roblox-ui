@@ -81,7 +81,8 @@ const getInitialTreeItemState = (
 	domInstance: DomInstance,
 	isRoot: boolean
 ): [vscode.TreeItemCollapsibleState, boolean] => {
-	let shouldFocus = true;
+	const filePath = domInstance.metadata?.paths.file;
+
 	let state = vscode.TreeItemCollapsibleState.None;
 	if (domInstance.children && domInstance.children.length > 0) {
 		/*
@@ -100,7 +101,6 @@ const getInitialTreeItemState = (
 				Doing this during creation, and as vscode calls getChildren on the tree
 				chain means we end up with visible editors also revealed in the explorer
 			*/
-			const filePath = domInstance.metadata?.paths.file;
 			const folderPath = domInstance.metadata?.paths.folder;
 			if (folderPath) {
 				for (const editor of vscode.window.visibleTextEditors) {
@@ -126,6 +126,20 @@ const getInitialTreeItemState = (
 			}
 		}
 	}
+
+	/*
+		If this explorer item has a file path that is currently
+		open and active in an editor, we should make it focused
+	*/
+	let shouldFocus = false;
+	const editor = vscode.window.activeTextEditor;
+	if (editor && filePath) {
+		const editorPath = editor.document.uri.fsPath;
+		if (editorPath.endsWith(filePath)) {
+			shouldFocus = true;
+		}
+	}
+
 	return [state, shouldFocus];
 };
 
