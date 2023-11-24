@@ -40,6 +40,24 @@ export class CommandsProvider implements vscode.Disposable {
 			});
 		});
 
+		this.register("explorer.select", (item: ExplorerItem) => {
+			treeView.reveal(item, {
+				expand: false,
+				select: true,
+				focus: true,
+			});
+		});
+
+		const revealFileInOS = (item: ExplorerItem) => {
+			const uri = item.resourceUri;
+			if (uri) {
+				vscode.commands.executeCommand("revealFileInOS", uri);
+			}
+		};
+		this.register("explorer.revealFileInOS.windows", revealFileInOS);
+		this.register("explorer.revealFileInOS.mac", revealFileInOS);
+		this.register("explorer.revealFileInOS", revealFileInOS);
+
 		this.register("explorer.openRojoManifest", (item: ExplorerItem) => {
 			const filePath = item.domInstance.metadata?.paths.rojo;
 			if (filePath) {

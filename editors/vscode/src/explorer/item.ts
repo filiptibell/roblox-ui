@@ -260,6 +260,10 @@ const getInstanceContextValue = (
 		}
 	}
 
+	if (isRoot || paths?.file || paths?.folder) {
+		contextPartials.add("canRevealFileInOS");
+	}
+
 	return Array.from(contextPartials.values()).join(";");
 };
 

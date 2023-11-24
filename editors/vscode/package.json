@@ -96,6 +96,18 @@
                 "icon": "$(refresh)"
             },
             {
+                "command": "roblox-ui.explorer.revealFileInOS.windows",
+                "title": "Reveal in File Explorer",
+                "icon": "$(file-open)",
+                "enablement": "view == roblox-ui.explorer && viewItem =~ /canRevealFileInOS/ && isWindows"
+            },
+            {
+                "command": "roblox-ui.explorer.revealFileInOS.mac",
+                "title": "Reveal in Finder",
+                "icon": "$(file-open)",
+                "enablement": "view == roblox-ui.explorer && viewItem =~ /canRevealFileInOS/ && isMac"
+            },
+            {
                 "command": "roblox-ui.explorer.insertObject",
                 "title": "New Instance...",
                 "icon": "$(file-add)",
@@ -164,6 +176,14 @@
         ],
         "keybindings": [
             {
+                "command": "roblox-ui.explorer.revealFileInOS.windows",
+                "key": "ctrl+alt+R"
+            },
+            {
+                "command": "roblox-ui.explorer.revealFileInOS.mac",
+                "mac": "opt+cmd+R"
+            },
+            {
                 "command": "roblox-ui.explorer.instanceCut",
                 "key": "ctrl+X",
                 "mac": "cmd+X"
@@ -204,53 +224,63 @@
             ],
             "view/item/context": [
                 {
+                    "command": "roblox-ui.explorer.revealFileInOS.windows",
+                    "when": "view == roblox-ui.explorer && viewItem =~ /canRevealFileInOS/ && isWindows",
+                    "group": "navigation_1@1"
+                },
+                {
+                    "command": "roblox-ui.explorer.revealFileInOS.mac",
+                    "when": "view == roblox-ui.explorer && viewItem =~ /canRevealFileInOS/ && isMac",
+                    "group": "navigation_1@1"
+                },
+                {
                     "command": "roblox-ui.explorer.insertObject",
                     "when": "view == roblox-ui.explorer && !(viewItem =~ /canInsertService/)",
-                    "group": "navigation_1@1"
+                    "group": "navigation_2@1"
                 },
                 {
                     "command": "roblox-ui.explorer.insertFolder",
                     "when": "view == roblox-ui.explorer && !(viewItem =~ /canInsertService/)",
-                    "group": "navigation_1@2"
+                    "group": "navigation_2@2"
                 },
                 {
                     "command": "roblox-ui.explorer.insertService",
                     "when": "view == roblox-ui.explorer && viewItem =~ /canInsertService/",
-                    "group": "navigation_1@3"
-                },
-                {
-                    "command": "roblox-ui.explorer.instanceCut",
-                    "group": "navigation_2@1"
-                },
-                {
-                    "command": "roblox-ui.explorer.instanceCopy",
-                    "group": "navigation_2@2"
-                },
-                {
-                    "command": "roblox-ui.explorer.instancePaste",
                     "group": "navigation_2@3"
                 },
                 {
+                    "command": "roblox-ui.explorer.instanceCut",
+                    "group": "navigation_3@1"
+                },
+                {
+                    "command": "roblox-ui.explorer.instanceCopy",
+                    "group": "navigation_3@2"
+                },
+                {
+                    "command": "roblox-ui.explorer.instancePaste",
+                    "group": "navigation_3@3"
+                },
+                {
                     "command": "roblox-ui.explorer.instancePasteInto",
-                    "group": "navigation_2@4"
+                    "group": "navigation_3@4"
                 },
                 {
                     "command": "roblox-ui.explorer.openRojoManifest",
                     "when": "view == roblox-ui.explorer && viewItem =~ /rojoManifest/",
-                    "group": "navigation_3@3"
+                    "group": "navigation_4@3"
                 },
                 {
                     "command": "roblox-ui.explorer.openWallyManifest",
                     "when": "view == roblox-ui.explorer && viewItem =~ /wallyManifest/",
-                    "group": "navigation_3@3"
+                    "group": "navigation_4@3"
                 },
                 {
                     "command": "roblox-ui.explorer.renameObject",
-                    "group": "navigation_4@1"
+                    "group": "navigation_5@1"
                 },
                 {
                     "command": "roblox-ui.explorer.deleteObject",
-                    "group": "navigation_4@2"
+                    "group": "navigation_5@2"
                 }
             ]
         },
