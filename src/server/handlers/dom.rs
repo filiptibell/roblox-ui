@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use anyhow::{Context, Result};
 use rbx_dom_weak::{types::Ref, Instance};
 use serde::{Deserialize, Serialize};
@@ -85,6 +87,47 @@ impl ChildrenRequest {
             .map(|inst| inst.children())
             .unwrap_or_default();
         let instances = child_ids
+            .iter()
+            .filter_map(|id| dom.get_instance(*id))
+            .map(ResponseInstance::from_dom_instance)
+            .map(|inst| inst.with_dom_metadata(dom))
+            .collect::<Vec<_>>();
+        msg.respond()
+            .with_data(instances)
+            .context("failed to serialize response")
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct FindByPathRequest {
+    path: PathBuf,
+}
+
+impl FindByPathRequest {
+    pub async fn respond_to(self, msg: RpcMessage, dom: &mut Dom) -> Result<RpcMessage> {
+        let instance = dom
+            .find_by_path(self.path)
+            .and_then(|id| dom.get_instance(id))
+            .map(ResponseInstance::from_dom_instance)
+            .map(|inst| inst.with_dom_metadata(dom));
+        msg.respond()
+            .with_data(instance)
+            .context("failed to serialize response")
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct FindByQueryRequest {
+    query: String,
+    limit: Option<usize>,
+}
+
+impl FindByQueryRequest {
+    pub async fn respond_to(self, msg: RpcMessage, dom: &mut Dom) -> Result<RpcMessage> {
+        let instances = dom
+            .find_by_query(self.query, self.limit)
             .iter()
             .filter_map(|id| dom.get_instance(*id))
             .map(ResponseInstance::from_dom_instance)

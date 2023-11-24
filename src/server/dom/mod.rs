@@ -1,16 +1,22 @@
 #![allow(clippy::unnecessary_to_owned)]
 
-use std::collections::HashMap;
+use std::{
+    collections::{HashMap, VecDeque},
+    path::{Path, PathBuf},
+};
 
 use rbx_dom_weak::{types::Ref, Instance, InstanceBuilder, WeakDom};
 use serde::{Deserialize, Serialize};
+use sorted_vec::partial::SortedSet;
 
 mod meta;
 mod node;
+mod query;
 mod util;
 
 pub use meta::*;
 pub use node::*;
+use query::*;
 
 use super::Config;
 
@@ -53,6 +59,7 @@ pub struct Dom {
     _config: Config,
     inner: WeakDom,
     metas: HashMap<Ref, InstanceMetadata>,
+    path_map: HashMap<PathBuf, Ref>,
     root_meta: InstanceMetadata,
 }
 
@@ -62,6 +69,7 @@ impl Dom {
             _config: config,
             inner: WeakDom::new(InstanceBuilder::new(DOM_ROOT_NAME_NONE)),
             metas: HashMap::new(),
+            path_map: HashMap::new(),
             root_meta: InstanceMetadata::default(),
         }
     }
@@ -71,6 +79,9 @@ impl Dom {
         let id = self.inner.insert(parent_id, inst);
 
         if let Some(meta) = InstanceMetadata::new(id, self, &node.file_paths) {
+            for path in &meta.paths {
+                self.path_map.insert(path.to_path_buf(), id);
+            }
             self.metas.insert(id, meta);
         }
 
@@ -86,6 +97,11 @@ impl Dom {
     fn remove_instance(&mut self, id: Ref) {
         self.metas.remove(&id);
         if let Some(inst) = self.inner.get_by_ref(id) {
+            if let Some(meta) = self.metas.get(&id) {
+                for path in &meta.paths {
+                    self.path_map.remove(path);
+                }
+            }
             for child_id in inst.children().to_vec() {
                 self.remove_instance(child_id);
             }
@@ -334,6 +350,46 @@ impl Dom {
         } else {
             None
         }
+    }
+
+    pub fn find_by_path(&self, path: impl AsRef<Path>) -> Option<Ref> {
+        self.path_map.get(path.as_ref()).cloned()
+    }
+
+    pub fn find_by_query(&self, query: impl AsRef<str>, limit: Option<usize>) -> Vec<Ref> {
+        let params = match query.as_ref().parse::<QueryParams>() {
+            Ok(params) => params,
+            Err(_) => return Vec::new(),
+        };
+
+        // FUTURE: Use some kind of precompiled search engine ?? but
+        // this seems to be good enough for now and is not too slow
+        let mut set: SortedSet<QueryResult> = SortedSet::new();
+        let mut queue = VecDeque::new();
+
+        if let Some(root_id) = self.get_root_id() {
+            queue.push_front(root_id);
+        }
+
+        while let Some(id) = queue.pop_front() {
+            if let Some(inst) = self.inner.get_by_ref(id) {
+                if let Some(score) = params.score(inst) {
+                    set.insert(QueryResult::new(score, id));
+                }
+                for child_id in inst.children() {
+                    queue.push_back(*child_id);
+                }
+            }
+        }
+
+        set.iter()
+            .take(
+                limit
+                    .unwrap_or(QUERY_LIMIT_DEFAULT)
+                    .max(QUERY_LIMIT_MAXIMUM),
+            )
+            .map(|res| res.id)
+            .collect::<Vec<_>>()
     }
 
     pub fn apply_new_root(&mut self, node: Option<InstanceNode>) -> Vec<DomNotification> {

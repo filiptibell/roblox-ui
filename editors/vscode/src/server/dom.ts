@@ -46,6 +46,12 @@ export type DomGetResponse = Option<DomInstance>;
 export type DomChildrenRequest = { id: string };
 export type DomChildrenResponse = DomInstance[];
 
+export type DomFindByPathRequest = { path: string };
+export type DomFindByPathResponse = Option<DomInstance>;
+
+export type DomFindByQueryRequest = { query: string; limit: Option<number> };
+export type DomFindByQueryResponse = DomInstance[];
+
 // Notifications
 
 type DomNotificationAdded = {
@@ -72,16 +78,29 @@ export type DomNotification =
 
 // Method -> request & response type maps
 
-export type MethodRequestTypes = {
-	["dom/notification"]: DomNotification;
-	["dom/root"]: DomRootRequest;
-	["dom/get"]: DomGetRequest;
-	["dom/children"]: DomChildrenRequest;
-};
-
-export type MethodResponseTypes = {
-	["dom/notification"]: None;
-	["dom/root"]: DomRootResponse;
-	["dom/get"]: DomGetResponse;
-	["dom/children"]: DomChildrenResponse;
+export type MethodTypes = {
+	["dom/notification"]: {
+		request: DomNotification;
+		response: None;
+	};
+	["dom/root"]: {
+		request: DomRootRequest;
+		response: DomRootResponse;
+	};
+	["dom/get"]: {
+		request: DomGetRequest;
+		response: DomGetResponse;
+	};
+	["dom/children"]: {
+		request: DomChildrenRequest;
+		response: DomChildrenResponse;
+	};
+	["dom/findByPath"]: {
+		request: DomFindByPathRequest;
+		response: DomFindByPathResponse;
+	};
+	["dom/findByQuery"]: {
+		request: DomFindByQueryRequest;
+		response: DomFindByQueryResponse;
+	};
 };

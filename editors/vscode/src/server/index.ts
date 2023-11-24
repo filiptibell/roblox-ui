@@ -4,16 +4,16 @@ import * as cp from "child_process";
 import { SettingsProvider } from "../providers/settings";
 import { kill, log, start } from "./child";
 import { RpcMessage, createRpcRequest, respondToRpcMessage } from "./message";
-import { MethodRequestTypes, MethodResponseTypes } from "./dom";
+import { MethodTypes } from "./dom";
 
 export * from "./dom";
 export * from "./message";
 
-type RpcHandler<M extends keyof MethodRequestTypes> = (
-	request: MethodRequestTypes[M]
-) => MethodResponseTypes[M];
-type RpcResolver<M extends keyof MethodResponseTypes> = (
-	response: MethodResponseTypes[M]
+type RpcHandler<M extends keyof MethodTypes> = (
+	request: MethodTypes[M]["request"]
+) => MethodTypes[M]["response"];
+type RpcResolver<M extends keyof MethodTypes> = (
+	response: MethodTypes[M]["response"]
 ) => void;
 
 export class RpcServer {
@@ -55,10 +55,10 @@ export class RpcServer {
 		);
 	}
 
-	public async sendRequest<M extends keyof MethodRequestTypes>(
+	public async sendRequest<M extends keyof MethodTypes>(
 		method: M,
-		request: MethodRequestTypes[M]
-	): Promise<MethodResponseTypes[M]> {
+		request: MethodTypes[M]["request"]
+	): Promise<MethodTypes[M]["response"]> {
 		this.idCounter += 1;
 		const id = this.idCounter;
 		return new Promise((resolve) => {
@@ -73,7 +73,7 @@ export class RpcServer {
 		});
 	}
 
-	public onRequest<M extends keyof MethodRequestTypes>(
+	public onRequest<M extends keyof MethodTypes>(
 		method: M,
 		handler: RpcHandler<M>
 	) {

@@ -26,6 +26,18 @@ pub async fn handle_rpc_message(msg: RpcMessage, dom: &mut Dom) -> Result<()> {
                     .context("failed to deserialize dom/children")?;
                 req.respond_to(msg, dom).await?
             }
+            "dom/findByPath" => {
+                let req = msg
+                    .get_data::<dom::FindByPathRequest>()
+                    .context("failed to deserialize dom/findByPath")?;
+                req.respond_to(msg, dom).await?
+            }
+            "dom/findByQuery" => {
+                let req = msg
+                    .get_data::<dom::FindByQueryRequest>()
+                    .context("failed to deserialize dom/findByQuery")?;
+                req.respond_to(msg, dom).await?
+            }
             _ => bail!("unknown request method '{method}'"),
         };
 

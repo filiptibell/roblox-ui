@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
@@ -54,7 +54,11 @@ impl InstanceMetadata {
                 .or(paths.rojo.as_ref())
                 .or(paths.wally.as_ref());
             if let Some(file_parent) = any_file_path.and_then(|p| p.parent()) {
-                paths.folder = Some(file_parent.to_path_buf());
+                // NOTE: Possible source of TOCTOU bugs, but not
+                // adding in any invalid paths is more important
+                if file_parent.exists() {
+                    paths.folder = Some(file_parent.to_path_buf());
+                }
             }
         }
 
@@ -72,7 +76,12 @@ impl InstanceMetadata {
         // is a folder, and the parent has a folder path, we can derive a folder path
         if paths.folder.is_none() && instance.class == "Folder" {
             if let Some(parent_folder) = parent_meta.and_then(|meta| meta.paths.folder.as_deref()) {
-                paths.folder = Some(parent_folder.join(instance.name.clone()))
+                // NOTE: Possible source of TOCTOU bugs, but not
+                // adding in any invalid paths is more important
+                let child_folder = parent_folder.join(instance.name.clone());
+                if child_folder.exists() {
+                    paths.folder = Some(child_folder)
+                }
             }
         }
 
@@ -183,5 +192,29 @@ impl InstanceMetadataPaths {
             || self.rojo.is_some()
             || self.wally.is_some()
             || self.wally_lock.is_some()
+    }
+
+    fn existing_paths(&self) -> Vec<&Path> {
+        let paths_opt = &[
+            self.folder.as_deref(),
+            self.file.as_deref(),
+            self.file_meta.as_deref(),
+            self.rojo.as_deref(),
+            self.wally.as_deref(),
+            self.wally_lock.as_deref(),
+        ];
+        paths_opt
+            .iter()
+            .filter_map(|path| *path)
+            .collect::<Vec<_>>()
+    }
+}
+
+impl<'a> IntoIterator for &'a InstanceMetadataPaths {
+    type Item = &'a Path;
+    type IntoIter = std::vec::IntoIter<&'a Path>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.existing_paths().into_iter()
     }
 }
