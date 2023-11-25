@@ -4,7 +4,7 @@ import { IconsProvider } from "../providers/icons";
 import { MetadataProvider } from "../providers/metadata";
 import { SettingsProvider } from "../providers/settings";
 
-import { DomInstance, RpcServer } from "../server";
+import { DomFindByQueryRequest, DomInstance, RpcServer } from "../server";
 
 import { ExplorerItem, compareExplorerItemOrder } from "./item";
 
@@ -183,8 +183,12 @@ export class ExplorerTreeProvider
 		});
 		this.disconnects.set(workspacePath, disconnect);
 		this.servers.set(workspacePath, server);
-		this.loaded.set(workspacePath, false);
 		this._onDidChangeTreeData.fire();
+		// HACK: Force update after a tiny delay to minimize race conditions where
+		// server could have emitted events later than this and we somehow missed
+		setTimeout(() => {
+			this._onDidChangeTreeData.fire();
+		}, 10);
 	}
 
 	public expandRevealPath(fsPath: string): ExplorerItem | null {
@@ -225,15 +229,14 @@ export class ExplorerTreeProvider
 
 	public async findByQuery(
 		workspacePath: string,
-		query: string,
-		limit?: number
+		query: string | DomFindByQueryRequest
 	): Promise<DomInstance[]> {
 		const server = this.servers.get(workspacePath);
 		if (server) {
-			const response = await server.sendRequest("dom/findByQuery", {
-				query,
-				limit,
-			});
+			const response = await server.sendRequest(
+				"dom/findByQuery",
+				typeof query === "string" ? { query, limit: undefined } : query
+			);
 			if (response && response.length > 0) {
 				return response;
 			}

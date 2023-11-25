@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use rbx_dom_weak::types::Ref;
 
@@ -9,11 +10,15 @@ use crate::util::path::make_absolute_and_clean;
 use super::util::*;
 use super::Dom;
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InstanceMetadata {
-    pub actions: InstanceMetadataActions,
-    pub paths: InstanceMetadataPaths,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub package: Option<InstanceMetadataPackage>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub actions: Option<InstanceMetadataActions>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub paths: Option<InstanceMetadataPaths>,
 }
 
 impl InstanceMetadata {
@@ -27,6 +32,7 @@ impl InstanceMetadata {
         which would have also meant that no useful props would have been serializable.
     */
     pub fn new(id: Ref, dom: &Dom, file_paths: &[PathBuf]) -> Option<Self> {
+        let mut package = None;
         let mut actions = InstanceMetadataActions::default();
         let mut paths = InstanceMetadataPaths::default();
 
@@ -74,10 +80,23 @@ impl InstanceMetadata {
         let is_root = matches!(dom.get_root_id(), Some(i) if i == id);
         let is_datamodel = instance.class == "DataModel";
 
+        if let Some(parent_package) = parent_meta.and_then(|meta| meta.package.as_ref()) {
+            // If the parent is part of a package, this instance must
+            // be too, so there's no need to do more complicated checks
+            package = Some(InstanceMetadataPackage::from_parent(parent_package));
+        } else if let Some(file) = paths.file.as_deref() {
+            // If we got a package file path, we may be able
+            // to parse useful Wally package metadata out of it
+            package = InstanceMetadataPackage::from_path(file);
+        }
+
         // If we *still* don't have a file or folder path, but we know that this instance
         // is a folder, and the parent has a folder path, we can derive a folder path
         if paths.folder.is_none() && instance.class == "Folder" {
-            if let Some(parent_folder) = parent_meta.and_then(|meta| meta.paths.folder.as_deref()) {
+            if let Some(parent_folder) = parent_meta
+                .and_then(|meta| meta.paths.as_ref())
+                .and_then(|paths| paths.folder.as_deref())
+            {
                 // NOTE: Possible source of TOCTOU bugs, but not
                 // adding in any invalid paths is more important
                 let child_folder = parent_folder.join(instance.name.clone());
@@ -112,22 +131,109 @@ impl InstanceMetadata {
         */
         actions.can_move = parent.is_some() && (paths.file.is_some() || paths.folder.is_some());
         actions.can_paste_sibling = parent_meta
-            .map(|meta| meta.paths.folder.is_some())
+            .and_then(|meta| meta.paths.as_ref())
+            .map(|paths| paths.folder.is_some())
             .unwrap_or_default();
         actions.can_paste_into = actions.can_insert_object;
 
-        if actions.contains_serializable_props() || paths.contains_serializable_props() {
-            Some(Self {
-                actions,
-                paths: paths.make_absolute_and_clean(),
-            })
+        // Only return metadata if it actually has useful data inside of it
+        let this = Self {
+            package,
+            actions: actions.data_or_none(),
+            paths: paths.data_or_none().map(|p| p.make_absolute_and_clean()),
+        };
+
+        this.data_or_none()
+    }
+
+    fn contains_data(&self) -> bool {
+        self.package.is_some() || self.actions.is_some() || self.paths.is_some()
+    }
+
+    fn data_or_none(self) -> Option<Self> {
+        if self.contains_data() {
+            Some(self)
         } else {
             None
         }
     }
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize)]
+// NOTE: We use Arc<String> here to make cloning much cheaper with package
+// metadata cloning for children, all children of a package should have the
+// same metadata and we do not need to mutate that package metadata either
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InstanceMetadataPackage {
+    /// Scope of the Wally package.
+    pub scope: Arc<String>,
+    /// Name of the Wally package.
+    pub name: Arc<String>,
+    /// Version of the Wally package.
+    pub version: Arc<String>,
+    /// If this instance is the root instance of the Wally package or not.
+    #[serde(skip_serializing_if = "is_false")]
+    pub is_root: bool,
+}
+
+impl InstanceMetadataPackage {
+    fn from_parent(parent_meta: &Self) -> Self {
+        if parent_meta.is_root {
+            Self {
+                is_root: false,
+                ..parent_meta.clone()
+            }
+        } else {
+            parent_meta.clone()
+        }
+    }
+
+    fn from_path(path: impl AsRef<Path>) -> Option<Self> {
+        let path = path.as_ref();
+
+        // Look for a folder inside of another named '_Index'
+        let mut found_index = false;
+        let mut found_folder = None;
+        let mut found_inner = None;
+        for component in path.components() {
+            if let Some(component_str) = component.as_os_str().to_str() {
+                if !found_index && component_str == "_Index" {
+                    found_index = true;
+                } else if found_index && found_folder.is_none() {
+                    found_folder = Some(component_str);
+                } else if found_index && found_folder.is_some() {
+                    found_inner = Some(component_str);
+                    break;
+                }
+            } else {
+                break;
+            }
+        }
+
+        // Make sure we got both components
+        let package_folder = found_folder?;
+        let package_inner = found_inner?;
+
+        // If we found a matching folder, split it by '_' and '@'
+        // Example wally package folder name: 'scope_package@1.0.0'
+        // Any instance with the exact name of the package inside of
+        // that folder is also guaranteed to be the "root" of the package
+        if let Some((scope, rest)) = package_folder.split_once('_') {
+            if let Some((name, version)) = rest.split_once('@') {
+                return Some(Self {
+                    scope: Arc::new(scope.to_owned()),
+                    name: Arc::new(name.to_owned()),
+                    version: Arc::new(version.to_owned()),
+                    is_root: package_inner == name,
+                });
+            }
+        }
+
+        None
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InstanceMetadataActions {
     /// If the instance can be "opened" by directly clicking on it or not.
@@ -152,7 +258,7 @@ pub struct InstanceMetadataActions {
 }
 
 impl InstanceMetadataActions {
-    fn contains_serializable_props(&self) -> bool {
+    fn contains_data(&self) -> bool {
         self.can_open
             || self.can_move
             || self.can_paste_sibling
@@ -160,9 +266,17 @@ impl InstanceMetadataActions {
             || self.can_insert_service
             || self.can_insert_object
     }
+
+    fn data_or_none(self) -> Option<Self> {
+        if self.contains_data() {
+            Some(self)
+        } else {
+            None
+        }
+    }
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InstanceMetadataPaths {
     /// Source directory of the instance. Should only be present if the
@@ -190,13 +304,21 @@ pub struct InstanceMetadataPaths {
 }
 
 impl InstanceMetadataPaths {
-    fn contains_serializable_props(&self) -> bool {
+    fn contains_data(&self) -> bool {
         self.folder.is_some()
             || self.file.is_some()
             || self.file_meta.is_some()
             || self.rojo.is_some()
             || self.wally.is_some()
             || self.wally_lock.is_some()
+    }
+
+    fn data_or_none(self) -> Option<Self> {
+        if self.contains_data() {
+            Some(self)
+        } else {
+            None
+        }
     }
 
     fn existing_paths(&self) -> Vec<&Path> {

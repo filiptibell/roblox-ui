@@ -7,7 +7,7 @@ use std::{
 
 use rbx_dom_weak::{types::Ref, Instance, InstanceBuilder, WeakDom};
 use serde::{Deserialize, Serialize};
-use sorted_vec::partial::SortedSet;
+use sorted_vec::partial::ReverseSortedSet;
 
 mod meta;
 mod node;
@@ -16,7 +16,7 @@ mod util;
 
 pub use meta::*;
 pub use node::*;
-use query::*;
+pub use query::*;
 
 use super::Config;
 use crate::util::path::make_absolute_and_clean;
@@ -80,8 +80,10 @@ impl Dom {
         let id = self.inner.insert(parent_id, inst);
 
         if let Some(meta) = InstanceMetadata::new(id, self, &node.file_paths) {
-            for path in &meta.paths {
-                self.path_map.insert(path.to_path_buf(), id);
+            if let Some(paths) = &meta.paths {
+                for path in paths {
+                    self.path_map.insert(path.to_path_buf(), id);
+                }
             }
             self.metas.insert(id, meta);
         }
@@ -99,8 +101,10 @@ impl Dom {
         self.metas.remove(&id);
         if let Some(inst) = self.inner.get_by_ref(id) {
             if let Some(meta) = self.metas.get(&id) {
-                for path in &meta.paths {
-                    self.path_map.remove(path);
+                if let Some(paths) = &meta.paths {
+                    for path in paths {
+                        self.path_map.remove(path);
+                    }
                 }
             }
             for child_id in inst.children().to_vec() {
@@ -357,15 +361,10 @@ impl Dom {
         self.path_map.get(&make_absolute_and_clean(path)).cloned()
     }
 
-    pub fn find_by_query(&self, query: impl AsRef<str>, limit: Option<usize>) -> Vec<Ref> {
-        let params = match query.as_ref().parse::<QueryParams>() {
-            Ok(params) => params,
-            Err(_) => return Vec::new(),
-        };
-
+    pub fn find_by_query(&self, params: DomQueryParams) -> Vec<Ref> {
         // FUTURE: Use some kind of precompiled search engine ?? but
         // this seems to be good enough for now and is not too slow
-        let mut set: SortedSet<QueryResult> = SortedSet::new();
+        let mut set = ReverseSortedSet::new();
         let mut queue = VecDeque::new();
 
         if let Some(root_id) = self.get_root_id() {
@@ -374,9 +373,9 @@ impl Dom {
 
         while let Some(id) = queue.pop_front() {
             if let Some(inst) = self.inner.get_by_ref(id) {
-                if let Some(score) = params.score(inst) {
-                    set.insert(QueryResult::new(score, id));
-                }
+                let meta = self.get_metadata(id);
+                let score = params.score(inst, meta);
+                set.insert(DomQueryResult::new(score, id));
                 for child_id in inst.children() {
                     queue.push_back(*child_id);
                 }
@@ -384,11 +383,7 @@ impl Dom {
         }
 
         set.iter()
-            .take(
-                limit
-                    .unwrap_or(QUERY_LIMIT_DEFAULT)
-                    .max(QUERY_LIMIT_MAXIMUM),
-            )
+            .take(params.limit())
             .map(|res| res.id)
             .collect::<Vec<_>>()
     }

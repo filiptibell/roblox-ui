@@ -96,6 +96,11 @@
                 "icon": "$(refresh)"
             },
             {
+                "command": "roblox-ui.explorer.quickOpen",
+                "title": "Roblox UI: Quick Open",
+                "icon": "$(search)"
+            },
+            {
                 "command": "roblox-ui.explorer.revealFileInOS.windows",
                 "title": "Reveal in File Explorer",
                 "icon": "$(file-open)",
@@ -217,9 +222,14 @@
         "menus": {
             "view/title": [
                 {
+                    "command": "roblox-ui.explorer.quickOpen",
+                    "when": "view == roblox-ui.explorer",
+                    "group": "navigation@1"
+                },
+                {
                     "command": "roblox-ui.explorer.refresh",
                     "when": "view == roblox-ui.explorer",
-                    "group": "navigation"
+                    "group": "navigation@2"
                 }
             ],
             "view/item/context": [

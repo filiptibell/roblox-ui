@@ -13,8 +13,16 @@ export type DomInstance = {
 // Instance metadata
 
 export type DomInstanceMetadata = {
-	actions: DomInstanceMetadataActions;
-	paths: DomInstanceMetadataPaths;
+	package?: DomInstanceMetadataPackage;
+	actions?: DomInstanceMetadataActions;
+	paths?: DomInstanceMetadataPaths;
+};
+
+export type DomInstanceMetadataPackage = {
+	scope: string;
+	name: string;
+	version: string;
+	isRoot: boolean;
 };
 
 export type DomInstanceMetadataActions = {

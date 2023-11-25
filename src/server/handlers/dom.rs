@@ -5,7 +5,7 @@ use rbx_dom_weak::{types::Ref, Instance};
 use serde::{Deserialize, Serialize};
 
 use crate::server::{
-    dom::{Dom, InstanceMetadata},
+    dom::{Dom, DomQueryParams, InstanceMetadata},
     rpc::RpcMessage,
 };
 
@@ -126,13 +126,17 @@ pub(super) struct FindByQueryRequest {
 
 impl FindByQueryRequest {
     pub async fn respond_to(self, msg: RpcMessage, dom: &mut Dom) -> Result<RpcMessage> {
+        let mut params = DomQueryParams::from_str(&self.query);
+        params.limit = self.limit;
+
         let instances = dom
-            .find_by_query(self.query, self.limit)
+            .find_by_query(params)
             .iter()
             .filter_map(|id| dom.get_instance(*id))
             .map(ResponseInstance::from_dom_instance)
             .map(|inst| inst.with_dom_metadata(dom))
             .collect::<Vec<_>>();
+
         msg.respond()
             .with_data(instances)
             .context("failed to serialize response")

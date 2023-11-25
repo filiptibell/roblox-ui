@@ -4,6 +4,7 @@ import { reloadAllWorkspaces } from "../workspaces";
 
 import { MetadataProvider } from "./metadata";
 import { ExplorerItem, ExplorerTreeProvider } from "../explorer";
+import { QuickOpenProvider } from "./quickOpen";
 
 export class CommandsProvider implements vscode.Disposable {
 	private commands: Map<string, (...args: any[]) => any> = new Map();
@@ -28,9 +29,11 @@ export class CommandsProvider implements vscode.Disposable {
 		context: vscode.ExtensionContext,
 		metadata: MetadataProvider,
 		treeView: vscode.TreeView<vscode.TreeItem>,
-		treeDataProvider: ExplorerTreeProvider
+		treeDataProvider: ExplorerTreeProvider,
+		quickOpenProvider: QuickOpenProvider
 	) {
 		this.register("explorer.refresh", reloadAllWorkspaces);
+		this.register("explorer.quickOpen", () => quickOpenProvider.show());
 
 		this.register(
 			"explorer.select",
@@ -57,7 +60,7 @@ export class CommandsProvider implements vscode.Disposable {
 		this.register("explorer.revealFileInOS", revealFileInOS);
 
 		this.register("explorer.openRojoManifest", (item: ExplorerItem) => {
-			const filePath = item.domInstance.metadata?.paths.rojo;
+			const filePath = item.domInstance.metadata?.paths?.rojo;
 			if (filePath) {
 				vscode.commands.executeCommand(
 					"vscode.open",
@@ -66,7 +69,7 @@ export class CommandsProvider implements vscode.Disposable {
 			}
 		});
 		this.register("explorer.openWallyManifest", (item: ExplorerItem) => {
-			const filePath = item.domInstance.metadata?.paths.wally;
+			const filePath = item.domInstance.metadata?.paths?.wally;
 			if (filePath) {
 				vscode.commands.executeCommand(
 					"vscode.open",

@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added a "Quick Open" menu to fuzzy search and open corresponding(s) file for available instances. This can be used as a command (with optional keybind) or by clicking the search icon in the explorer.
 - Added a "Reveal in File Explorer" / "Reveal in Finder" context menu item in the explorer. This will reveal an instance using the native OS file explorer, if that instance has a file path available.
 
 ### Changed

@@ -36,7 +36,7 @@ usvg = "0.36"
 
 url = { version = "2.4", features = ["serde"] }
 
-serde = "1.0"
+serde = { version = "1.0", features = ["rc"] }
 serde_with = "3.4"
 serde_json = "1.0"
 toml = "0.8"

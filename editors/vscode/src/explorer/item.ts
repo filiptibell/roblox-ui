@@ -17,8 +17,8 @@ export class ExplorerItem extends vscode.TreeItem {
 		super(domInstance.name);
 
 		// Set new resource uri for git / diagnostics decorations
-		const filePath = domInstance.metadata?.paths.file;
-		const folderPath = domInstance.metadata?.paths.folder;
+		const filePath = domInstance.metadata?.paths?.file;
+		const folderPath = domInstance.metadata?.paths?.folder;
 		const resourceUri = filePath
 			? vscode.Uri.file(filePath)
 			: folderPath
@@ -51,7 +51,7 @@ export class ExplorerItem extends vscode.TreeItem {
 		);
 
 		// If this instance can be clicked to open, link that up
-		if (domInstance.metadata?.actions.canOpen) {
+		if (domInstance.metadata?.actions?.canOpen) {
 			this.command = {
 				title: "Open file",
 				command: "vscode.open",
@@ -92,8 +92,8 @@ export class ExplorerItem extends vscode.TreeItem {
 
 	public expandRevealPath(fsPath: string): ExplorerItem | null {
 		if (
-			fsPath === this.domInstance.metadata?.paths.file ||
-			fsPath === this.domInstance.metadata?.paths.folder
+			fsPath === this.domInstance.metadata?.paths?.file ||
+			fsPath === this.domInstance.metadata?.paths?.folder
 		) {
 			return this;
 		}
@@ -103,8 +103,8 @@ export class ExplorerItem extends vscode.TreeItem {
 		// Check for an exact child match
 		for (const child of this.childReferences) {
 			if (
-				fsPath === child.domInstance.metadata?.paths.file ||
-				fsPath === child.domInstance.metadata?.paths.folder
+				fsPath === child.domInstance.metadata?.paths?.file ||
+				fsPath === child.domInstance.metadata?.paths?.folder
 			) {
 				found = child;
 				break;
@@ -114,7 +114,7 @@ export class ExplorerItem extends vscode.TreeItem {
 		// Check for folder partial match if there was no exact child match
 		if (found === null) {
 			for (const child of this.childReferences) {
-				const folderPath = child.domInstance.metadata?.paths.folder;
+				const folderPath = child.domInstance.metadata?.paths?.folder;
 				if (folderPath && fsPath.startsWith(folderPath)) {
 					found = child;
 					break;
@@ -142,7 +142,7 @@ const getInitialTreeItemState = (
 	domInstance: DomInstance,
 	isRoot: boolean
 ): [vscode.TreeItemCollapsibleState, boolean] => {
-	const filePath = domInstance.metadata?.paths.file;
+	const filePath = domInstance.metadata?.paths?.file;
 
 	let state = vscode.TreeItemCollapsibleState.None;
 	if (domInstance.children && domInstance.children.length > 0) {
@@ -162,7 +162,7 @@ const getInitialTreeItemState = (
 				Doing this during creation, and as vscode calls getChildren on the tree
 				chain means we end up with visible editors also revealed in the explorer
 			*/
-			const folderPath = domInstance.metadata?.paths.folder;
+			const folderPath = domInstance.metadata?.paths?.folder;
 			if (folderPath) {
 				for (const editor of vscode.window.visibleTextEditors) {
 					const editorPath = editor.document.uri.fsPath;
@@ -210,8 +210,9 @@ const getInstanceDescription = (
 	const descriptionPartials: string[] = [];
 
 	if (treeProvider.settingsProvider.get("wally.showPackageVersion")) {
-		// TODO: Add back wally version when it is part of instance metadata
-		// descriptionPartials.push(domInstance.metadata.version);
+		if (domInstance.metadata?.package?.isRoot) {
+			descriptionPartials.push(domInstance.metadata.package.version);
+		}
 	}
 
 	if (treeProvider.settingsProvider.get("explorer.showClassNames")) {

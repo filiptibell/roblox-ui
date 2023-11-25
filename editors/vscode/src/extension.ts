@@ -16,6 +16,7 @@ import { CommandsProvider } from "./providers/commands";
 import { MetadataProvider } from "./providers/metadata";
 import { IconsProvider } from "./providers/icons";
 import { ExplorerTreeProvider } from "./explorer";
+import { QuickOpenProvider } from "./providers/quickOpen";
 
 export async function activate(context: vscode.ExtensionContext) {
 	// Create settings provider first, it is used by other providers
@@ -31,26 +32,30 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	// Create the main tree view and data providers
 	// TODO: Create drag & drop provider here
-	const explorerTreeProvider = new ExplorerTreeProvider(
-		settings,
-		metadata,
-		icons
-	);
+	const explorerTree = new ExplorerTreeProvider(settings, metadata, icons);
 	const explorerView = vscode.window.createTreeView("roblox-ui.explorer", {
-		treeDataProvider: explorerTreeProvider,
+		treeDataProvider: explorerTree,
 		showCollapseAll: true,
 		canSelectMany: false,
 	});
 	context.subscriptions.push(explorerView);
 
 	// Create other providers for things such as selection handling, ...
+	const quickOpen = new QuickOpenProvider(
+		settings,
+		metadata,
+		icons,
+		explorerTree
+	);
 	const commands = new CommandsProvider(
 		context,
 		metadata,
 		explorerView,
-		explorerTreeProvider
+		explorerTree,
+		quickOpen
 	);
-	const selection = new SelectionProvider(explorerTreeProvider);
+	const selection = new SelectionProvider(explorerTree);
+	context.subscriptions.push(quickOpen);
 	context.subscriptions.push(commands);
 	context.subscriptions.push(selection);
 
@@ -74,19 +79,14 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.workspace.onDidChangeWorkspaceFolders((event) => {
 			for (const addedFolder of event.added) {
-				connectWorkspace(
-					context,
-					addedFolder,
-					settings,
-					explorerTreeProvider
-				);
+				connectWorkspace(context, addedFolder, settings, explorerTree);
 			}
 			for (const removedFolder of event.removed) {
 				disconnectWorkspace(removedFolder);
 			}
 		})
 	);
-	connectAllWorkspaces(context, settings, explorerTreeProvider);
+	connectAllWorkspaces(context, settings, explorerTree);
 }
 
 export async function deactivate() {
