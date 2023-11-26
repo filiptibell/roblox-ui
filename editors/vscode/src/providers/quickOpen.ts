@@ -15,10 +15,10 @@ export class QuickOpenProvider implements vscode.Disposable {
 	private readonly disposables: vscode.Disposable[] = [];
 
 	constructor(
-		private readonly settingsProvider: SettingsProvider,
-		private readonly metadataProvider: MetadataProvider,
-		private readonly iconsProvider: IconsProvider,
-		private readonly explorerProvider: ExplorerTreeProvider
+		public readonly settingsProvider: SettingsProvider,
+		public readonly metadataProvider: MetadataProvider,
+		public readonly iconsProvider: IconsProvider,
+		public readonly explorerProvider: ExplorerTreeProvider
 	) {
 		this.picker = vscode.window.createQuickPick();
 		this.picker.canSelectMany = false;
@@ -70,20 +70,37 @@ export class QuickOpenProvider implements vscode.Disposable {
 		}
 		const searchResponses = await Promise.all(searchResponsePromises);
 
+		const nameResponsePromises = new Array<
+			Promise<[string, string[] | null]>
+		>();
+		for (const [workspacePath, foundInstances] of searchResponses) {
+			for (const foundInstance of foundInstances) {
+				nameResponsePromises.push(
+					new Promise((resolve, reject) => {
+						this.explorerProvider
+							.getFullName(workspacePath, foundInstance.id)
+							.then((fullName) =>
+								resolve([foundInstance.id, fullName])
+							)
+							.catch(reject);
+					})
+				);
+			}
+		}
+		const nameResponses = new Map(await Promise.all(nameResponsePromises));
+
 		this.picker.busy = false;
 
-		const newNames = new Array<string>();
 		const newItems = new Array<QuickOpenItem>();
 		for (const [workspacePath, foundInstances] of searchResponses) {
 			for (const foundInstance of foundInstances) {
-				newNames.push(foundInstance.name);
+				const fullName = nameResponses.get(foundInstance.id) ?? null;
 				newItems.push(
 					new QuickOpenItem(
-						this.settingsProvider,
-						this.metadataProvider,
-						this.iconsProvider,
 						workspacePath,
-						foundInstance
+						foundInstance,
+						this,
+						fullName
 					)
 				);
 			}
@@ -124,28 +141,28 @@ export class QuickOpenItem implements vscode.QuickPickItem {
 	public alwaysShow: boolean = true;
 	public label: string = "QuickOpenItem";
 	public iconPath?: { light: vscode.Uri; dark: vscode.Uri };
-	public detail?: string;
+	public description?: string;
 
 	constructor(
-		private readonly settingsProvider: SettingsProvider,
-		private readonly metadataProvider: MetadataProvider,
-		private readonly iconsProvider: IconsProvider,
 		public readonly workspacePath: string,
-		public readonly domInstance: DomInstance
+		public readonly domInstance: DomInstance,
+		readonly quickOpen: QuickOpenProvider,
+		readonly fullName: string[] | null
 	) {
 		this.label = domInstance.name;
 
-		this.iconPath = iconsProvider.getClassIcon(
-			settingsProvider.get("explorer.iconPack"),
+		this.iconPath = quickOpen.iconsProvider.getClassIcon(
+			quickOpen.settingsProvider.get("explorer.iconPack"),
 			domInstance.className
 		);
 
-		const filePath = domInstance.metadata?.paths?.file;
-		if (filePath) {
-			// TODO: Use instance full path instead of file path
-			const relativePath = filePath.slice(workspacePath.length + 1);
-			const parsedDirs = path.parse(relativePath).dir.split(path.sep);
-			this.detail = parsedDirs.join(" → ");
+		if (fullName) {
+			const wfolders = vscode.workspace.workspaceFolders;
+			if (!wfolders || wfolders.length <= 1) {
+				fullName.shift(); // Don't show root name for single-root workspaces
+			}
+			fullName.pop(); // Don't show name, its included in the label
+			this.description = fullName.join(".");
 		}
 	}
 }

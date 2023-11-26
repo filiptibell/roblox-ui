@@ -100,6 +100,42 @@ impl ChildrenRequest {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub(super) struct AncestorsRequest {
+    id: Ref,
+}
+
+impl AncestorsRequest {
+    pub async fn respond_to(self, msg: RpcMessage, dom: &mut Dom) -> Result<RpcMessage> {
+        let mut current = Some(self.id);
+        let mut ancestor_ids = Vec::new();
+        while let Some(current_id) = current.take() {
+            ancestor_ids.push(current_id);
+            let current_instance = match dom.get_instance(current_id) {
+                Some(inst) => inst,
+                None => continue,
+            };
+            let parent = current_instance.parent();
+            if parent.is_some() {
+                current.replace(parent);
+            }
+        }
+
+        ancestor_ids.reverse(); // Sort top level ancestor first, target instance last
+
+        let instances = ancestor_ids
+            .iter()
+            .filter_map(|id| dom.get_instance(*id))
+            .map(ResponseInstance::from_dom_instance)
+            .map(|inst| inst.with_dom_metadata(dom))
+            .collect::<Vec<_>>();
+        msg.respond()
+            .with_data(instances)
+            .context("failed to serialize response")
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub(super) struct FindByPathRequest {
     path: PathBuf,
 }

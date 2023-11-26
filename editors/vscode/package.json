@@ -181,6 +181,11 @@
         ],
         "keybindings": [
             {
+                "command": "roblox-ui.explorer.quickOpen",
+                "key": "alt+R",
+                "mac": "opt+R"
+            },
+            {
                 "command": "roblox-ui.explorer.revealFileInOS.windows",
                 "key": "ctrl+alt+R"
             },
@@ -315,7 +320,7 @@
         "viewsWelcome": [
             {
                 "view": "roblox-ui.explorer",
-                "contents": "In order to use the explorer, a Rojo project file must exist in the current directory.\nYou can set a custom Rojo project file path to use in the extension settings.\n[Extension Settings](command:workbench.action.openSettings?%5B%22roblox-ui%22%5D)"
+                "contents": "To use the explorer, a Rojo project or sourcemap must exist in the current directory.\nYou can customize this behavior in the extension settings.\n[Extension Settings](command:workbench.action.openSettings?%5B%22roblox-ui%22%5D)"
             }
         ]
     },

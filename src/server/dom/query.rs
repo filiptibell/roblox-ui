@@ -3,23 +3,25 @@ use strsim::normalized_levenshtein;
 
 use super::InstanceMetadata;
 
-pub const QUERY_LIMIT_DEFAULT: usize = 40;
+pub const QUERY_LIMIT_DEFAULT: usize = 20;
 pub const QUERY_LIMIT_MAXIMUM: usize = 100;
 
 #[derive(Debug, Clone)]
 pub struct DomQueryParams {
+    pub minimum_score: f64,
+    pub skip_non_files: bool,
+    pub skip_packages: bool,
     pub class_name: Option<String>,
-    pub name_low: Option<String>,
+    pub query_low: Option<String>,
     pub limit: Option<usize>,
 }
 
 impl DomQueryParams {
     pub fn from_str(query_string: &str) -> Self {
-        // TODO: Parse out class name from query string
+        let query_low = query_string.to_ascii_lowercase();
         Self {
-            class_name: None,
-            name_low: Some(query_string.to_ascii_lowercase()),
-            limit: None,
+            query_low: Some(query_low),
+            ..Default::default()
         }
     }
 
@@ -29,50 +31,92 @@ impl DomQueryParams {
             .max(QUERY_LIMIT_MAXIMUM)
     }
 
-    pub fn score(&self, inst: &Instance, meta: Option<&InstanceMetadata>) -> f64 {
-        self.instance_score(inst) + self.metadata_score(meta)
+    pub fn score(&self, inst: &Instance, meta: Option<&InstanceMetadata>) -> Option<f64> {
+        // NOTE: Metadata scoring is used here for "extra" sorting
+        // with instances that we already think match our query, or
+        // for skipping instances completely using any extra filters
+        // Metadata matching is also slightly faster than scoring
+        // so we do that first to get a bit of extra perf
+        if let Some(meta_score) = self.metadata_score(meta) {
+            if let Some(inst_score) = self.instance_score(inst) {
+                return Some(inst_score + meta_score);
+            }
+        }
+        None
     }
 
-    fn instance_score(&self, inst: &Instance) -> f64 {
-        let mut score = 0.0f64;
-
+    fn instance_score(&self, inst: &Instance) -> Option<f64> {
         if let Some(class_name) = self.class_name.as_deref() {
-            if class_name.eq_ignore_ascii_case(&inst.class) {
-                score += 1.0; // Exact class name match
+            if !class_name.eq_ignore_ascii_case(&inst.class) {
+                return None; // No class name match, filtered out
             }
         }
 
-        if let Some(name_low) = self.name_low.as_deref() {
+        let mut score = 0.0f64;
+        if let Some(query) = self.query_low.as_deref() {
             let inst_name_low = inst.name.to_ascii_lowercase();
-            if name_low == inst_name_low {
-                score += 1.0; // Exact name match
+            if query == inst_name_low {
+                // Exact name match should have max score
+                score += 1.0;
             } else {
-                score += normalized_levenshtein(name_low, &inst_name_low);
-                if inst_name_low.contains(name_low) {
-                    score += 0.2; // Boost exact substrings for nonexact matches
+                // Nonexact matches are weighted slightly towards finding exact substrings
+                score += 0.75 * normalized_levenshtein(query, &inst_name_low);
+                if inst_name_low.contains(query) {
+                    // Boost exact substrings for nonexact matches, making the boost
+                    // slightly stronger per how long the query is, up to 8 characters
+                    score += 0.25f64.min(0.25 * ((query.len() as f64) / 8.0));
                 }
             }
         }
 
-        score
+        if score >= self.minimum_score {
+            Some(score)
+        } else {
+            None
+        }
     }
 
-    fn metadata_score(&self, meta: Option<&InstanceMetadata>) -> f64 {
+    fn metadata_score(&self, meta: Option<&InstanceMetadata>) -> Option<f64> {
+        // Check for skipping packages flag
+        if self.skip_packages && meta.map(|m| m.package.is_some()).unwrap_or_default() {
+            return None;
+        }
+
+        // Check for skipping non-direct files flag
+        if self.skip_non_files
+            && !meta
+                .and_then(|m| m.paths.as_ref())
+                .map(|p| p.file.is_some() || p.file_meta.is_some())
+                .unwrap_or_default()
+        {
+            return None;
+        }
+
         let mut score = 0.0f64;
 
+        // Sort openable files first
         if meta
             .and_then(|m| m.actions.as_ref())
             .map(|a| a.can_open)
             .unwrap_or_default()
         {
-            score += 5.0; // Sort openable files first
+            score += 1.5;
         }
 
-        if meta.map(|m| m.package.is_some()).unwrap_or_default() {
-            score -= 2.5; // Sort packages last
-        }
+        Some(score)
+    }
+}
 
-        score
+impl Default for DomQueryParams {
+    fn default() -> Self {
+        Self {
+            minimum_score: 0.25,
+            skip_non_files: true,
+            skip_packages: true,
+            class_name: None,
+            query_low: None,
+            limit: None,
+        }
     }
 }
 
@@ -88,8 +132,18 @@ impl DomQueryResult {
     }
 }
 
+impl Eq for DomQueryResult {}
+
+impl Ord for DomQueryResult {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.score
+            .partial_cmp(&other.score)
+            .expect("scores must not be inf or nan")
+    }
+}
+
 impl PartialOrd for DomQueryResult {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.score.partial_cmp(&other.score)
+        Some(self.cmp(other))
     }
 }

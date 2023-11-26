@@ -1,13 +1,13 @@
 #![allow(clippy::unnecessary_to_owned)]
 
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::{HashMap, HashSet},
     path::{Path, PathBuf},
 };
 
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use rbx_dom_weak::{types::Ref, Instance, InstanceBuilder, WeakDom};
 use serde::{Deserialize, Serialize};
-use sorted_vec::partial::ReverseSortedSet;
 
 mod meta;
 mod node;
@@ -59,6 +59,7 @@ pub enum DomNotification {
 pub struct Dom {
     _config: Config,
     inner: WeakDom,
+    ids: HashSet<Ref>,
     metas: HashMap<Ref, InstanceMetadata>,
     path_map: HashMap<PathBuf, Ref>,
     root_meta: InstanceMetadata,
@@ -69,6 +70,7 @@ impl Dom {
         Self {
             _config: config,
             inner: WeakDom::new(InstanceBuilder::new(DOM_ROOT_NAME_NONE)),
+            ids: HashSet::new(),
             metas: HashMap::new(),
             path_map: HashMap::new(),
             root_meta: InstanceMetadata::default(),
@@ -94,10 +96,12 @@ impl Dom {
             self.insert_instance(id, child_node);
         }
 
+        self.ids.insert(id);
         id
     }
 
     fn remove_instance(&mut self, id: Ref) {
+        self.ids.remove(&id);
         self.metas.remove(&id);
         if let Some(inst) = self.inner.get_by_ref(id) {
             if let Some(meta) = self.metas.get(&id) {
@@ -337,10 +341,12 @@ impl Dom {
         notifications
     }
 
+    #[inline]
     pub fn get_instance(&self, id: Ref) -> Option<&Instance> {
         self.inner.get_by_ref(id)
     }
 
+    #[inline]
     pub fn get_metadata(&self, id: Ref) -> Option<&InstanceMetadata> {
         if id == self.inner.root_ref() {
             Some(&self.root_meta)
@@ -349,6 +355,7 @@ impl Dom {
         }
     }
 
+    #[inline]
     pub fn get_root_id(&self) -> Option<Ref> {
         if self.inner.root().name != DOM_ROOT_NAME_NONE {
             Some(self.inner.root_ref())
@@ -364,27 +371,28 @@ impl Dom {
     pub fn find_by_query(&self, params: DomQueryParams) -> Vec<Ref> {
         // FUTURE: Use some kind of precompiled search engine ?? but
         // this seems to be good enough for now and is not too slow
-        let mut set = ReverseSortedSet::new();
-        let mut queue = VecDeque::new();
+        let mut results = self
+            .ids
+            .par_iter()
+            .filter_map(|id| {
+                self.inner
+                    .get_by_ref(*id)
+                    .map(|inst| (id, inst, self.metas.get(id)))
+            })
+            .filter_map(|(id, inst, meta)| {
+                params
+                    .score(inst, meta)
+                    .map(|s| DomQueryResult::new(s, *id))
+            })
+            .collect::<Vec<_>>();
 
-        if let Some(root_id) = self.get_root_id() {
-            queue.push_front(root_id);
-        }
+        results.sort_unstable();
+        results.reverse();
 
-        while let Some(id) = queue.pop_front() {
-            if let Some(inst) = self.inner.get_by_ref(id) {
-                let meta = self.get_metadata(id);
-                let score = params.score(inst, meta);
-                set.insert(DomQueryResult::new(score, id));
-                for child_id in inst.children() {
-                    queue.push_back(*child_id);
-                }
-            }
-        }
-
-        set.iter()
+        results
+            .into_iter()
             .take(params.limit())
-            .map(|res| res.id)
+            .map(|result| result.id)
             .collect::<Vec<_>>()
     }
 

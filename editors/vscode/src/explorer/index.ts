@@ -184,11 +184,6 @@ export class ExplorerTreeProvider
 		this.disconnects.set(workspacePath, disconnect);
 		this.servers.set(workspacePath, server);
 		this._onDidChangeTreeData.fire();
-		// HACK: Force update after a tiny delay to minimize race conditions where
-		// server could have emitted events later than this and we somehow missed
-		setTimeout(() => {
-			this._onDidChangeTreeData.fire();
-		}, 10);
 	}
 
 	public expandRevealPath(fsPath: string): ExplorerItem | null {
@@ -196,6 +191,37 @@ export class ExplorerTreeProvider
 			if (root && fsPath.startsWith(workspacePath)) {
 				return root.expandRevealPath(fsPath);
 			}
+		}
+		return null;
+	}
+
+	public async getAncestors(
+		workspacePath: string,
+		domId: string
+	): Promise<DomInstance[] | null> {
+		const server = this.servers.get(workspacePath);
+		if (server) {
+			const response = await server.sendRequest("dom/ancestors", {
+				id: domId,
+			});
+			if (response) {
+				return response;
+			}
+		}
+		return null;
+	}
+
+	public async getFullName(
+		workspacePath: string,
+		domId: string
+	): Promise<string[] | null> {
+		const ancestors = await this.getAncestors(workspacePath, domId);
+		if (ancestors) {
+			const names = new Array<string>();
+			for (const ancestor of ancestors) {
+				names.push(ancestor.name);
+			}
+			return names;
 		}
 		return null;
 	}

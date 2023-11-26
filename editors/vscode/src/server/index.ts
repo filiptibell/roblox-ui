@@ -4,9 +4,9 @@ import * as cp from "child_process";
 import { SettingsProvider } from "../providers/settings";
 import { kill, log, start } from "./child";
 import { RpcMessage, createRpcRequest, respondToRpcMessage } from "./message";
-import { MethodTypes } from "./dom";
+import { MethodTypes } from "./types";
 
-export * from "./dom";
+export * from "./types";
 export * from "./message";
 
 type RpcHandler<M extends keyof MethodTypes> = (

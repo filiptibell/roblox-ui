@@ -54,6 +54,9 @@ export type DomGetResponse = Option<DomInstance>;
 export type DomChildrenRequest = { id: string };
 export type DomChildrenResponse = DomInstance[];
 
+export type DomAncestorsRequest = { id: string };
+export type DomAncestorsResponse = DomInstance[];
+
 export type DomFindByPathRequest = { path: string };
 export type DomFindByPathResponse = Option<DomInstance>;
 
@@ -102,6 +105,10 @@ export type MethodTypes = {
 	["dom/children"]: {
 		request: DomChildrenRequest;
 		response: DomChildrenResponse;
+	};
+	["dom/ancestors"]: {
+		request: DomAncestorsRequest;
+		response: DomAncestorsResponse;
 	};
 	["dom/findByPath"]: {
 		request: DomFindByPathRequest;
