@@ -42,8 +42,14 @@ impl InstanceMetadata {
                 None => continue,
             };
             // NOTE: We don't actually check the filesystem for if this is correct, but that's
-            // completely fine, since we _should_ be getting valid paths from rojo already
-            if file_name.ends_with(".meta.json") {
+            // completely fine, since we _should_ be getting valid paths from others already
+            if file_name == "wally.toml" {
+                paths.wally = Some(file_path.to_owned());
+            } else if file_name == "wally.lock" {
+                paths.wally_lock = Some(file_path.to_owned());
+            } else if file_name.ends_with(".project.json") {
+                paths.rojo = Some(file_path.to_owned());
+            } else if file_name.ends_with(".meta.json") {
                 paths.file_meta = Some(file_path.to_owned());
             } else if is_known_file(file_name) {
                 paths.file = Some(file_path.to_owned())
