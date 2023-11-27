@@ -1,4 +1,5 @@
-export type None = void | undefined | null;
+// biome-ignore lint/suspicious/noConfusingVoidType: let handlers and such return nothing
+export type None = undefined | null | void;
 export type Option<T> = None | T;
 
 export type DomInstance = {
@@ -90,31 +91,31 @@ export type DomNotification =
 // Method -> request & response type maps
 
 export type MethodTypes = {
-	["dom/notification"]: {
+	"dom/notification": {
 		request: DomNotification;
 		response: None;
 	};
-	["dom/root"]: {
+	"dom/root": {
 		request: DomRootRequest;
 		response: DomRootResponse;
 	};
-	["dom/get"]: {
+	"dom/get": {
 		request: DomGetRequest;
 		response: DomGetResponse;
 	};
-	["dom/children"]: {
+	"dom/children": {
 		request: DomChildrenRequest;
 		response: DomChildrenResponse;
 	};
-	["dom/ancestors"]: {
+	"dom/ancestors": {
 		request: DomAncestorsRequest;
 		response: DomAncestorsResponse;
 	};
-	["dom/findByPath"]: {
+	"dom/findByPath": {
 		request: DomFindByPathRequest;
 		response: DomFindByPathResponse;
 	};
-	["dom/findByQuery"]: {
+	"dom/findByQuery": {
 		request: DomFindByQueryRequest;
 		response: DomFindByQueryResponse;
 	};

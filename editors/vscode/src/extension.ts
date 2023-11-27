@@ -38,19 +38,8 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(explorerView);
 
 	// Create other providers for things such as selection handling, ...
-	const quickOpen = new QuickOpenProvider(
-		settings,
-		metadata,
-		icons,
-		explorerTree
-	);
-	const commands = new CommandsProvider(
-		context,
-		metadata,
-		explorerView,
-		explorerTree,
-		quickOpen
-	);
+	const quickOpen = new QuickOpenProvider(settings, metadata, icons, explorerTree);
+	const commands = new CommandsProvider(context, metadata, explorerView, explorerTree, quickOpen);
 	const selection = new SelectionProvider(explorerTree);
 	context.subscriptions.push(quickOpen);
 	context.subscriptions.push(commands);
@@ -72,7 +61,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	// Listen for workspace folders changing, and re-connect
 	// current workspace folders when that happens as well
 	context.subscriptions.push(
-		vscode.workspace.onDidChangeWorkspaceFolders(reconnectAllWorkspaces)
+		vscode.workspace.onDidChangeWorkspaceFolders(reconnectAllWorkspaces),
 	);
 	connectAllWorkspaces(context, settings, explorerTree);
 }

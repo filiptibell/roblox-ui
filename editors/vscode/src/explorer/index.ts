@@ -10,26 +10,22 @@ import { ExplorerItem, compareExplorerItemOrder } from "./item";
 
 export * from "./item";
 
-export class ExplorerTreeProvider
-	implements vscode.TreeDataProvider<ExplorerItem>
-{
+export class ExplorerTreeProvider implements vscode.TreeDataProvider<ExplorerItem> {
 	private readonly loaded: Map<string, boolean> = new Map();
 	private readonly servers: Map<string, RpcServer> = new Map();
 	private readonly disconnects: Map<string, () => boolean> = new Map();
-	private readonly explorerRoots: Map<string, ExplorerItem | null> =
-		new Map();
-	private readonly explorerIdMaps: Map<string, Map<string, ExplorerItem>> =
-		new Map();
+	private readonly explorerRoots: Map<string, ExplorerItem | null> = new Map();
+	private readonly explorerIdMaps: Map<string, Map<string, ExplorerItem>> = new Map();
 
-	private readonly _onDidChangeTreeData: vscode.EventEmitter<void | ExplorerItem> =
+	private readonly _onDidChangeTreeData: vscode.EventEmitter<ExplorerItem | undefined | null> =
 		new vscode.EventEmitter();
-	public readonly onDidChangeTreeData: vscode.Event<void | ExplorerItem> =
+	public readonly onDidChangeTreeData: vscode.Event<ExplorerItem | undefined | null> =
 		this._onDidChangeTreeData.event;
 
 	constructor(
 		public readonly settingsProvider: SettingsProvider,
 		public readonly metadataProvider: MetadataProvider,
-		public readonly iconsProvider: IconsProvider
+		public readonly iconsProvider: IconsProvider,
 	) {}
 
 	public dispose() {
@@ -45,8 +41,14 @@ export class ExplorerTreeProvider
 
 		if (parent) {
 			// We got an explorer item to get the children of, so request that from the server
-			const idMap = this.explorerIdMaps.get(parent.workspacePath)!;
-			const server = this.servers.get(parent.workspacePath)!;
+			const idMap = this.explorerIdMaps.get(parent.workspacePath);
+			if (idMap === undefined) {
+				throw new Error("Missing id map");
+			}
+			const server = this.servers.get(parent.workspacePath);
+			if (server === undefined) {
+				throw new Error("Missing server");
+			}
 			const children = await server.sendRequest("dom/children", {
 				id: parent.domInstance.id,
 			});
@@ -57,7 +59,7 @@ export class ExplorerTreeProvider
 						parent.workspacePath,
 						this,
 						childInstance,
-						false
+						false,
 					);
 					idMap.set(item.domInstance.id, item);
 					items.push(item);
@@ -72,14 +74,11 @@ export class ExplorerTreeProvider
 			for (const [workspacePath, server] of this.servers) {
 				const rootInstance = await server.sendRequest("dom/root", null);
 				if (rootInstance) {
-					const item = new ExplorerItem(
-						null,
-						workspacePath,
-						this,
-						rootInstance,
-						true
-					);
-					const idMap = this.explorerIdMaps.get(workspacePath)!;
+					const item = new ExplorerItem(null, workspacePath, this, rootInstance, true);
+					const idMap = this.explorerIdMaps.get(workspacePath);
+					if (idMap === undefined) {
+						throw new Error("Missing id map");
+					}
 					idMap.set(item.domInstance.id, item);
 					items.push(item);
 					this.explorerRoots.set(workspacePath, item);
@@ -114,7 +113,7 @@ export class ExplorerTreeProvider
 		const idMap = this.explorerIdMaps.get(workspacePath);
 		if (idMap) {
 			const item = idMap.get(id);
-			if (item && item.domInstance.children) {
+			if (item?.domInstance.children) {
 				for (const childId of item.domInstance.children) {
 					this.deleteItemById(workspacePath, childId);
 				}
@@ -142,7 +141,7 @@ export class ExplorerTreeProvider
 		this.servers.clear();
 		this.loaded.clear();
 
-		this._onDidChangeTreeData.fire();
+		this._onDidChangeTreeData.fire(null);
 	}
 
 	public disconnectServer(workspacePath: string) {
@@ -158,7 +157,7 @@ export class ExplorerTreeProvider
 			this.disconnects.delete(workspacePath);
 			this.servers.delete(workspacePath);
 			this.loaded.delete(workspacePath);
-			this._onDidChangeTreeData.fire();
+			this._onDidChangeTreeData.fire(null);
 		}
 	}
 
@@ -169,42 +168,33 @@ export class ExplorerTreeProvider
 			if (notif !== null) {
 				if (notif.kind === "Added") {
 					if (notif.data.parentId) {
-						this.refreshItemById(
-							workspacePath,
-							notif.data.parentId
-						);
+						this.refreshItemById(workspacePath, notif.data.parentId);
 					}
 				} else if (notif.kind === "Removed") {
 					this.deleteItemById(workspacePath, notif.data.childId);
 					if (notif.data.parentId) {
-						this.refreshItemById(
-							workspacePath,
-							notif.data.parentId
-						);
+						this.refreshItemById(workspacePath, notif.data.parentId);
 					}
 				} else if (notif.kind === "Changed") {
 					this.refreshItemById(workspacePath, notif.data.id);
 				}
 				if (this.loaded.get(workspacePath) === false) {
 					this.loaded.set(workspacePath, true);
-					this._onDidChangeTreeData.fire();
+					this._onDidChangeTreeData.fire(null);
 				}
 			} else {
 				if (this.loaded.get(workspacePath) === true) {
 					this.loaded.set(workspacePath, false);
-					this._onDidChangeTreeData.fire();
+					this._onDidChangeTreeData.fire(null);
 				}
 			}
 		});
 		this.disconnects.set(workspacePath, disconnect);
 		this.servers.set(workspacePath, server);
-		this._onDidChangeTreeData.fire();
+		this._onDidChangeTreeData.fire(null);
 	}
 
-	public async getAncestors(
-		workspacePath: string,
-		domId: string
-	): Promise<DomInstance[] | null> {
+	public async getAncestors(workspacePath: string, domId: string): Promise<DomInstance[] | null> {
 		const server = this.servers.get(workspacePath);
 		if (server) {
 			const response = await server.sendRequest("dom/ancestors", {
@@ -217,10 +207,7 @@ export class ExplorerTreeProvider
 		return null;
 	}
 
-	public async getFullName(
-		workspacePath: string,
-		domId: string
-	): Promise<string[] | null> {
+	public async getFullName(workspacePath: string, domId: string): Promise<string[] | null> {
 		const ancestors = await this.getAncestors(workspacePath, domId);
 		if (ancestors) {
 			const names = new Array<string>();
@@ -243,10 +230,7 @@ export class ExplorerTreeProvider
 		return null;
 	}
 
-	public async findByPath(
-		workspacePath: string,
-		path: string
-	): Promise<DomInstance | null> {
+	public async findByPath(workspacePath: string, path: string): Promise<DomInstance | null> {
 		const server = this.servers.get(workspacePath);
 		if (server) {
 			const response = await server.sendRequest("dom/findByPath", {
@@ -261,13 +245,13 @@ export class ExplorerTreeProvider
 
 	public async findByQuery(
 		workspacePath: string,
-		query: string | DomFindByQueryRequest
+		query: string | DomFindByQueryRequest,
 	): Promise<DomInstance[]> {
 		const server = this.servers.get(workspacePath);
 		if (server) {
 			const response = await server.sendRequest(
 				"dom/findByQuery",
-				typeof query === "string" ? { query, limit: undefined } : query
+				typeof query === "string" ? { query, limit: undefined } : query,
 			);
 			if (response && response.length > 0) {
 				return response;
@@ -276,11 +260,7 @@ export class ExplorerTreeProvider
 		return [];
 	}
 
-	public async revealById(
-		workspacePath: string,
-		domId: string,
-		select?: true | null | void
-	) {
+	public async revealById(workspacePath: string, domId: string, select?: true | null) {
 		const ancestors = await this.getAncestors(workspacePath, domId);
 		if (!ancestors) {
 			return;
@@ -301,20 +281,19 @@ export class ExplorerTreeProvider
 		if (foundAll && select === true && ancestors.length > 0) {
 			const last = ancestors[ancestors.length - 1];
 			const item = this.findById(workspacePath, last.id);
-			await item!.select();
+			if (item === null) {
+				throw new Error("Missing item");
+			}
+			await item.select();
 		}
 	}
 
-	public async revealByPath(path: string, select?: true | null | void) {
+	public async revealByPath(path: string, select?: true | null) {
 		for (const [workspacePath, _] of this.servers) {
 			if (path.startsWith(workspacePath)) {
 				const domInstance = await this.findByPath(workspacePath, path);
 				if (domInstance) {
-					await this.revealById(
-						workspacePath,
-						domInstance.id,
-						select
-					);
+					await this.revealById(workspacePath, domInstance.id, select);
 				}
 			}
 		}

@@ -12,7 +12,7 @@ export class ExplorerItem extends vscode.TreeItem {
 		public readonly workspacePath: string,
 		public readonly treeProvider: ExplorerTreeProvider,
 		public readonly domInstance: DomInstance,
-		public readonly isRoot: boolean
+		public readonly isRoot: boolean,
 	) {
 		super(domInstance.name);
 
@@ -22,17 +22,17 @@ export class ExplorerItem extends vscode.TreeItem {
 		const resourceUri = filePath
 			? vscode.Uri.file(filePath)
 			: folderPath
-			? vscode.Uri.file(folderPath)
-			: isRoot
-			? vscode.Uri.file(workspacePath)
-			: undefined;
+			  ? vscode.Uri.file(folderPath)
+			  : isRoot
+				  ? vscode.Uri.file(workspacePath)
+				  : undefined;
 		this.resourceUri = resourceUri;
 
 		// Set collapsible state to show expansion arrow for children, or not
 		const [collapsibleState, shouldSelect] = getInitialTreeItemState(
 			workspacePath,
 			domInstance,
-			isRoot
+			isRoot,
 		);
 		this.collapsibleState = collapsibleState;
 
@@ -42,12 +42,12 @@ export class ExplorerItem extends vscode.TreeItem {
 			workspacePath,
 			treeProvider,
 			domInstance,
-			resourceUri
+			resourceUri,
 		);
 		this.tooltip = getInstanceTooltip(treeProvider, domInstance);
 		this.iconPath = treeProvider.iconsProvider.getClassIcon(
 			treeProvider.settingsProvider.get("explorer.iconPack"),
-			domInstance.className
+			domInstance.className,
 		);
 
 		// If this instance can be clicked to open, link that up
@@ -61,11 +61,7 @@ export class ExplorerItem extends vscode.TreeItem {
 
 		// Set context value for menu actions such as copy,
 		// paste, insert object, rename, ... to appear correctly
-		this.contextValue = getInstanceContextValue(
-			treeProvider,
-			domInstance,
-			isRoot
-		);
+		this.contextValue = getInstanceContextValue(treeProvider, domInstance, isRoot);
 
 		// Finally, select the tree item if wanted
 		if (shouldSelect) {
@@ -77,9 +73,8 @@ export class ExplorerItem extends vscode.TreeItem {
 		const server = this.treeProvider.getServer(this.workspacePath);
 		if (server !== undefined) {
 			return server;
-		} else {
-			throw new Error("Missing server for explorer tree item");
 		}
+		throw new Error("Missing server for explorer tree item");
 	}
 
 	public setChildReferences(children: ExplorerItem[]) {
@@ -90,16 +85,16 @@ export class ExplorerItem extends vscode.TreeItem {
 		await vscode.commands.executeCommand(
 			"roblox-ui.explorer.select",
 			this.workspacePath,
-			this.domInstance.id
+			this.domInstance.id,
 		);
 	}
 
-	public async expand(levels?: number | null | void) {
+	public async expand(levels?: number | null) {
 		await vscode.commands.executeCommand(
 			"roblox-ui.explorer.expand",
 			this.workspacePath,
 			this.domInstance.id,
-			levels
+			levels,
 		);
 	}
 
@@ -151,7 +146,7 @@ export class ExplorerItem extends vscode.TreeItem {
 const getInitialTreeItemState = (
 	workspacePath: string,
 	domInstance: DomInstance,
-	isRoot: boolean
+	isRoot: boolean,
 ): [vscode.TreeItemCollapsibleState, boolean] => {
 	const filePath = domInstance.metadata?.paths?.file;
 
@@ -216,7 +211,7 @@ const getInstanceDescription = (
 	workspacePath: string,
 	treeProvider: ExplorerTreeProvider,
 	domInstance: DomInstance,
-	resourceUri?: vscode.Uri
+	resourceUri?: vscode.Uri,
 ) => {
 	const descriptionPartials: string[] = [];
 
@@ -237,43 +232,36 @@ const getInstanceDescription = (
 		}
 	}
 
-	return descriptionPartials.length > 0
-		? descriptionPartials.join(" - ")
-		: undefined;
+	return descriptionPartials.length > 0 ? descriptionPartials.join(" - ") : undefined;
 };
 
 /**
 	Gets the hover tooltip markdown text for an instance.
 */
-const getInstanceTooltip = (
-	treeProvider: ExplorerTreeProvider,
-	domInstance: DomInstance
-) => {
-	const classData = treeProvider.metadataProvider.getClassData(
-		domInstance.className
-	);
+const getInstanceTooltip = (treeProvider: ExplorerTreeProvider, domInstance: DomInstance) => {
+	const classData = treeProvider.metadataProvider.getClassData(domInstance.className);
 
-	let tooltip = "### " + domInstance.name;
+	let tooltip = `### ${domInstance.name}`;
 	if (domInstance.className !== domInstance.name) {
 		tooltip += "\n\n";
-		tooltip += "#### " + domInstance.className;
+		tooltip += `#### ${domInstance.className}`;
 	}
 
-	let desc = classData?.description ?? null;
+	const desc = classData?.description ?? null;
 	if (typeof desc === "string" && desc.length > 0) {
 		tooltip += "\n\n";
 		tooltip += desc;
 	}
 
-	let link = classData?.documentationUrl ?? null;
+	const link = classData?.documentationUrl ?? null;
 	if (typeof link === "string" && link.length > 0) {
 		tooltip += "\n\n";
-		tooltip += "[Learn More $(link-external)](" + link + ")";
+		tooltip += `[Learn More $(link-external)](${link})`;
 	}
 
 	tooltip += "\n";
 
-	let tooltipMarkdown = new vscode.MarkdownString(tooltip);
+	const tooltipMarkdown = new vscode.MarkdownString(tooltip);
 	tooltipMarkdown.supportThemeIcons = true;
 	tooltipMarkdown.supportHtml = true;
 	tooltipMarkdown.isTrusted = true;
@@ -289,13 +277,11 @@ const getInstanceTooltip = (
 const getInstanceContextValue = (
 	treeProvider: ExplorerTreeProvider,
 	domInstance: DomInstance,
-	isRoot: boolean
+	isRoot: boolean,
 ) => {
 	const paths = domInstance.metadata?.paths;
 	const actions = domInstance.metadata?.actions;
-	const classData = treeProvider.metadataProvider.getClassData(
-		domInstance.className
-	);
+	const classData = treeProvider.metadataProvider.getClassData(domInstance.className);
 
 	const contextPartials = new Set();
 
@@ -337,13 +323,9 @@ const getInstanceContextValue = (
 */
 export const compareExplorerItemOrder = (a: ExplorerItem, b: ExplorerItem) => {
 	const orderA =
-		a.treeProvider.metadataProvider.getExplorerOrder(
-			a.domInstance.className
-		) ?? null;
+		a.treeProvider.metadataProvider.getExplorerOrder(a.domInstance.className) ?? null;
 	const orderB =
-		b.treeProvider.metadataProvider.getExplorerOrder(
-			b.domInstance.className
-		) ?? null;
+		b.treeProvider.metadataProvider.getExplorerOrder(b.domInstance.className) ?? null;
 
 	if (orderA !== null && orderB !== null) {
 		if (orderA !== orderB) {

@@ -24,25 +24,15 @@ const fileExistsSync = (path: vscode.Uri): boolean => {
 const findServerExecutable = (context: vscode.ExtensionContext): string => {
 	const exeName = os.platform() === "win32" ? "roblox-ui.exe" : "roblox-ui";
 
-	const exeDebug = vscode.Uri.joinPath(
-		context.extensionUri,
-		"out",
-		"debug",
-		exeName
-	);
+	const exeDebug = vscode.Uri.joinPath(context.extensionUri, "out", "debug", exeName);
 
-	const exeRelease = vscode.Uri.joinPath(
-		context.extensionUri,
-		"out",
-		"release",
-		exeName
-	);
+	const exeRelease = vscode.Uri.joinPath(context.extensionUri, "out", "release", exeName);
 
 	const command = fileExistsSync(exeRelease)
 		? exeRelease.fsPath
 		: fileExistsSync(exeDebug)
-		? exeDebug.fsPath
-		: null;
+		  ? exeDebug.fsPath
+		  : null;
 	if (!command) {
 		throw new Error("Missing server executable");
 	}
@@ -61,7 +51,7 @@ export const start = (
 	context: vscode.ExtensionContext,
 	workspacePath: string,
 	settings: SettingsProvider,
-	callback: (message: RpcMessage) => void
+	callback: (message: RpcMessage) => void,
 ): cp.ChildProcessWithoutNullStreams => {
 	if (outputChannel === undefined) {
 		outputChannel = vscode.window.createOutputChannel("Roblox UI");
@@ -95,7 +85,7 @@ export const start = (
 		if (isRpcMessage(message)) {
 			callback(message);
 		} else {
-			outputChannel.appendLine("Failed to parse rpc message:\n" + stdout);
+			outputChannel.appendLine(`Failed to parse rpc message:\n${stdout}`);
 		}
 	});
 
@@ -106,9 +96,7 @@ export const start = (
 	return childProcess;
 };
 
-export const kill = (
-	childProcess: cp.ChildProcessWithoutNullStreams
-): Promise<void> => {
+export const kill = (childProcess: cp.ChildProcessWithoutNullStreams): Promise<void> => {
 	return new Promise((resolve, reject) => {
 		if (childProcess.pid === undefined) {
 			reject("Failed to superkill process: no pid");
@@ -132,12 +120,7 @@ export const kill = (
 					killErrorLines += err.toString();
 					killErrorLines += "\n";
 					if (killErrors === KILL_SIGNALS.length) {
-						reject(
-							new Error(
-								"Failed to superkill process:\n" +
-									killErrorLines
-							)
-						);
+						reject(new Error(`Failed to superkill process:\n${killErrorLines}`));
 					}
 				} else {
 					if (killSuccess !== true) {

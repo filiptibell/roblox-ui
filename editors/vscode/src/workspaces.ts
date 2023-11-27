@@ -13,7 +13,7 @@ let currentProvider: ExplorerTreeProvider;
 export const connectAllWorkspaces = async (
 	context: vscode.ExtensionContext,
 	settings: SettingsProvider,
-	provider: ExplorerTreeProvider
+	provider: ExplorerTreeProvider,
 ) => {
 	await disconnectAllWorkspaces();
 
@@ -24,16 +24,12 @@ export const connectAllWorkspaces = async (
 	const promises = new Array<Promise<void>>();
 
 	if (vscode.workspace.workspaceFolders) {
-		vscode.workspace.workspaceFolders.forEach((folder) => {
-			const workspacePath = folder.uri.fsPath;
-			const workspaceServer = new RpcServer(
-				context,
-				workspacePath,
-				settings
-			);
+		for (const workspaceFolder of vscode.workspace.workspaceFolders) {
+			const workspacePath = workspaceFolder.uri.fsPath;
+			const workspaceServer = new RpcServer(context, workspacePath, settings);
 			workspaceServers.set(workspacePath, workspaceServer);
 			provider.connectServer(workspacePath, workspaceServer);
-		});
+		}
 	}
 
 	await Promise.all(promises);
@@ -56,10 +52,6 @@ export const disconnectAllWorkspaces = async () => {
 
 export const reconnectAllWorkspaces = async () => {
 	if (currentContext && currentSettings && currentProvider) {
-		await connectAllWorkspaces(
-			currentContext,
-			currentSettings,
-			currentProvider
-		);
+		await connectAllWorkspaces(currentContext, currentSettings, currentProvider);
 	}
 };

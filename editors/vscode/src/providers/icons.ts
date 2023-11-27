@@ -21,10 +21,7 @@ const getAllIconPacks = (): Array<IconPack> => {
 	return ["None", "Classic", "Vanilla2"];
 };
 
-const readIconPackMetadatas = (
-	extensionPath: string,
-	pack: IconPack
-): IconPackMetadatas => {
+const readIconPackMetadatas = (extensionPath: string, pack: IconPack): IconPackMetadatas => {
 	if (pack === "None") {
 		return {
 			light: {
@@ -38,22 +35,8 @@ const readIconPackMetadatas = (
 		};
 	}
 
-	const metaPathLight = path.join(
-		extensionPath,
-		"out",
-		"icons",
-		pack,
-		"light",
-		"metadata.json"
-	);
-	const metaPathDark = path.join(
-		extensionPath,
-		"out",
-		"icons",
-		pack,
-		"dark",
-		"metadata.json"
-	);
+	const metaPathLight = path.join(extensionPath, "out", "icons", pack, "light", "metadata.json");
+	const metaPathDark = path.join(extensionPath, "out", "icons", pack, "dark", "metadata.json");
 
 	const metaContentsLight = fs.readFileSync(metaPathLight, "utf-8");
 	const metaContentsDark = fs.readFileSync(metaPathDark, "utf-8");
@@ -67,7 +50,7 @@ const readIconPackMetadatas = (
 const createIconPackData = (
 	extensionPath: string,
 	pack: IconPack,
-	metas: IconPackMetadatas
+	metas: IconPackMetadatas,
 ): IconPackData => {
 	const icons = new Map<string, IconPackIcon>();
 
@@ -86,7 +69,7 @@ const createIconPackData = (
 			"icons",
 			pack,
 			"light",
-			metas.light.classIcons[className]
+			metas.light.classIcons[className],
 		);
 		const iconPathDark = path.join(
 			extensionPath,
@@ -94,7 +77,7 @@ const createIconPackData = (
 			"icons",
 			pack,
 			"dark",
-			metas.dark.classIcons[className]
+			metas.dark.classIcons[className],
 		);
 		icons.set(className, {
 			light: vscode.Uri.file(iconPathLight),
@@ -112,21 +95,14 @@ export class IconsProvider implements vscode.Disposable {
 	constructor(private readonly context: vscode.ExtensionContext) {
 		for (const pack of getAllIconPacks()) {
 			const metas = readIconPackMetadatas(context.extensionPath, pack);
-			const icons = createIconPackData(
-				context.extensionPath,
-				pack,
-				metas
-			);
+			const icons = createIconPackData(context.extensionPath, pack, metas);
 			this.metas.set(pack, metas);
 			this.icons.set(pack, icons);
 		}
 	}
 
-	public getClassIcon(
-		pack: IconPack,
-		className: string
-	): IconPackIcon | undefined {
-		return this.icons.get(pack)!.get(className) ?? undefined;
+	public getClassIcon(pack: IconPack, className: string): IconPackIcon | undefined {
+		return this.icons.get(pack)?.get(className) ?? undefined;
 	}
 
 	dispose() {}

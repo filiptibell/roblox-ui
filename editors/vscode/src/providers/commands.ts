@@ -7,9 +7,11 @@ import { ExplorerItem, ExplorerTreeProvider } from "../explorer";
 import { QuickOpenProvider } from "./quickOpen";
 
 export class CommandsProvider implements vscode.Disposable {
+	// biome-ignore lint/suspicious/noExplicitAny:
 	private readonly commands: Map<string, (...args: any[]) => any> = new Map();
 	private readonly disposables: Array<vscode.Disposable> = new Array();
 
+	// biome-ignore lint/suspicious/noExplicitAny:
 	private register(name: string, command: (...args: any[]) => any) {
 		const fullName = `roblox-ui.${name}`;
 		const disposable = vscode.commands.registerCommand(fullName, command);
@@ -28,37 +30,26 @@ export class CommandsProvider implements vscode.Disposable {
 		metadata: MetadataProvider,
 		treeView: vscode.TreeView<vscode.TreeItem>,
 		treeDataProvider: ExplorerTreeProvider,
-		quickOpenProvider: QuickOpenProvider
+		quickOpenProvider: QuickOpenProvider,
 	) {
 		this.register("explorer.refresh", reconnectAllWorkspaces);
 		this.register("explorer.quickOpen", () => quickOpenProvider.show());
 
 		this.register(
 			"explorer.reveal",
-			async (
-				workspacePath: string,
-				domId: string,
-				select?: true | null | void
-			) => {
+			async (workspacePath: string, domId: string, select?: true | null) => {
 				await treeDataProvider.revealById(workspacePath, domId, select);
-			}
+			},
 		);
-		this.register(
-			"explorer.select",
-			async (workspacePath: string, domId: string) => {
-				const item = treeDataProvider.findById(workspacePath, domId);
-				if (item) {
-					await treeView.reveal(item);
-				}
+		this.register("explorer.select", async (workspacePath: string, domId: string) => {
+			const item = treeDataProvider.findById(workspacePath, domId);
+			if (item) {
+				await treeView.reveal(item);
 			}
-		);
+		});
 		this.register(
 			"explorer.expand",
-			async (
-				workspacePath: string,
-				domId: string,
-				levels?: number | null | void
-			) => {
+			async (workspacePath: string, domId: string, levels?: number | null) => {
 				const item = treeDataProvider.findById(workspacePath, domId);
 				if (item) {
 					await treeView.reveal(item, {
@@ -67,7 +58,7 @@ export class CommandsProvider implements vscode.Disposable {
 						focus: false,
 					});
 				}
-			}
+			},
 		);
 
 		const revealFileInOS = (item: ExplorerItem) => {
@@ -83,25 +74,19 @@ export class CommandsProvider implements vscode.Disposable {
 		this.register("explorer.openRojoManifest", (item: ExplorerItem) => {
 			const filePath = item.domInstance.metadata?.paths?.rojo;
 			if (filePath) {
-				vscode.commands.executeCommand(
-					"vscode.open",
-					vscode.Uri.file(filePath)
-				);
+				vscode.commands.executeCommand("vscode.open", vscode.Uri.file(filePath));
 			}
 		});
 		this.register("explorer.openWallyManifest", (item: ExplorerItem) => {
 			const filePath = item.domInstance.metadata?.paths?.wally;
 			if (filePath) {
-				vscode.commands.executeCommand(
-					"vscode.open",
-					vscode.Uri.file(filePath)
-				);
+				vscode.commands.executeCommand("vscode.open", vscode.Uri.file(filePath));
 			}
 		});
 
 		const createInstance = async (
 			item: ExplorerItem,
-			classNameOrInsertService: string | boolean | void
+			classNameOrInsertService?: string | boolean,
 		) => {
 			// TODO: Re-implement this
 			// const [created, creationResult] = await promptNewInstanceCreation(

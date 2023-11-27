@@ -48,18 +48,8 @@ export class MetadataProvider implements vscode.Disposable {
 	private readonly reflection: Reflection;
 
 	constructor(private readonly context: vscode.ExtensionContext) {
-		const classesPath = path.join(
-			context.extensionPath,
-			"out",
-			"data",
-			"classes.json"
-		);
-		const reflectionPath = path.join(
-			context.extensionPath,
-			"out",
-			"data",
-			"reflection.json"
-		);
+		const classesPath = path.join(context.extensionPath, "out", "data", "classes.json");
+		const reflectionPath = path.join(context.extensionPath, "out", "data", "reflection.json");
 
 		const classesContents = fs.readFileSync(classesPath, "utf-8");
 		const reflectionContents = fs.readFileSync(reflectionPath, "utf-8");
@@ -69,18 +59,17 @@ export class MetadataProvider implements vscode.Disposable {
 	}
 
 	public getClassData(className: string): ClassData | null {
-		let classData = this.classes.classDatas[className];
+		const classData = this.classes.classDatas[className];
 		if (typeof classData === "object") {
 			return classData;
-		} else {
-			return null;
 		}
+		return null;
 	}
 
 	public getExplorerOrder(className: string): number | null {
-		let classReflection = this.reflection.classes[className];
+		const classReflection = this.reflection.classes[className];
 		if (typeof classReflection === "object") {
-			let classOrder = classReflection.values?.ExplorerOrder;
+			const classOrder = classReflection.values?.ExplorerOrder;
 			if (typeof classOrder === "number") {
 				return classOrder;
 			}
@@ -89,7 +78,7 @@ export class MetadataProvider implements vscode.Disposable {
 	}
 
 	public getInsertableClassNames(): Array<string> {
-		let classNames = new Array();
+		const classNames = new Array();
 
 		for (const className of Object.keys(this.classes.classDatas)) {
 			classNames.push(className);

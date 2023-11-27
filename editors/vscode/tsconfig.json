@@ -7,7 +7,6 @@
 		"sourceMap": true,
 		"rootDir": "src",
 		"strict": true,
-		/* Additional Checks */
 		"noImplicitReturns": true,
 		"noFallthroughCasesInSwitch": true
 	}

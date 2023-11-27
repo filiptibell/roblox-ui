@@ -18,13 +18,13 @@ export class QuickOpenItem implements vscode.QuickPickItem {
 		public readonly iconsProvider: IconsProvider,
 		public readonly workspacePath: string,
 		public readonly domInstance: DomInstance,
-		readonly fullName: string[] | null
+		readonly fullName: string[] | null,
 	) {
 		this.label = domInstance.name;
 
 		this.iconPath = iconsProvider.getClassIcon(
 			settingsProvider.get("explorer.iconPack"),
-			domInstance.className
+			domInstance.className,
 		);
 
 		if (fullName) {
@@ -41,21 +41,18 @@ export class QuickOpenItem implements vscode.QuickPickItem {
 		const canOpen = this.domInstance.metadata?.actions?.canOpen;
 		const filePath = this.domInstance.metadata?.paths?.file;
 		if (canOpen && filePath) {
-			await vscode.commands.executeCommand(
-				"vscode.open",
-				vscode.Uri.file(filePath)
-			);
+			await vscode.commands.executeCommand("vscode.open", vscode.Uri.file(filePath));
 			return true;
 		}
 		return false;
 	}
 
-	public async reveal(select?: true | null | void) {
+	public async reveal(select?: true | null) {
 		await vscode.commands.executeCommand(
 			"roblox-ui.explorer.reveal",
 			this.workspacePath,
 			this.domInstance.id,
-			select
+			select,
 		);
 	}
 }

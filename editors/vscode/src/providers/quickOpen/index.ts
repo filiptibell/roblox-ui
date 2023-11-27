@@ -20,7 +20,7 @@ export class QuickOpenProvider implements vscode.Disposable {
 		public readonly settingsProvider: SettingsProvider,
 		public readonly metadataProvider: MetadataProvider,
 		public readonly iconsProvider: IconsProvider,
-		public readonly explorerProvider: ExplorerTreeProvider
+		public readonly explorerProvider: ExplorerTreeProvider,
 	) {
 		this.picker = vscode.window.createQuickPick();
 		this.picker.canSelectMany = false;
@@ -28,6 +28,8 @@ export class QuickOpenProvider implements vscode.Disposable {
 		this.picker.title = "Quick Open";
 
 		this.picker.matchOnDescription = true;
+
+		// biome-ignore lint/suspicious/noExplicitAny: property does not yet exist in typedef
 		(this.picker as any).sortByLabel = false;
 
 		const onChange = () => this.update();
@@ -55,37 +57,29 @@ export class QuickOpenProvider implements vscode.Disposable {
 
 		this.picker.busy = true;
 
-		const searchResponsePromises = new Array<
-			Promise<[string, DomInstance[]]>
-		>();
+		const searchResponsePromises = new Array<Promise<[string, DomInstance[]]>>();
 		for (const workspacePath of this.explorerProvider.getWorkspacePaths()) {
 			searchResponsePromises.push(
 				new Promise((resolve, reject) => {
 					this.explorerProvider
 						.findByQuery(workspacePath, query)
-						.then((instances) =>
-							resolve([workspacePath, instances])
-						)
+						.then((instances) => resolve([workspacePath, instances]))
 						.catch(reject);
-				})
+				}),
 			);
 		}
 		const searchResponses = await Promise.all(searchResponsePromises);
 
-		const nameResponsePromises = new Array<
-			Promise<[string, string[] | null]>
-		>();
+		const nameResponsePromises = new Array<Promise<[string, string[] | null]>>();
 		for (const [workspacePath, foundInstances] of searchResponses) {
 			for (const foundInstance of foundInstances) {
 				nameResponsePromises.push(
 					new Promise((resolve, reject) => {
 						this.explorerProvider
 							.getFullName(workspacePath, foundInstance.id)
-							.then((fullName) =>
-								resolve([foundInstance.id, fullName])
-							)
+							.then((fullName) => resolve([foundInstance.id, fullName]))
 							.catch(reject);
-					})
+					}),
 				);
 			}
 		}
@@ -104,8 +98,8 @@ export class QuickOpenProvider implements vscode.Disposable {
 						this.iconsProvider,
 						workspacePath,
 						foundInstance,
-						fullName
-					)
+						fullName,
+					),
 				);
 			}
 		}

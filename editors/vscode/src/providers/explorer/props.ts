@@ -24,7 +24,7 @@ export const getNullProps = (): TreeItemPropChanges => {
 
 export const getLoadingProps = (
 	workspacePath: string,
-	loadingPath: string | undefined
+	loadingPath: string | undefined,
 ): TreeItemPropChanges => {
 	const wpath = path.parse(workspacePath);
 	return {
@@ -38,7 +38,7 @@ export const getLoadingProps = (
 
 export const getErroredProps = (
 	workspacePath: string,
-	errorMessage: string
+	errorMessage: string,
 ): TreeItemPropChanges => {
 	const wpath = path.parse(workspacePath);
 	return {
@@ -54,44 +54,40 @@ export const getNodeItemProps = async (
 	root: RojoTreeRoot,
 	node: SourcemapNode,
 	current: RojoTreeItem,
-	parent: RojoTreeItem | undefined | null | void
+	parent: RojoTreeItem | undefined | null,
 ): Promise<TreeItemPropChanges> => {
 	const newProps: TreeItemPropChanges = getNullProps();
 	const classData = root.metadataProvider.getClassData(node.className);
 
 	// Find folder path and file path to use for props
-	const folderPath = node.folderPath
-		? path.join(root.workspacePath, node.folderPath)
-		: null;
+	const folderPath = node.folderPath ? path.join(root.workspacePath, node.folderPath) : null;
 	const filePathRel = findPrimaryFilePath(node);
-	const filePath = filePathRel
-		? path.join(root.workspacePath, filePathRel)
-		: null;
+	const filePath = filePathRel ? path.join(root.workspacePath, filePathRel) : null;
 	const fileIsScript = filePath && !filePath.endsWith(".project.json");
 
 	// Set name, icon, description (tooltip)
 	newProps.label = node.name;
 	newProps.iconPath = root.iconsProvider.getClassIcon(
 		root.settingsProvider.get("explorer.iconPack"),
-		node.className
+		node.className,
 	);
-	let tooltip = "### " + node.name;
+	let tooltip = `### ${node.name}`;
 	if (node.className !== node.name) {
 		tooltip += "\n\n";
-		tooltip += "#### " + node.className;
+		tooltip += `#### ${node.className}`;
 	}
-	let desc = classData?.description ?? null;
+	const desc = classData?.description ?? null;
 	if (typeof desc === "string" && desc.length > 0) {
 		tooltip += "\n\n";
 		tooltip += desc;
 	}
-	let link = classData?.documentationUrl ?? null;
+	const link = classData?.documentationUrl ?? null;
 	if (typeof link === "string" && link.length > 0) {
 		tooltip += "\n\n";
-		tooltip += "[Learn More $(link-external)](" + link + ")";
+		tooltip += `[Learn More $(link-external)](${link})`;
 	}
 	tooltip += "\n";
-	let tooltipMarkdown = new vscode.MarkdownString(tooltip);
+	const tooltipMarkdown = new vscode.MarkdownString(tooltip);
 	tooltipMarkdown.supportThemeIcons = true;
 	tooltipMarkdown.supportHtml = true;
 	tooltipMarkdown.isTrusted = true;
@@ -99,9 +95,7 @@ export const getNodeItemProps = async (
 
 	// Set description based on settings
 	const descriptionPartials: string[] = [];
-	const showPackageVersion = root.settingsProvider.get(
-		"wally.showPackageVersion"
-	);
+	const showPackageVersion = root.settingsProvider.get("wally.showPackageVersion");
 	if (showPackageVersion && node.wallyVersion) {
 		descriptionPartials.push(node.wallyVersion);
 	}
@@ -111,14 +105,8 @@ export const getNodeItemProps = async (
 	}
 	const showFilePaths = root.settingsProvider.get("explorer.showFilePaths");
 	if (showFilePaths) {
-		const fsPathFull = filePath
-			? filePath
-			: folderPath
-			? folderPath
-			: undefined;
-		const fsPath = fsPathFull
-			? fsPathFull.slice(root.workspacePath.length + 1)
-			: undefined;
+		const fsPathFull = filePath ? filePath : folderPath ? folderPath : undefined;
+		const fsPath = fsPathFull ? fsPathFull.slice(root.workspacePath.length + 1) : undefined;
 		if (fsPath) {
 			descriptionPartials.push(fsPath);
 		}
@@ -158,7 +146,7 @@ export const getNodeItemProps = async (
 		contextPartials.add("canMove");
 	}
 
-	if (parent && parent.getFolderPath()) {
+	if (parent?.getFolderPath()) {
 		contextPartials.add("canPasteSibling");
 	}
 	if (!isService && folderPath && contextPartials.has("instance")) {
@@ -171,8 +159,8 @@ export const getNodeItemProps = async (
 	newProps.resourceUri = filePath
 		? vscode.Uri.file(filePath)
 		: folderPath
-		? vscode.Uri.file(folderPath)
-		: undefined;
+		  ? vscode.Uri.file(folderPath)
+		  : undefined;
 
 	return newProps;
 };

@@ -32,12 +32,7 @@ export const isProjectFilePath = (filePath: string): boolean => {
 
 export const isBinaryFilePath = (filePath: string): boolean => {
 	const fileExt = extractRojoFileExtension(filePath);
-	return (
-		fileExt === "rbxm" ||
-		fileExt === "rbxmx" ||
-		fileExt === "rbxl" ||
-		fileExt === "rbxlx"
-	);
+	return fileExt === "rbxm" || fileExt === "rbxmx" || fileExt === "rbxl" || fileExt === "rbxlx";
 };
 
 export const isInitFilePath = (filePath: string): boolean => {
@@ -48,7 +43,6 @@ export const isInitFilePath = (filePath: string): boolean => {
 	if (fileExt) {
 		const fileName = path.basename(filePath, `.${fileExt}`);
 		return fileName === "init";
-	} else {
-		return false;
 	}
+	return false;
 };

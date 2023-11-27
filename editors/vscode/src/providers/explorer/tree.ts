@@ -9,21 +9,18 @@ import { RojoTreeRoot } from "./root";
 import { RojoTreeItem } from "./item";
 import { MetadataProvider } from "../metadata";
 
-export class RojoTreeProvider
-	implements vscode.TreeDataProvider<vscode.TreeItem>
-{
+export class RojoTreeProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
 	private roots: Map<string, RojoTreeRoot> = new Map();
 	private loaded: Map<string, boolean> = new Map();
 	private disposables: Array<vscode.Disposable> = new Array();
-	private showDataModel: boolean = false;
+	private showDataModel = false;
 
-	readonly _onDidChangeTreeData: vscode.EventEmitter<void | vscode.TreeItem> =
+	readonly _onDidChangeTreeData: vscode.EventEmitter<vscode.TreeItem | null> =
 		new vscode.EventEmitter();
-	public readonly onDidChangeTreeData: vscode.Event<void | vscode.TreeItem> =
+	public readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem | null> =
 		this._onDidChangeTreeData.event;
 
-	readonly _onInitialWorkspaceLoaded: vscode.EventEmitter<string> =
-		new vscode.EventEmitter();
+	readonly _onInitialWorkspaceLoaded: vscode.EventEmitter<string> = new vscode.EventEmitter();
 	public readonly onInitialWorkspaceLoaded: vscode.Event<string> =
 		this._onInitialWorkspaceLoaded.event;
 
@@ -35,7 +32,7 @@ export class RojoTreeProvider
 	constructor(
 		public readonly settingsProvider: SettingsProvider,
 		public readonly metadataProvider: MetadataProvider,
-		public readonly iconsProvider: IconsProvider
+		public readonly iconsProvider: IconsProvider,
 	) {
 		const show = !!settingsProvider.get("explorer.showDataModel");
 		this.showDataModel = show;
@@ -44,9 +41,9 @@ export class RojoTreeProvider
 				const show = !!settingsProvider.get("explorer.showDataModel");
 				if (this.showDataModel !== show) {
 					this.showDataModel = show;
-					this._onDidChangeTreeData.fire();
+					this._onDidChangeTreeData.fire(null);
 				}
-			})
+			}),
 		);
 	}
 
@@ -61,7 +58,7 @@ export class RojoTreeProvider
 			this.metadataProvider,
 			this.iconsProvider,
 			this,
-			this._onDidChangeTreeData
+			this._onDidChangeTreeData,
 		);
 		this.roots.set(workspacePath, root);
 		this.loaded.set(workspacePath, false);
@@ -73,10 +70,10 @@ export class RojoTreeProvider
 			return;
 		}
 		const root = this.findRoot(workspacePath);
-		if (root && root.treeHasLoaded()) {
+		if (root?.treeHasLoaded()) {
 			this.loaded.set(workspacePath, true);
 			this._onInitialWorkspaceLoaded.fire(workspacePath);
-			this._onDidChangeTreeData.fire();
+			this._onDidChangeTreeData.fire(null);
 		}
 	}
 
@@ -87,9 +84,8 @@ export class RojoTreeProvider
 			this.roots.delete(workspacePath);
 			this.loaded.delete(workspacePath);
 			return true;
-		} else {
-			return false;
 		}
+		return false;
 	}
 
 	/**
@@ -104,7 +100,7 @@ export class RojoTreeProvider
 		} else {
 			root = this.createRoot(workspacePath);
 			root.setLoading(projectPath);
-			this._onDidChangeTreeData.fire();
+			this._onDidChangeTreeData.fire(null);
 		}
 	}
 
@@ -132,7 +128,7 @@ export class RojoTreeProvider
 		} else {
 			root = this.createRoot(workspacePath);
 			root.setError(errorMessage);
-			this._onDidChangeTreeData.fire();
+			this._onDidChangeTreeData.fire(null);
 		}
 	}
 
@@ -153,16 +149,12 @@ export class RojoTreeProvider
 	 *
 	 * This will also automatically clear any loading states, but not error states.
 	 */
-	public update(
-		workspacePath: string,
-		rootNode: SourcemapNode,
-		forced: boolean | void
-	) {
+	public update(workspacePath: string, rootNode: SourcemapNode, forced: boolean) {
 		// HACK: If this is the only workspace root we have, we can
 		// automatically expand it so that the user does not have to do
 		// it themselves, improves the experience for like 99% of users
 		const expandSingleRoot = () => {
-			let root = this.findRoot(workspacePath);
+			const root = this.findRoot(workspacePath);
 			if (root !== undefined && this.roots.size === 1) {
 				root.getChildren().then(() => {
 					if (root !== undefined) {
@@ -180,11 +172,11 @@ export class RojoTreeProvider
 		} else {
 			root = this.createRoot(workspacePath);
 			root.updateTree(rootNode, forced).then(() => {
-				this._onDidChangeTreeData.fire();
+				this._onDidChangeTreeData.fire(null);
 				expandSingleRoot();
 				this.updateInitialWorkspaceLoaded(workspacePath);
 			});
-			this._onDidChangeTreeData.fire();
+			this._onDidChangeTreeData.fire(null);
 		}
 	}
 
@@ -195,7 +187,7 @@ export class RojoTreeProvider
 	 */
 	public delete(workspacePath: string) {
 		if (this.deleteRoot(workspacePath)) {
-			this._onDidChangeTreeData.fire();
+			this._onDidChangeTreeData.fire(null);
 		}
 	}
 
@@ -204,7 +196,7 @@ export class RojoTreeProvider
 	 */
 	public async findTreeItem(
 		filePath: string,
-		pathIsRelative: boolean | undefined | null | void
+		pathIsRelative: boolean | undefined | null,
 	): Promise<vscode.TreeItem | null> {
 		const promises: Array<Promise<vscode.TreeItem | null>> = new Array();
 		for (const root of this.roots.values()) {
@@ -230,18 +222,21 @@ export class RojoTreeProvider
 	async getChildren(item?: RojoTreeItem): Promise<vscode.TreeItem[]> {
 		if (!item) {
 			if (!this.showDataModel && this.roots.size <= 1) {
-				let firstPath = [...this.roots.keys()][0];
-				let firstRoot = this.findRoot(firstPath);
-				if (firstRoot && firstRoot.isDataModel()) {
+				const firstPath = [...this.roots.keys()][0];
+				const firstRoot = this.findRoot(firstPath);
+				if (firstRoot?.isDataModel()) {
 					return await firstRoot.getChildren();
 				}
 			}
-			return [...this.roots.keys()]
-				.sort()
-				.map((path) => this.findRoot(path)!);
-		} else {
-			return await item.getChildren();
+			return [...this.roots.keys()].sort().map((path) => {
+				const root = this.findRoot(path);
+				if (root === undefined) {
+					throw new Error("Missing root");
+				}
+				return root;
+			});
 		}
+		return await item.getChildren();
 	}
 
 	dispose() {

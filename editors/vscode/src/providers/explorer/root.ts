@@ -7,16 +7,11 @@ import { IconsProvider } from "../icons";
 
 import { RojoTreeProvider } from "./tree";
 import { RojoTreeItem } from "./item";
-import {
-	TreeItemPropChanges,
-	getNullProps,
-	getErroredProps,
-	getLoadingProps,
-} from "./props";
+import { TreeItemPropChanges, getNullProps, getErroredProps, getLoadingProps } from "./props";
 import { MetadataProvider } from "../metadata";
 
 export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
-	private isLoading: boolean = true;
+	private isLoading = true;
 
 	private errorMessage: string | undefined;
 	private projectPath: string | undefined;
@@ -25,7 +20,7 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 	private sourcemap: SourcemapNode | undefined;
 	private sourcemapPathsMap: Map<string, Array<SourcemapNode>> | undefined;
 	private sourcemapParentsMap: Map<SourcemapNode, SourcemapNode> | undefined;
-	private sourcemapChangePending: boolean = false;
+	private sourcemapChangePending = false;
 
 	dispose() {}
 
@@ -35,24 +30,21 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 		public readonly metadataProvider: MetadataProvider,
 		public readonly iconsProvider: IconsProvider,
 		public readonly treeProvider: RojoTreeProvider,
-		private readonly eventEmitter: vscode.EventEmitter<void | vscode.TreeItem>
+		private readonly eventEmitter: vscode.EventEmitter<vscode.TreeItem | null>,
 	) {
 		super("<<<ROOT>>>");
 		this.id = workspacePath;
 		this.refreshTreeItem();
 	}
 
-	private async refreshTreeItem(forced: boolean | void) {
+	private async refreshTreeItem(forced?: boolean) {
 		let newProps: TreeItemPropChanges = {};
 		let rootChanged = false;
 		let childrenChanged = false;
 
 		if (this.errorMessage) {
 			newProps = getErroredProps(this.workspacePath, this.errorMessage);
-		} else if (
-			(this.sourcemap && this.sourcemapChangePending) ||
-			this.treeItem
-		) {
+		} else if ((this.sourcemap && this.sourcemapChangePending) || this.treeItem) {
 			if (this.sourcemapChangePending) {
 				this.sourcemapChangePending = false;
 				newProps = getNullProps();
@@ -61,10 +53,7 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 					if (!treeItem) {
 						treeItem = new RojoTreeItem(this, this.eventEmitter);
 					}
-					childrenChanged = await treeItem.update(
-						this.sourcemap,
-						forced
-					);
+					childrenChanged = await treeItem.update(this.sourcemap, forced);
 					this.treeItem = treeItem;
 				} catch (err) {
 					this.setError(`${err}`);
@@ -72,7 +61,9 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 					return;
 				}
 				for (const key of Object.keys(newProps)) {
+					// biome-ignore lint/suspicious/noExplicitAny:
 					const untyped = newProps as any;
+					// biome-ignore lint/suspicious/noExplicitAny:
 					const value = (treeItem as any)[key];
 					if (value !== undefined && value !== untyped[key]) {
 						untyped[key] = value;
@@ -80,10 +71,7 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 				}
 			}
 			if (this.isLoading) {
-				const loadingProps = getLoadingProps(
-					this.workspacePath,
-					this.projectPath
-				);
+				const loadingProps = getLoadingProps(this.workspacePath, this.projectPath);
 				if (loadingProps.iconPath) {
 					newProps.iconPath = loadingProps.iconPath;
 				}
@@ -93,6 +81,7 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 		}
 
 		for (const [key, value] of Object.entries(newProps)) {
+			// biome-ignore lint/suspicious/noExplicitAny:
 			const untyped = this as any;
 			if (untyped[key] !== value) {
 				untyped[key] = value;
@@ -101,11 +90,10 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 		}
 
 		if (childrenChanged) {
-			const smapChildren = this.sourcemap!.children;
+			const smapChildren = this.sourcemap?.children;
 			const newCollapsibleState =
 				smapChildren && smapChildren.length > 0
-					? this.collapsibleState ===
-					  vscode.TreeItemCollapsibleState.Expanded
+					? this.collapsibleState === vscode.TreeItemCollapsibleState.Expanded
 						? vscode.TreeItemCollapsibleState.Expanded
 						: vscode.TreeItemCollapsibleState.Collapsed
 					: vscode.TreeItemCollapsibleState.None;
@@ -179,7 +167,7 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 		}
 	}
 
-	public async updateTree(rootNode: SourcemapNode, forced: boolean | void) {
+	public async updateTree(rootNode: SourcemapNode, forced: boolean) {
 		this.isLoading = false;
 		this.sourcemap = rootNode;
 		this.sourcemapChangePending = true;
@@ -213,7 +201,7 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 
 	public async findTreeItem(
 		filePath: string,
-		pathIsRelative: boolean | undefined | null | void
+		pathIsRelative: boolean | undefined | null,
 	): Promise<vscode.TreeItem | null> {
 		if (!this.sourcemap) {
 			return null;
@@ -235,16 +223,10 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 		}
 		if (!this.sourcemapParentsMap) {
 			this.sourcemapParentsMap = new Map();
-			createSourcemapParentsMap(
-				this.sourcemapParentsMap,
-				this.sourcemap,
-				undefined
-			);
+			createSourcemapParentsMap(this.sourcemapParentsMap, this.sourcemap, undefined);
 		}
 
-		const relPath = pathIsRelative
-			? filePath
-			: filePath.slice(this.workspacePath.length + 1);
+		const relPath = pathIsRelative ? filePath : filePath.slice(this.workspacePath.length + 1);
 		const nodes = this.sourcemapPathsMap.get(relPath);
 		if (nodes) {
 			for (const node of nodes) {
@@ -254,8 +236,7 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 				let nodePathCurrent: SourcemapNode | undefined = node;
 				while (nodePathCurrent) {
 					nodePath.unshift(nodePathCurrent);
-					nodePathCurrent =
-						this.sourcemapParentsMap.get(nodePathCurrent);
+					nodePathCurrent = this.sourcemapParentsMap.get(nodePathCurrent);
 				}
 
 				nodePath.shift(); // Remove root
@@ -293,14 +274,10 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 
 	openFile(): boolean {
 		if (this.projectPath) {
-			vscode.commands.executeCommand(
-				"vscode.open",
-				vscode.Uri.file(this.projectPath)
-			);
+			vscode.commands.executeCommand("vscode.open", vscode.Uri.file(this.projectPath));
 			return true;
-		} else {
-			return false;
 		}
+		return false;
 	}
 
 	getFilePath(): string | null {
@@ -322,16 +299,12 @@ export class RojoTreeRoot extends vscode.TreeItem implements vscode.Disposable {
 	async getChildren(): Promise<vscode.TreeItem[]> {
 		if (this.treeItem) {
 			return await this.treeItem.getChildren();
-		} else {
-			return [];
 		}
+		return [];
 	}
 }
 
-const createSourcemapPathsMap = (
-	map: Map<string, Array<SourcemapNode>>,
-	node: SourcemapNode
-) => {
+const createSourcemapPathsMap = (map: Map<string, Array<SourcemapNode>>, node: SourcemapNode) => {
 	if (node.filePaths) {
 		for (const filePath of node.filePaths) {
 			const existing = map.get(filePath);
@@ -354,7 +327,7 @@ const createSourcemapPathsMap = (
 const createSourcemapParentsMap = (
 	map: Map<SourcemapNode, SourcemapNode>,
 	node: SourcemapNode,
-	parent: SourcemapNode | undefined
+	parent: SourcemapNode | undefined,
 ) => {
 	if (parent) {
 		map.set(node, parent);

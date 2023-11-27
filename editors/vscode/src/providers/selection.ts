@@ -7,13 +7,9 @@ export class SelectionProvider implements vscode.Disposable {
 
 	constructor(private explorer: ExplorerTreeProvider) {
 		this.disposables.push(
-			vscode.window.onDidChangeVisibleTextEditors(
-				this.revealVisibleEditors
-			)
+			vscode.window.onDidChangeVisibleTextEditors(this.revealVisibleEditors),
 		);
-		this.disposables.push(
-			vscode.window.onDidChangeActiveTextEditor(this.revealActiveEditor)
-		);
+		this.disposables.push(vscode.window.onDidChangeActiveTextEditor(this.revealActiveEditor));
 		this.revealVisibleEditors();
 		this.revealActiveEditor();
 	}

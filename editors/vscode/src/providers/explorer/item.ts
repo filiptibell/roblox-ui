@@ -18,12 +18,12 @@ export class RojoTreeItem extends vscode.TreeItem {
 	private order: number | undefined;
 	private node: SourcemapNode | undefined;
 	private children: RojoTreeItem[] | undefined;
-	private childrenDesired: boolean = false;
+	private childrenDesired = false;
 
 	constructor(
 		public readonly root: RojoTreeRoot,
-		private readonly eventEmitter: vscode.EventEmitter<void | vscode.TreeItem>,
-		private readonly parent: RojoTreeItem | undefined | null | void
+		private readonly eventEmitter: vscode.EventEmitter<vscode.TreeItem | null>,
+		private readonly parent?: RojoTreeItem | null,
 	) {
 		super("Loading");
 		this.iconPath = LOADING_ICON;
@@ -32,14 +32,12 @@ export class RojoTreeItem extends vscode.TreeItem {
 	/**
 	 * Updates the tree item with a new sourcemap node.
 	 */
-	public async update(
-		node: SourcemapNode | undefined,
-		forced: boolean | void
-	): Promise<boolean> {
+	public async update(node: SourcemapNode | undefined, forced?: boolean): Promise<boolean> {
 		let itemChanged = false;
 		let childrenChanged = false;
 
 		if (forced || !areSourcemapNodesEqual(this.node, node)) {
+			// biome-ignore lint/suspicious/noExplicitAny:
 			const untyped = this as any;
 			const newProps = node
 				? await getNodeItemProps(this.root, node, this, this.parent)
@@ -86,11 +84,7 @@ export class RojoTreeItem extends vscode.TreeItem {
 						promises.push(childItem.update(childNode, forced));
 					} else {
 						// Child was added, create and update it
-						const newItem = new RojoTreeItem(
-							this.root,
-							this.eventEmitter,
-							this
-						);
+						const newItem = new RojoTreeItem(this.root, this.eventEmitter, this);
 						promises.push(newItem.update(childNode, forced));
 						children.push(newItem);
 						childrenChanged = true;
@@ -108,11 +102,7 @@ export class RojoTreeItem extends vscode.TreeItem {
 				const promises = [];
 				const items = [];
 				for (const child of currentChildren) {
-					const item = new RojoTreeItem(
-						this.root,
-						this.eventEmitter,
-						this
-					);
+					const item = new RojoTreeItem(this.root, this.eventEmitter, this);
 					items.push(item);
 					promises.push(item.update(child, forced));
 				}
@@ -124,15 +114,13 @@ export class RojoTreeItem extends vscode.TreeItem {
 
 		if (itemChanged) {
 			this.order = node
-				? getSourcemapNodeTreeOrder(node, this.root.metadataProvider) ??
-				  undefined
+				? getSourcemapNodeTreeOrder(node, this.root.metadataProvider) ?? undefined
 				: undefined;
 		}
 		if (childrenChanged || !this.childrenDesired) {
 			const newCollapsibleState =
 				currentChildren !== undefined && currentChildren.length > 0
-					? this.collapsibleState ===
-					  vscode.TreeItemCollapsibleState.Expanded
+					? this.collapsibleState === vscode.TreeItemCollapsibleState.Expanded
 						? vscode.TreeItemCollapsibleState.Expanded
 						: vscode.TreeItemCollapsibleState.Collapsed
 					: vscode.TreeItemCollapsibleState.None;
@@ -159,14 +147,10 @@ export class RojoTreeItem extends vscode.TreeItem {
 	public openFile(): boolean {
 		const filePath = this.getFilePath();
 		if (filePath) {
-			vscode.commands.executeCommand(
-				"vscode.open",
-				vscode.Uri.file(filePath)
-			);
+			vscode.commands.executeCommand("vscode.open", vscode.Uri.file(filePath));
 			return true;
-		} else {
-			return false;
 		}
+		return false;
 	}
 
 	/**
@@ -182,9 +166,7 @@ export class RojoTreeItem extends vscode.TreeItem {
 	 */
 	public getFolderPath(): string | null {
 		const folderPath = this.node?.folderPath;
-		return folderPath
-			? path.join(this.root.workspacePath, folderPath)
-			: null;
+		return folderPath ? path.join(this.root.workspacePath, folderPath) : null;
 	}
 
 	/**
@@ -223,9 +205,8 @@ export class RojoTreeItem extends vscode.TreeItem {
 			}
 			const children = this.children ? [...this.children] : [];
 			return children.sort(treeItemSortFunction);
-		} else {
-			return [];
 		}
+		return [];
 	}
 
 	/**
