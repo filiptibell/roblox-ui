@@ -5,7 +5,7 @@ import { DomInstance } from "../server";
 import { ExplorerTreeProvider } from ".";
 
 export class ExplorerItem extends vscode.TreeItem {
-	private childReferences: ExplorerItem[] = [];
+	private childReferences: ExplorerItem[] | undefined;
 
 	constructor(
 		public readonly parent: ExplorerItem | null,
@@ -69,11 +69,7 @@ export class ExplorerItem extends vscode.TreeItem {
 
 		// Finally, select the tree item if wanted
 		if (shouldSelect) {
-			vscode.commands.executeCommand(
-				"roblox-ui.explorer.select",
-				this.workspacePath,
-				this.domInstance.id
-			);
+			this.select();
 		}
 	}
 
@@ -90,6 +86,23 @@ export class ExplorerItem extends vscode.TreeItem {
 		this.childReferences = children;
 	}
 
+	public async select() {
+		await vscode.commands.executeCommand(
+			"roblox-ui.explorer.select",
+			this.workspacePath,
+			this.domInstance.id
+		);
+	}
+
+	public async expand(levels?: number | null | void) {
+		await vscode.commands.executeCommand(
+			"roblox-ui.explorer.expand",
+			this.workspacePath,
+			this.domInstance.id,
+			levels
+		);
+	}
+
 	public expandRevealPath(fsPath: string): ExplorerItem | null {
 		if (
 			fsPath === this.domInstance.metadata?.paths?.file ||
@@ -101,7 +114,7 @@ export class ExplorerItem extends vscode.TreeItem {
 		let found: ExplorerItem | null = null;
 
 		// Check for an exact child match
-		for (const child of this.childReferences) {
+		for (const child of this.childReferences ?? []) {
 			if (
 				fsPath === child.domInstance.metadata?.paths?.file ||
 				fsPath === child.domInstance.metadata?.paths?.folder
@@ -113,7 +126,7 @@ export class ExplorerItem extends vscode.TreeItem {
 
 		// Check for folder partial match if there was no exact child match
 		if (found === null) {
-			for (const child of this.childReferences) {
+			for (const child of this.childReferences ?? []) {
 				const folderPath = child.domInstance.metadata?.paths?.folder;
 				if (folderPath && fsPath.startsWith(folderPath)) {
 					found = child;
@@ -124,8 +137,6 @@ export class ExplorerItem extends vscode.TreeItem {
 
 		// If we found a child, expand this, and keep looking
 		if (found !== null) {
-			// FIXME: Setting state here does not seem to actually expand in explorer view ...
-			this.collapsibleState = vscode.TreeItemCollapsibleState.Expanded;
 			return found.expandRevealPath(fsPath);
 		}
 

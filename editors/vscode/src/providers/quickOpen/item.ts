@@ -7,10 +7,10 @@ import { IconsProvider } from "../icons";
 import { DomInstance } from "../../server";
 
 export class QuickOpenItem implements vscode.QuickPickItem {
-	public alwaysShow: boolean = true;
-	public label: string = "QuickOpenItem";
-	public iconPath?: { light: vscode.Uri; dark: vscode.Uri };
-	public description?: string;
+	public readonly alwaysShow: boolean = true;
+	public readonly label: string;
+	public readonly iconPath?: { light: vscode.Uri; dark: vscode.Uri };
+	public readonly description?: string;
 
 	constructor(
 		public readonly settingsProvider: SettingsProvider,
@@ -35,5 +35,27 @@ export class QuickOpenItem implements vscode.QuickPickItem {
 			fullName.pop(); // Don't show name, its included in the label
 			this.description = fullName.join(".");
 		}
+	}
+
+	public async open() {
+		const canOpen = this.domInstance.metadata?.actions?.canOpen;
+		const filePath = this.domInstance.metadata?.paths?.file;
+		if (canOpen && filePath) {
+			await vscode.commands.executeCommand(
+				"vscode.open",
+				vscode.Uri.file(filePath)
+			);
+			return true;
+		}
+		return false;
+	}
+
+	public async reveal(select?: true | null | void) {
+		await vscode.commands.executeCommand(
+			"roblox-ui.explorer.reveal",
+			this.workspacePath,
+			this.domInstance.id,
+			select
+		);
 	}
 }

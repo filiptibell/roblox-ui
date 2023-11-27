@@ -13,13 +13,15 @@ export * from "./item";
 export class ExplorerTreeProvider
 	implements vscode.TreeDataProvider<ExplorerItem>
 {
-	private loaded: Map<string, boolean> = new Map();
-	private servers: Map<string, RpcServer> = new Map();
-	private disconnects: Map<string, () => boolean> = new Map();
-	private explorerRoots: Map<string, ExplorerItem | null> = new Map();
-	private explorerIdMaps: Map<string, Map<string, ExplorerItem>> = new Map();
+	private readonly loaded: Map<string, boolean> = new Map();
+	private readonly servers: Map<string, RpcServer> = new Map();
+	private readonly disconnects: Map<string, () => boolean> = new Map();
+	private readonly explorerRoots: Map<string, ExplorerItem | null> =
+		new Map();
+	private readonly explorerIdMaps: Map<string, Map<string, ExplorerItem>> =
+		new Map();
 
-	readonly _onDidChangeTreeData: vscode.EventEmitter<void | ExplorerItem> =
+	private readonly _onDidChangeTreeData: vscode.EventEmitter<void | ExplorerItem> =
 		new vscode.EventEmitter();
 	public readonly onDidChangeTreeData: vscode.Event<void | ExplorerItem> =
 		this._onDidChangeTreeData.event;
@@ -199,15 +201,6 @@ export class ExplorerTreeProvider
 		this._onDidChangeTreeData.fire();
 	}
 
-	public expandRevealPath(fsPath: string): ExplorerItem | null {
-		for (const [workspacePath, root] of this.explorerRoots) {
-			if (root && fsPath.startsWith(workspacePath)) {
-				return root.expandRevealPath(fsPath);
-			}
-		}
-		return null;
-	}
-
 	public async getAncestors(
 		workspacePath: string,
 		domId: string
@@ -281,5 +274,49 @@ export class ExplorerTreeProvider
 			}
 		}
 		return [];
+	}
+
+	public async revealById(
+		workspacePath: string,
+		domId: string,
+		select?: true | null | void
+	) {
+		const ancestors = await this.getAncestors(workspacePath, domId);
+		if (!ancestors) {
+			return;
+		}
+
+		let foundAll = true;
+		for (const [index, ancestor] of ancestors.entries()) {
+			const item = this.findById(workspacePath, ancestor.id);
+			if (!item) {
+				foundAll = false;
+				break;
+			}
+			if (index < ancestors.length - 1) {
+				await item.expand(); // NOTE: Don't expand the last item
+			}
+		}
+
+		if (foundAll && select === true && ancestors.length > 0) {
+			const last = ancestors[ancestors.length - 1];
+			const item = this.findById(workspacePath, last.id);
+			await item!.select();
+		}
+	}
+
+	public async revealByPath(path: string, select?: true | null | void) {
+		for (const [workspacePath, _] of this.servers) {
+			if (path.startsWith(workspacePath)) {
+				const domInstance = await this.findByPath(workspacePath, path);
+				if (domInstance) {
+					await this.revealById(
+						workspacePath,
+						domInstance.id,
+						select
+					);
+				}
+			}
+		}
 	}
 }

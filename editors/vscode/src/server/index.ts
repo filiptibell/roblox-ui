@@ -17,9 +17,10 @@ type RpcResolver<M extends keyof MethodTypes> = (
 ) => void;
 
 export class RpcServer {
+	private readonly handlers: Map<string, RpcHandler<any>> = new Map();
+	private readonly resolvers: Map<number, RpcResolver<any>> = new Map();
+
 	private child: cp.ChildProcessWithoutNullStreams;
-	private handlers: Map<string, RpcHandler<any>> = new Map();
-	private resolvers: Map<number, RpcResolver<any>> = new Map();
 	private idCounter: number = 0;
 
 	constructor(

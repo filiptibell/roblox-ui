@@ -3,38 +3,39 @@ import * as vscode from "vscode";
 import { ExplorerTreeProvider } from "../explorer";
 
 export class SelectionProvider implements vscode.Disposable {
-	private disposables: Array<vscode.Disposable> = new Array();
+	private readonly disposables: Array<vscode.Disposable> = new Array();
 
 	constructor(private explorer: ExplorerTreeProvider) {
-		// Reveal tree items when they become visible / active in the editor
 		this.disposables.push(
-			vscode.window.onDidChangeVisibleTextEditors(() => {
-				for (const editor of vscode.window.visibleTextEditors) {
-					const fsPath = editor.document.uri.fsPath;
-					this.explorer.expandRevealPath(fsPath);
-				}
-			})
+			vscode.window.onDidChangeVisibleTextEditors(
+				this.revealVisibleEditors
+			)
 		);
 		this.disposables.push(
-			vscode.window.onDidChangeActiveTextEditor((editor) => {
-				if (editor) {
-					const fsPath = editor.document.uri.fsPath;
-					const item = this.explorer.expandRevealPath(fsPath);
-					if (item) {
-						vscode.commands.executeCommand(
-							"roblox-ui.explorer.select",
-							item.workspacePath,
-							item.domInstance.id
-						);
-					}
-				}
-			})
+			vscode.window.onDidChangeActiveTextEditor(this.revealActiveEditor)
 		);
+		this.revealVisibleEditors();
+		this.revealActiveEditor();
 	}
 
 	dispose() {
 		for (const disposable of this.disposables) {
 			disposable.dispose();
+		}
+	}
+
+	public async revealVisibleEditors() {
+		for (const editor of vscode.window.visibleTextEditors) {
+			const fsPath = editor.document.uri.fsPath;
+			await this.explorer.revealByPath(fsPath);
+		}
+	}
+
+	public async revealActiveEditor() {
+		const activeEditor = vscode.window.activeTextEditor;
+		if (activeEditor) {
+			const fsPath = activeEditor.document.uri.fsPath;
+			await this.explorer.revealByPath(fsPath, true);
 		}
 	}
 }

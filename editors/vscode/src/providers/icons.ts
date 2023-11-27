@@ -106,8 +106,8 @@ const createIconPackData = (
 };
 
 export class IconsProvider implements vscode.Disposable {
-	private metas: Map<IconPack, IconPackMetadatas> = new Map();
-	private icons: Map<IconPack, IconPackData> = new Map();
+	private readonly metas: Map<IconPack, IconPackMetadatas> = new Map();
+	private readonly icons: Map<IconPack, IconPackData> = new Map();
 
 	constructor(private readonly context: vscode.ExtensionContext) {
 		for (const pack of getAllIconPacks()) {

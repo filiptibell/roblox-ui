@@ -22,9 +22,9 @@ type SettingsValue<K extends SettingsKey> = Settings[K];
 type SettingsCallback<K extends SettingsKey> = (value: SettingsValue<K>) => any;
 
 export class SettingsProvider implements vscode.Disposable {
-	private values: Map<string, any> = new Map();
-	private events: Map<string, vscode.EventEmitter<any>> = new Map();
-	private disposable: vscode.Disposable;
+	private readonly values: Map<string, any> = new Map();
+	private readonly events: Map<string, vscode.EventEmitter<any>> = new Map();
+	private readonly disposable: vscode.Disposable;
 
 	constructor() {
 		// Add in defaults as current values

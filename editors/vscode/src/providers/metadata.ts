@@ -44,8 +44,8 @@ type ReflectionEnumItem = {
 type ReflectionValue = string | number | boolean;
 
 export class MetadataProvider implements vscode.Disposable {
-	private classes: Classes;
-	private reflection: Reflection;
+	private readonly classes: Classes;
+	private readonly reflection: Reflection;
 
 	constructor(private readonly context: vscode.ExtensionContext) {
 		const classesPath = path.join(

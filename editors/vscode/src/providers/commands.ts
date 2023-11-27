@@ -7,8 +7,8 @@ import { ExplorerItem, ExplorerTreeProvider } from "../explorer";
 import { QuickOpenProvider } from "./quickOpen";
 
 export class CommandsProvider implements vscode.Disposable {
-	private commands: Map<string, (...args: any[]) => any> = new Map();
-	private disposables: Array<vscode.Disposable> = new Array();
+	private readonly commands: Map<string, (...args: any[]) => any> = new Map();
+	private readonly disposables: Array<vscode.Disposable> = new Array();
 
 	private register(name: string, command: (...args: any[]) => any) {
 		const fullName = `roblox-ui.${name}`;
@@ -21,8 +21,6 @@ export class CommandsProvider implements vscode.Disposable {
 			disposable.dispose();
 		}
 		this.commands.clear();
-		this.commands = new Map();
-		this.disposables = new Array();
 	}
 
 	constructor(
@@ -36,14 +34,37 @@ export class CommandsProvider implements vscode.Disposable {
 		this.register("explorer.quickOpen", () => quickOpenProvider.show());
 
 		this.register(
+			"explorer.reveal",
+			async (
+				workspacePath: string,
+				domId: string,
+				select?: true | null | void
+			) => {
+				await treeDataProvider.revealById(workspacePath, domId, select);
+			}
+		);
+		this.register(
 			"explorer.select",
 			async (workspacePath: string, domId: string) => {
 				const item = treeDataProvider.findById(workspacePath, domId);
 				if (item) {
+					await treeView.reveal(item);
+				}
+			}
+		);
+		this.register(
+			"explorer.expand",
+			async (
+				workspacePath: string,
+				domId: string,
+				levels?: number | null | void
+			) => {
+				const item = treeDataProvider.findById(workspacePath, domId);
+				if (item) {
 					await treeView.reveal(item, {
-						expand: false,
-						select: true,
-						focus: true,
+						expand: levels ?? true,
+						select: false,
+						focus: false,
 					});
 				}
 			}
