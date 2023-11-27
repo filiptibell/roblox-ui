@@ -2,11 +2,8 @@ import * as vscode from "vscode";
 
 import {
 	connectAllWorkspaces,
-	connectWorkspace,
 	disconnectAllWorkspaces,
-	disconnectWorkspace,
-	refreshAllWorkspaces,
-	reloadAllWorkspaces,
+	reconnectAllWorkspaces,
 } from "./workspaces";
 
 import { SettingsProvider } from "./providers/settings";
@@ -61,30 +58,21 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	// Listen for settings changing, if any of the settings that
 	// change behavior of the sourcemap or the sourcemap watch
-	// command change we have to re-initialize the workspace
-	settings.listen("sourcemap.autogenerate", reloadAllWorkspaces);
-	settings.listen("sourcemap.ignoreGlobs", reloadAllWorkspaces);
-	settings.listen("sourcemap.includeNonScripts", reloadAllWorkspaces);
-	settings.listen("sourcemap.rojoProjectFile", reloadAllWorkspaces);
-	settings.listen("wally.modifyPackagesDir", reloadAllWorkspaces);
+	// command change we have to re-connect the workspaces
+	settings.listen("sourcemap.autogenerate", reconnectAllWorkspaces);
+	settings.listen("sourcemap.ignoreGlobs", reconnectAllWorkspaces);
+	settings.listen("sourcemap.includeNonScripts", reconnectAllWorkspaces);
+	settings.listen("sourcemap.rojoProjectFile", reconnectAllWorkspaces);
+	settings.listen("explorer.showClassNames", reconnectAllWorkspaces);
+	settings.listen("explorer.showFilePaths", reconnectAllWorkspaces);
+	settings.listen("explorer.iconPack", reconnectAllWorkspaces);
+	settings.listen("wally.modifyPackagesDir", reconnectAllWorkspaces);
+	settings.listen("wally.showPackageVersion", reconnectAllWorkspaces);
 
-	// For some settings we don't need a complete reload of the project,
-	// sourcemap, and tree, we just need a refresh of any existing tree
-	settings.listen("explorer.showClassNames", refreshAllWorkspaces);
-	settings.listen("explorer.showFilePaths", refreshAllWorkspaces);
-	settings.listen("explorer.iconPack", refreshAllWorkspaces);
-	settings.listen("wally.showPackageVersion", refreshAllWorkspaces);
-
-	// Listen for workspace folders changing, and initialize current workspace folders
+	// Listen for workspace folders changing, and re-connect
+	// current workspace folders when that happens as well
 	context.subscriptions.push(
-		vscode.workspace.onDidChangeWorkspaceFolders((event) => {
-			for (const addedFolder of event.added) {
-				connectWorkspace(context, addedFolder, settings, explorerTree);
-			}
-			for (const removedFolder of event.removed) {
-				disconnectWorkspace(removedFolder);
-			}
-		})
+		vscode.workspace.onDidChangeWorkspaceFolders(reconnectAllWorkspaces)
 	);
 	connectAllWorkspaces(context, settings, explorerTree);
 }

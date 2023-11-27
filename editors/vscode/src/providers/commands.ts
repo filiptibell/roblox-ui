@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 
-import { reloadAllWorkspaces } from "../workspaces";
+import { reconnectAllWorkspaces } from "../workspaces";
 
 import { MetadataProvider } from "./metadata";
 import { ExplorerItem, ExplorerTreeProvider } from "../explorer";
@@ -32,7 +32,7 @@ export class CommandsProvider implements vscode.Disposable {
 		treeDataProvider: ExplorerTreeProvider,
 		quickOpenProvider: QuickOpenProvider
 	) {
-		this.register("explorer.refresh", reloadAllWorkspaces);
+		this.register("explorer.refresh", reconnectAllWorkspaces);
 		this.register("explorer.quickOpen", () => quickOpenProvider.show());
 
 		this.register(

@@ -2,100 +2,64 @@ import * as vscode from "vscode";
 
 import { SettingsProvider } from "./providers/settings";
 import { ExplorerTreeProvider } from "./explorer";
-import { connectSourcemapUsingServer } from "./utils/sourcemap";
+import { RpcServer } from "./server";
 
-const workspaceRefreshers: Map<string, () => void> = new Map();
-const workspaceReloaders: Map<string, () => void> = new Map();
-const workspaceDestructors: Map<string, () => Promise<void>> = new Map();
+const workspaceServers: Map<string, RpcServer> = new Map();
 
-export const refreshWorkspace = (folder: vscode.WorkspaceFolder) => {
-	const update = workspaceRefreshers.get(folder.uri.fsPath);
-	if (update) {
-		update();
-	}
-};
-
-export const refreshAllWorkspaces = () => {
-	const workspaceFolders = vscode.workspace.workspaceFolders;
-	if (workspaceFolders) {
-		workspaceFolders.forEach(refreshWorkspace);
-	}
-};
-
-export const reloadWorkspace = (folder: vscode.WorkspaceFolder) => {
-	const update = workspaceReloaders.get(folder.uri.fsPath);
-	if (update) {
-		update();
-	}
-};
-
-export const reloadAllWorkspaces = () => {
-	const workspaceFolders = vscode.workspace.workspaceFolders;
-	if (workspaceFolders) {
-		workspaceFolders.forEach(reloadWorkspace);
-	}
-};
-
-export const connectWorkspace = async (
-	context: vscode.ExtensionContext,
-	folder: vscode.WorkspaceFolder,
-	settings: SettingsProvider,
-	treeProvider: ExplorerTreeProvider
-) => {
-	const workspacePath = folder.uri.fsPath;
-
-	const [refresh, reload, destroy] = connectSourcemapUsingServer(
-		context,
-		workspacePath,
-		settings,
-		treeProvider
-	);
-
-	workspaceRefreshers.set(workspacePath, refresh);
-	workspaceReloaders.set(workspacePath, reload);
-	workspaceDestructors.set(workspacePath, destroy);
-};
+let currentContext: vscode.ExtensionContext;
+let currentSettings: SettingsProvider;
+let currentProvider: ExplorerTreeProvider;
 
 export const connectAllWorkspaces = async (
 	context: vscode.ExtensionContext,
 	settings: SettingsProvider,
 	provider: ExplorerTreeProvider
 ) => {
-	let promisesDisconnect = new Array<Promise<void>>();
-	let promisesConnect = new Array<Promise<void>>();
+	await disconnectAllWorkspaces();
+
+	currentContext = context;
+	currentSettings = settings;
+	currentProvider = provider;
+
+	const promises = new Array<Promise<void>>();
 
 	if (vscode.workspace.workspaceFolders) {
 		vscode.workspace.workspaceFolders.forEach((folder) => {
-			promisesDisconnect.push(disconnectWorkspace(folder));
-		});
-		vscode.workspace.workspaceFolders.forEach((folder) => {
-			promisesConnect.push(
-				connectWorkspace(context, folder, settings, provider)
+			const workspacePath = folder.uri.fsPath;
+			const workspaceServer = new RpcServer(
+				context,
+				workspacePath,
+				settings
 			);
+			workspaceServers.set(workspacePath, workspaceServer);
+			provider.connectServer(workspacePath, workspaceServer);
 		});
 	}
 
-	await Promise.all(promisesDisconnect);
-	await Promise.all(promisesConnect);
-};
-
-export const disconnectWorkspace = async (folder: vscode.WorkspaceFolder) => {
-	const destroy = workspaceDestructors.get(folder.uri.fsPath);
-	if (destroy) {
-		await destroy();
-	}
+	await Promise.all(promises);
 };
 
 export const disconnectAllWorkspaces = async () => {
-	let workspacePaths = [...workspaceDestructors.keys()];
-	let workspacePromises = new Array<Promise<void>>();
+	if (currentProvider) {
+		currentProvider.disconnectAllServers();
+	}
 
-	workspacePaths.forEach((workspacePath) => {
-		const destroy = workspaceDestructors.get(workspacePath);
-		if (destroy) {
-			workspacePromises.push(destroy());
-		}
-	});
+	const promises = new Array<Promise<void>>();
 
-	await Promise.all(workspacePromises);
+	for (const [_, server] of workspaceServers) {
+		promises.push(server.stop());
+	}
+	workspaceServers.clear();
+
+	await Promise.all(promises);
+};
+
+export const reconnectAllWorkspaces = async () => {
+	if (currentContext && currentSettings && currentProvider) {
+		await connectAllWorkspaces(
+			currentContext,
+			currentSettings,
+			currentProvider
+		);
+	}
 };

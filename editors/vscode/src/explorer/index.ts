@@ -31,9 +31,7 @@ export class ExplorerTreeProvider
 	) {}
 
 	public dispose() {
-		for (const workspacePath of this.servers.keys()) {
-			this.disconnectServer(workspacePath);
-		}
+		this.disconnectAllServers();
 	}
 
 	public async getTreeItem(item: ExplorerItem) {
@@ -131,6 +129,20 @@ export class ExplorerTreeProvider
 		return this.servers.get(workspacePath);
 	}
 
+	public disconnectAllServers() {
+		for (const [_, disconnect] of this.disconnects) {
+			disconnect();
+		}
+
+		this.explorerRoots.clear();
+		this.explorerIdMaps.clear();
+		this.disconnects.clear();
+		this.servers.clear();
+		this.loaded.clear();
+
+		this._onDidChangeTreeData.fire();
+	}
+
 	public disconnectServer(workspacePath: string) {
 		const server = this.servers.get(workspacePath);
 		if (server !== undefined) {
@@ -138,6 +150,7 @@ export class ExplorerTreeProvider
 			if (disconnect !== undefined) {
 				disconnect();
 			}
+
 			this.explorerRoots.delete(workspacePath);
 			this.explorerIdMaps.delete(workspacePath);
 			this.disconnects.delete(workspacePath);

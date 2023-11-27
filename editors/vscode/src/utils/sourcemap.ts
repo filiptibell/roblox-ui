@@ -1,9 +1,6 @@
-import * as vscode from "vscode";
 import * as path from "path";
 
-import { SettingsProvider } from "../providers/settings";
 import { MetadataProvider } from "../providers/metadata";
-import { ExplorerTreeProvider } from "../explorer";
 
 import { isInitFilePath, isBinaryFilePath } from "./rojo";
 import {
@@ -11,7 +8,6 @@ import {
 	findPackageSourceNode,
 	parseWallySpec,
 } from "./wally";
-import { RpcServer } from "../server";
 
 const PACKAGE_CLASS_NAME = "Package";
 
@@ -306,26 +302,4 @@ export const areSourcemapNodesEqual = (
 		}
 	}
 	return true;
-};
-
-export const connectSourcemapUsingServer = (
-	context: vscode.ExtensionContext,
-	workspacePath: string,
-	settings: SettingsProvider,
-	treeProvider: ExplorerTreeProvider
-): [() => void, () => void, () => Promise<void>] => {
-	const server = new RpcServer(context, workspacePath, settings);
-
-	const refresh = () => {};
-	const reload = async () => {
-		await server.restart();
-	};
-	const destroy = async () => {
-		treeProvider.disconnectServer(workspacePath);
-		await server.stop();
-	};
-
-	treeProvider.connectServer(workspacePath, server);
-
-	return [refresh, reload, destroy];
 };
