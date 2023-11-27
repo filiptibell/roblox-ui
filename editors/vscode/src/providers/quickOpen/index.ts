@@ -1,12 +1,14 @@
 import * as vscode from "vscode";
 import * as path from "path";
 
-import { SettingsProvider } from "./settings";
-import { MetadataProvider } from "./metadata";
-import { IconsProvider } from "./icons";
-import { ExplorerTreeProvider } from "../explorer";
+import { SettingsProvider } from "../settings";
+import { MetadataProvider } from "../metadata";
+import { IconsProvider } from "../icons";
+import { ExplorerTreeProvider } from "../../explorer";
 
-import { DomInstance } from "../server";
+import { DomInstance } from "../../server";
+
+import { QuickOpenItem } from "./item";
 
 const MINIMUM_QUERY_LENGTH = 1;
 
@@ -97,9 +99,11 @@ export class QuickOpenProvider implements vscode.Disposable {
 				const fullName = nameResponses.get(foundInstance.id) ?? null;
 				newItems.push(
 					new QuickOpenItem(
+						this.settingsProvider,
+						this.metadataProvider,
+						this.iconsProvider,
 						workspacePath,
 						foundInstance,
-						this,
 						fullName
 					)
 				);
@@ -134,35 +138,5 @@ export class QuickOpenProvider implements vscode.Disposable {
 		this.picker.hide();
 		this.picker.value = "";
 		this.picker.items = [];
-	}
-}
-
-export class QuickOpenItem implements vscode.QuickPickItem {
-	public alwaysShow: boolean = true;
-	public label: string = "QuickOpenItem";
-	public iconPath?: { light: vscode.Uri; dark: vscode.Uri };
-	public description?: string;
-
-	constructor(
-		public readonly workspacePath: string,
-		public readonly domInstance: DomInstance,
-		readonly quickOpen: QuickOpenProvider,
-		readonly fullName: string[] | null
-	) {
-		this.label = domInstance.name;
-
-		this.iconPath = quickOpen.iconsProvider.getClassIcon(
-			quickOpen.settingsProvider.get("explorer.iconPack"),
-			domInstance.className
-		);
-
-		if (fullName) {
-			const wfolders = vscode.workspace.workspaceFolders;
-			if (!wfolders || wfolders.length <= 1) {
-				fullName.shift(); // Don't show root name for single-root workspaces
-			}
-			fullName.pop(); // Don't show name, its included in the label
-			this.description = fullName.join(".");
-		}
 	}
 }
