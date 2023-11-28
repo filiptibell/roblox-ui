@@ -2,9 +2,9 @@ import * as vscode from "vscode";
 
 import { reconnectAllWorkspaces } from "../workspaces";
 
-import { MetadataProvider } from "./metadata";
 import { ExplorerItem, ExplorerTreeProvider } from "../explorer";
 import { QuickOpenProvider } from "./quickOpen";
+import { RenameInstanceProvider } from "./renameInstance";
 
 export class CommandsProvider implements vscode.Disposable {
 	// biome-ignore lint/suspicious/noExplicitAny:
@@ -26,11 +26,10 @@ export class CommandsProvider implements vscode.Disposable {
 	}
 
 	constructor(
-		context: vscode.ExtensionContext,
-		metadata: MetadataProvider,
 		treeView: vscode.TreeView<vscode.TreeItem>,
-		treeDataProvider: ExplorerTreeProvider,
+		treeProvider: ExplorerTreeProvider,
 		quickOpenProvider: QuickOpenProvider,
+		renameInstanceProvider: RenameInstanceProvider,
 	) {
 		this.register("explorer.refresh", reconnectAllWorkspaces);
 		this.register("explorer.quickOpen", () => quickOpenProvider.show());
@@ -38,19 +37,23 @@ export class CommandsProvider implements vscode.Disposable {
 		this.register(
 			"explorer.reveal",
 			async (workspacePath: string, domId: string, select?: true | null) => {
-				await treeDataProvider.revealById(workspacePath, domId, select);
+				await treeProvider.revealById(workspacePath, domId, select);
 			},
 		);
 		this.register("explorer.select", async (workspacePath: string, domId: string) => {
-			const item = treeDataProvider.findById(workspacePath, domId);
+			const item = treeProvider.findById(workspacePath, domId);
 			if (item) {
-				await treeView.reveal(item);
+				await treeView.reveal(item, {
+					expand: false,
+					select: true,
+					focus: false,
+				});
 			}
 		});
 		this.register(
 			"explorer.expand",
 			async (workspacePath: string, domId: string, levels?: number | null) => {
-				const item = treeDataProvider.findById(workspacePath, domId);
+				const item = treeProvider.findById(workspacePath, domId);
 				if (item) {
 					await treeView.reveal(item, {
 						expand: levels ?? true,
@@ -120,18 +123,10 @@ export class CommandsProvider implements vscode.Disposable {
 		});
 
 		this.register("explorer.renameObject", async (item: ExplorerItem) => {
-			// TODO: Re-implement this
-			// await promptRenameExistingInstance(
-			// 	item.getFolderPath(),
-			// 	item.getFilePath()
-			// );
+			renameInstanceProvider.show(item.workspacePath, item.domInstance);
 		});
 		this.register("explorer.deleteObject", async (item: ExplorerItem) => {
-			// TODO: Re-implement this
-			// await deleteExistingInstance(
-			// 	item.getFolderPath(),
-			// 	item.getFilePath()
-			// );
+			await treeProvider.deleteInstance(item.workspacePath, item.domInstance.id);
 		});
 	}
 }

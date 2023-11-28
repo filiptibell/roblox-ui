@@ -298,4 +298,12 @@ export class ExplorerTreeProvider implements vscode.TreeDataProvider<ExplorerIte
 			}
 		}
 	}
+
+	public async renameInstance(workspacePath: string, domId: string, desiredName: string) {
+		vscode.window.showInformationMessage("TODO: Implement instance rename request");
+	}
+
+	public async deleteInstance(workspacePath: string, domId: string) {
+		vscode.window.showInformationMessage("TODO: Implement instance delete request");
+	}
 }

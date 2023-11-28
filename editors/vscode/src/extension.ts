@@ -14,6 +14,7 @@ import { MetadataProvider } from "./providers/metadata";
 import { IconsProvider } from "./providers/icons";
 import { ExplorerTreeProvider } from "./explorer";
 import { QuickOpenProvider } from "./providers/quickOpen";
+import { RenameInstanceProvider } from "./providers/renameInstance";
 
 export async function activate(context: vscode.ExtensionContext) {
 	// Create settings provider first, it is used by other providers
@@ -38,9 +39,11 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(explorerView);
 
 	// Create other providers for things such as selection handling, ...
+	const renameInstance = new RenameInstanceProvider(settings, metadata, icons, explorerTree);
 	const quickOpen = new QuickOpenProvider(settings, metadata, icons, explorerTree);
-	const commands = new CommandsProvider(context, metadata, explorerView, explorerTree, quickOpen);
+	const commands = new CommandsProvider(explorerView, explorerTree, quickOpen, renameInstance);
 	const selection = new SelectionProvider(explorerTree);
+	context.subscriptions.push(renameInstance);
 	context.subscriptions.push(quickOpen);
 	context.subscriptions.push(commands);
 	context.subscriptions.push(selection);
