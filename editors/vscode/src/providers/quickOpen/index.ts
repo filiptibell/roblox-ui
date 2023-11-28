@@ -27,8 +27,6 @@ export class QuickOpenProvider implements vscode.Disposable {
 		this.picker.placeholder = "Search...";
 		this.picker.title = "Quick Open";
 
-		this.picker.matchOnDescription = true;
-
 		// biome-ignore lint/suspicious/noExplicitAny: property does not yet exist in typedef
 		(this.picker as any).sortByLabel = false;
 
