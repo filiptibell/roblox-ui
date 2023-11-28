@@ -2,6 +2,8 @@ import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
 
+import { Providers } from ".";
+
 export type IconPack = "None" | "Classic" | "Vanilla2";
 
 type IconPackIcon = { light: vscode.Uri; dark: vscode.Uri };
@@ -92,10 +94,10 @@ export class IconsProvider implements vscode.Disposable {
 	private readonly metas: Map<IconPack, IconPackMetadatas> = new Map();
 	private readonly icons: Map<IconPack, IconPackData> = new Map();
 
-	constructor(private readonly context: vscode.ExtensionContext) {
+	constructor(public readonly providers: Providers) {
 		for (const pack of getAllIconPacks()) {
-			const metas = readIconPackMetadatas(context.extensionPath, pack);
-			const icons = createIconPackData(context.extensionPath, pack, metas);
+			const metas = readIconPackMetadatas(providers.extensionContext.extensionPath, pack);
+			const icons = createIconPackData(providers.extensionContext.extensionPath, pack, metas);
 			this.metas.set(pack, metas);
 			this.icons.set(pack, icons);
 		}

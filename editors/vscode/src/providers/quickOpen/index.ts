@@ -1,14 +1,9 @@
 import * as vscode from "vscode";
-import * as path from "path";
-
-import { SettingsProvider } from "../settings";
-import { MetadataProvider } from "../metadata";
-import { IconsProvider } from "../icons";
-import { ExplorerTreeProvider } from "../../explorer";
 
 import { DomInstance } from "../../server";
 
 import { QuickOpenItem } from "./item";
+import { Providers } from "..";
 
 const MINIMUM_QUERY_LENGTH = 1;
 
@@ -16,12 +11,7 @@ export class QuickOpenProvider implements vscode.Disposable {
 	private readonly picker: vscode.QuickPick<QuickOpenItem>;
 	private readonly disposables: vscode.Disposable[] = [];
 
-	constructor(
-		public readonly settingsProvider: SettingsProvider,
-		public readonly metadataProvider: MetadataProvider,
-		public readonly iconsProvider: IconsProvider,
-		public readonly explorerProvider: ExplorerTreeProvider,
-	) {
+	constructor(public readonly providers: Providers) {
 		this.picker = vscode.window.createQuickPick();
 		this.picker.canSelectMany = false;
 		this.picker.placeholder = "Search...";
@@ -56,10 +46,10 @@ export class QuickOpenProvider implements vscode.Disposable {
 		this.picker.busy = true;
 
 		const searchResponsePromises = new Array<Promise<[string, DomInstance[]]>>();
-		for (const workspacePath of this.explorerProvider.getWorkspacePaths()) {
+		for (const workspacePath of this.providers.explorerTree.getWorkspacePaths()) {
 			searchResponsePromises.push(
 				new Promise((resolve, reject) => {
-					this.explorerProvider
+					this.providers.explorerTree
 						.findByQuery(workspacePath, query)
 						.then((instances) => resolve([workspacePath, instances]))
 						.catch(reject);
@@ -73,7 +63,7 @@ export class QuickOpenProvider implements vscode.Disposable {
 			for (const foundInstance of foundInstances) {
 				nameResponsePromises.push(
 					new Promise((resolve, reject) => {
-						this.explorerProvider
+						this.providers.explorerTree
 							.getFullName(workspacePath, foundInstance.id)
 							.then((fullName) => resolve([foundInstance.id, fullName]))
 							.catch(reject);
@@ -88,15 +78,12 @@ export class QuickOpenProvider implements vscode.Disposable {
 		const newItems = new Array<QuickOpenItem>();
 		for (const [workspacePath, foundInstances] of searchResponses) {
 			for (const foundInstance of foundInstances) {
-				const fullName = nameResponses.get(foundInstance.id) ?? null;
 				newItems.push(
 					new QuickOpenItem(
-						this.settingsProvider,
-						this.metadataProvider,
-						this.iconsProvider,
+						this.providers,
 						workspacePath,
 						foundInstance,
-						fullName,
+						nameResponses.get(foundInstance.id) ?? null,
 					),
 				);
 			}

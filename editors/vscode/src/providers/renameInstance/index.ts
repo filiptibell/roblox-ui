@@ -1,11 +1,7 @@
 import * as vscode from "vscode";
 
-import { SettingsProvider } from "../settings";
-import { MetadataProvider } from "../metadata";
-import { IconsProvider } from "../icons";
-import { ExplorerTreeProvider } from "../../explorer";
-
 import { DomInstance } from "../../server";
+import { Providers } from "..";
 
 export class RenameInstanceProvider implements vscode.Disposable {
 	private readonly input: vscode.InputBox;
@@ -14,12 +10,7 @@ export class RenameInstanceProvider implements vscode.Disposable {
 	private currentWorkspacePath: string | null = null;
 	private currentInstance: DomInstance | null = null;
 
-	constructor(
-		public readonly settingsProvider: SettingsProvider,
-		public readonly metadataProvider: MetadataProvider,
-		public readonly iconsProvider: IconsProvider,
-		public readonly explorerProvider: ExplorerTreeProvider,
-	) {
+	constructor(public readonly providers: Providers) {
 		this.input = vscode.window.createInputBox();
 		this.input.placeholder = "Enter a new name...";
 		this.input.title = "Rename Instance";
@@ -58,7 +49,7 @@ export class RenameInstanceProvider implements vscode.Disposable {
 			this.input.value &&
 			!this.input.validationMessage
 		) {
-			await this.explorerProvider.renameInstance(
+			await this.providers.explorerTree.renameInstance(
 				this.currentWorkspacePath,
 				this.currentInstance.id,
 				this.input.value,

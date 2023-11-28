@@ -1,49 +1,24 @@
 import * as vscode from "vscode";
 
 import { reconnectAllWorkspaces } from "../workspaces";
+import { ExplorerItem } from "./explorer";
+import { Providers } from ".";
 
-import { ExplorerItem, ExplorerTreeProvider } from "../explorer";
-import { QuickOpenProvider } from "./quickOpen";
-import { RenameInstanceProvider } from "./renameInstance";
+const EXTENSION_NAME = "roblox-ui";
 
 export class CommandsProvider implements vscode.Disposable {
 	// biome-ignore lint/suspicious/noExplicitAny:
 	private readonly commands: Map<string, (...args: any[]) => any> = new Map();
 	private readonly disposables: Array<vscode.Disposable> = new Array();
 
-	// biome-ignore lint/suspicious/noExplicitAny:
-	private register(name: string, command: (...args: any[]) => any) {
-		const fullName = `roblox-ui.${name}`;
-		const disposable = vscode.commands.registerCommand(fullName, command);
-		this.disposables.push(disposable);
-	}
-
-	dispose() {
-		for (const disposable of this.disposables) {
-			disposable.dispose();
-		}
-		this.commands.clear();
-	}
-
-	constructor(
-		treeView: vscode.TreeView<vscode.TreeItem>,
-		treeProvider: ExplorerTreeProvider,
-		quickOpenProvider: QuickOpenProvider,
-		renameInstanceProvider: RenameInstanceProvider,
-	) {
+	constructor(public readonly providers: Providers) {
 		this.register("explorer.refresh", reconnectAllWorkspaces);
-		this.register("explorer.quickOpen", () => quickOpenProvider.show());
+		this.register("explorer.quickOpen", () => providers.quickOpen.show());
 
-		this.register(
-			"explorer.reveal",
-			async (workspacePath: string, domId: string, select?: true | null) => {
-				await treeProvider.revealById(workspacePath, domId, select);
-			},
-		);
 		this.register("explorer.select", async (workspacePath: string, domId: string) => {
-			const item = treeProvider.findById(workspacePath, domId);
+			const item = providers.explorerTree.findById(workspacePath, domId);
 			if (item) {
-				await treeView.reveal(item, {
+				await providers.explorerView.reveal(item, {
 					expand: false,
 					select: true,
 					focus: false,
@@ -53,9 +28,9 @@ export class CommandsProvider implements vscode.Disposable {
 		this.register(
 			"explorer.expand",
 			async (workspacePath: string, domId: string, levels?: number | null) => {
-				const item = treeProvider.findById(workspacePath, domId);
+				const item = providers.explorerTree.findById(workspacePath, domId);
 				if (item) {
-					await treeView.reveal(item, {
+					await providers.explorerView.reveal(item, {
 						expand: levels ?? true,
 						select: false,
 						focus: false,
@@ -123,10 +98,30 @@ export class CommandsProvider implements vscode.Disposable {
 		});
 
 		this.register("explorer.renameObject", async (item: ExplorerItem) => {
-			renameInstanceProvider.show(item.workspacePath, item.domInstance);
+			providers.renameInstance.show(item.workspacePath, item.domInstance);
 		});
 		this.register("explorer.deleteObject", async (item: ExplorerItem) => {
-			await treeProvider.deleteInstance(item.workspacePath, item.domInstance.id);
+			await providers.explorerTree.deleteInstance(item.workspacePath, item.domInstance.id);
 		});
+	}
+
+	dispose() {
+		for (const disposable of this.disposables) {
+			disposable.dispose();
+		}
+		this.commands.clear();
+	}
+
+	// biome-ignore lint/suspicious/noExplicitAny:
+	private register(name: string, command: (...args: any[]) => any) {
+		const fullName = `${EXTENSION_NAME}.${name}`;
+		const disposable = vscode.commands.registerCommand(fullName, command);
+		this.disposables.push(disposable);
+	}
+
+	// biome-ignore lint/suspicious/noExplicitAny:
+	public async run(name: string, ...args: any) {
+		const fullName = `${EXTENSION_NAME}.${name}`;
+		await vscode.commands.executeCommand(fullName, ...args);
 	}
 }

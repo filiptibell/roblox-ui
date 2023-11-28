@@ -1,9 +1,11 @@
 import * as vscode from "vscode";
 
 import { IconPack } from "./icons";
+import { Providers } from ".";
 
-const EXTENSION = "roblox-ui";
-const DEFAULTS = {
+const EXTENSION_NAME = "roblox-ui";
+
+const DEFAULT_VALUES = {
 	"explorer.showDataModel": true,
 	"explorer.showClassNames": false,
 	"explorer.showFilePaths": false,
@@ -16,12 +18,12 @@ const DEFAULTS = {
 	"wally.showPackageVersion": true,
 };
 
-type Settings = typeof DEFAULTS;
-type SettingsKey = keyof Settings;
-type SettingsValue<K extends SettingsKey> = Settings[K];
+export type Settings = typeof DEFAULT_VALUES;
+export type SettingsName = keyof Settings;
+export type SettingsValue<K extends SettingsName> = Settings[K];
 
 // biome-ignore lint/suspicious/noExplicitAny:
-type SettingsCallback<K extends SettingsKey> = (value: SettingsValue<K>) => any;
+export type SettingsCallback<K extends SettingsName> = (value: SettingsValue<K>) => any;
 
 export class SettingsProvider implements vscode.Disposable {
 	// biome-ignore lint/suspicious/noExplicitAny:
@@ -30,16 +32,16 @@ export class SettingsProvider implements vscode.Disposable {
 	private readonly events: Map<string, vscode.EventEmitter<any>> = new Map();
 	private readonly disposable: vscode.Disposable;
 
-	constructor() {
+	constructor(public readonly providers: Providers) {
 		// Add in defaults as current values
-		for (const [key, value] of Object.entries(DEFAULTS)) {
+		for (const [key, value] of Object.entries(DEFAULT_VALUES)) {
 			this.values.set(key, value);
 			this.events.set(key, new vscode.EventEmitter());
 		}
 
 		// Add in current settings values
-		const initialConfig = vscode.workspace.getConfiguration(EXTENSION);
-		for (const key of Object.keys(DEFAULTS)) {
+		const initialConfig = vscode.workspace.getConfiguration(EXTENSION_NAME);
+		for (const key of Object.keys(DEFAULT_VALUES)) {
 			const initialValue = initialConfig.get(key);
 			if (this.values.get(key) !== initialValue && initialValue !== undefined) {
 				this.values.set(key, initialValue);
@@ -50,12 +52,12 @@ export class SettingsProvider implements vscode.Disposable {
 		this.disposable = vscode.workspace.onDidChangeConfiguration((event) => {
 			const changes: Array<string> = new Array();
 			for (const key of this.values.keys()) {
-				if (event.affectsConfiguration(`${EXTENSION}.${key}`)) {
+				if (event.affectsConfiguration(`${EXTENSION_NAME}.${key}`)) {
 					changes.push(key);
 				}
 			}
 			if (changes.length > 0) {
-				const config = vscode.workspace.getConfiguration(EXTENSION);
+				const config = vscode.workspace.getConfiguration(EXTENSION_NAME);
 				for (const key of changes) {
 					const value = config.get(key);
 					if (this.values.get(key) !== value) {
@@ -70,7 +72,7 @@ export class SettingsProvider implements vscode.Disposable {
 	/**
 	 * Get the current value for a given setting.
 	 */
-	public get<K extends SettingsKey>(key: K): SettingsValue<K> {
+	public get<K extends SettingsName>(key: K): SettingsValue<K> {
 		const value = this.values.get(key);
 		if (value === undefined) {
 			throw new Error(`Missing default value for setting "${key}"`);
@@ -83,7 +85,10 @@ export class SettingsProvider implements vscode.Disposable {
 	 *
 	 * This will run the callback once initially with the current value.
 	 */
-	public listen<K extends SettingsKey>(key: K, callback: SettingsCallback<K>): vscode.Disposable {
+	public listen<K extends SettingsName>(
+		key: K,
+		callback: SettingsCallback<K>,
+	): vscode.Disposable {
 		const initialValue = this.values.get(key);
 		if (initialValue === undefined) {
 			throw new Error(`Missing initial setting value for setting "${key}"`);

@@ -1,10 +1,9 @@
-import * as vscode from "vscode";
 import * as cp from "child_process";
 
-import { SettingsProvider } from "../providers/settings";
 import { kill, log, start } from "./child";
 import { RpcMessage, createRpcRequest, respondToRpcMessage } from "./message";
 import { MethodTypes } from "./types";
+import { Providers } from "../providers";
 
 export * from "./types";
 export * from "./message";
@@ -23,12 +22,8 @@ export class RpcServer {
 	private child: cp.ChildProcessWithoutNullStreams;
 	private idCounter = 0;
 
-	constructor(
-		private readonly context: vscode.ExtensionContext,
-		private readonly workspacePath: string,
-		private readonly settingsProvider: SettingsProvider,
-	) {
-		this.child = start(this.context, this.workspacePath, this.settingsProvider, (message) => {
+	constructor(public readonly providers: Providers, public readonly workspacePath: string) {
+		this.child = start(providers, workspacePath, (message) => {
 			this.onMessage(message);
 		});
 	}
@@ -41,7 +36,7 @@ export class RpcServer {
 	public async restart() {
 		await kill(this.child);
 		this.idCounter = 0;
-		this.child = start(this.context, this.workspacePath, this.settingsProvider, (message) => {
+		this.child = start(this.providers, this.workspacePath, (message) => {
 			this.onMessage(message);
 		});
 	}

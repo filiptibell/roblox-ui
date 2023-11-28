@@ -1,235 +1,338 @@
 import * as vscode from "vscode";
-import * as path from "path";
 
-import {
-	SourcemapNode,
-	areSourcemapNodesEqual,
-	findPrimaryFilePath,
-	getSourcemapNodeTreeOrder,
-} from "../../utils/sourcemap";
+import { DomInstance } from "../../server";
+import { Providers } from "../";
 
-import { RojoTreeRoot } from "./root";
-import { getNodeItemProps } from "./props";
-import { getNullProps } from "./props";
-
-const LOADING_ICON = new vscode.ThemeIcon("loading~spin");
-
-export class RojoTreeItem extends vscode.TreeItem {
-	private order: number | undefined;
-	private node: SourcemapNode | undefined;
-	private children: RojoTreeItem[] | undefined;
-	private childrenDesired = false;
+export class ExplorerItem extends vscode.TreeItem {
+	private childReferences: ExplorerItem[] | undefined;
 
 	constructor(
-		public readonly root: RojoTreeRoot,
-		private readonly eventEmitter: vscode.EventEmitter<vscode.TreeItem | null>,
-		private readonly parent?: RojoTreeItem | null,
+		public readonly providers: Providers,
+		public readonly workspacePath: string,
+		public readonly domInstance: DomInstance,
+		public readonly isRoot: boolean,
+		public readonly parent?: ExplorerItem | null,
 	) {
-		super("Loading");
-		this.iconPath = LOADING_ICON;
+		super(domInstance.name);
+
+		// Set new resource uri for git / diagnostics decorations
+		const filePath = domInstance.metadata?.paths?.file;
+		const folderPath = domInstance.metadata?.paths?.folder;
+		const resourceUri = filePath
+			? vscode.Uri.file(filePath)
+			: folderPath
+			  ? vscode.Uri.file(folderPath)
+			  : isRoot
+				  ? vscode.Uri.file(workspacePath)
+				  : undefined;
+		this.resourceUri = resourceUri;
+
+		// Set collapsible state to show expansion arrow for children, or not
+		const [collapsibleState, shouldSelect] = getInitialTreeItemState(
+			providers,
+			workspacePath,
+			domInstance,
+			isRoot,
+		);
+		this.collapsibleState = collapsibleState;
+
+		// Set name, description, tooltip, icon
+		this.label = domInstance.name;
+		this.description = getInstanceDescription(
+			providers,
+			workspacePath,
+			domInstance,
+			resourceUri,
+		);
+		this.tooltip = getInstanceTooltip(providers, domInstance);
+		this.iconPath = providers.icons.getClassIcon(
+			providers.settings.get("explorer.iconPack"),
+			domInstance.className,
+		);
+
+		// If this instance can be clicked to open, link that up
+		if (domInstance.metadata?.actions?.canOpen) {
+			this.command = {
+				title: "Open file",
+				command: "vscode.open",
+				arguments: [resourceUri],
+			};
+		}
+
+		// Set context value for menu actions such as copy,
+		// paste, insert object, rename, ... to appear correctly
+		this.contextValue = getInstanceContextValue(providers, domInstance, isRoot);
+
+		// Finally, select the tree item if wanted
+		if (shouldSelect) {
+			this.select();
+		}
 	}
 
-	/**
-	 * Updates the tree item with a new sourcemap node.
-	 */
-	public async update(node: SourcemapNode | undefined, forced?: boolean): Promise<boolean> {
-		let itemChanged = false;
-		let childrenChanged = false;
+	public getServer() {
+		const server = this.providers.explorerTree.getServer(this.workspacePath);
+		if (server !== undefined) {
+			return server;
+		}
+		throw new Error("Missing server for explorer tree item");
+	}
 
-		if (forced || !areSourcemapNodesEqual(this.node, node)) {
-			// biome-ignore lint/suspicious/noExplicitAny:
-			const untyped = this as any;
-			const newProps = node
-				? await getNodeItemProps(this.root, node, this, this.parent)
-				: getNullProps();
-			for (const [key, value] of Object.entries(newProps)) {
-				if (untyped[key] !== value) {
-					if (value === null) {
-						untyped[key] = undefined;
-					} else {
-						untyped[key] = value;
-					}
-					itemChanged = true;
+	public setChildReferences(children: ExplorerItem[]) {
+		this.childReferences = children;
+	}
+
+	public async select() {
+		await this.providers.commands.run(
+			"explorer.select",
+			this.workspacePath,
+			this.domInstance.id,
+		);
+	}
+
+	public async expand(levels?: number | null) {
+		await this.providers.commands.run(
+			"explorer.expand",
+			this.workspacePath,
+			this.domInstance.id,
+			levels,
+		);
+	}
+
+	public expandRevealPath(fsPath: string): ExplorerItem | null {
+		if (
+			fsPath === this.domInstance.metadata?.paths?.file ||
+			fsPath === this.domInstance.metadata?.paths?.folder
+		) {
+			return this;
+		}
+
+		let found: ExplorerItem | null = null;
+
+		// Check for an exact child match
+		for (const child of this.childReferences ?? []) {
+			if (
+				fsPath === child.domInstance.metadata?.paths?.file ||
+				fsPath === child.domInstance.metadata?.paths?.folder
+			) {
+				found = child;
+				break;
+			}
+		}
+
+		// Check for folder partial match if there was no exact child match
+		if (found === null) {
+			for (const child of this.childReferences ?? []) {
+				const folderPath = child.domInstance.metadata?.paths?.folder;
+				if (folderPath && fsPath.startsWith(folderPath)) {
+					found = child;
+					break;
 				}
 			}
 		}
 
-		const previousChildren = this.node?.children;
-		const currentChildren = node?.children;
-		if (previousChildren && currentChildren) {
-			// Children were added, changed, and/or removed
-			if (this.childrenDesired) {
-				let children = this.children;
-				if (!children) {
-					children = [];
-					this.children = children;
-				}
-				// Check for children being removed
-				if (previousChildren.length > currentChildren.length) {
-					for (
-						let index = previousChildren.length;
-						index > currentChildren.length;
-						index--
-					) {
-						children.splice(index - 1, 1);
-					}
-					childrenChanged = true;
-				}
-				// Check for children being changed or added
-				const promises = [];
-				for (const [index, childNode] of currentChildren.entries()) {
-					const childItem = children[index];
-					if (childItem) {
-						// Child may have changed, update it
-						promises.push(childItem.update(childNode, forced));
-					} else {
-						// Child was added, create and update it
-						const newItem = new RojoTreeItem(this.root, this.eventEmitter, this);
-						promises.push(newItem.update(childNode, forced));
-						children.push(newItem);
-						childrenChanged = true;
-					}
-				}
-				await Promise.all(promises);
-			}
-		} else if (previousChildren) {
-			// All children were removed
-			this.children = [];
-			childrenChanged = true;
-		} else if (currentChildren) {
-			// All children were added
-			if (this.childrenDesired) {
-				const promises = [];
-				const items = [];
-				for (const child of currentChildren) {
-					const item = new RojoTreeItem(this.root, this.eventEmitter, this);
-					items.push(item);
-					promises.push(item.update(child, forced));
-				}
-				await Promise.all(promises);
-				this.children = items;
-				childrenChanged = true;
-			}
+		// If we found a child, expand this, and keep looking
+		if (found !== null) {
+			return found.expandRevealPath(fsPath);
 		}
 
-		if (itemChanged) {
-			this.order = node
-				? getSourcemapNodeTreeOrder(node, this.root.metadataProvider) ?? undefined
-				: undefined;
-		}
-		if (childrenChanged || !this.childrenDesired) {
-			const newCollapsibleState =
-				currentChildren !== undefined && currentChildren.length > 0
-					? this.collapsibleState === vscode.TreeItemCollapsibleState.Expanded
-						? vscode.TreeItemCollapsibleState.Expanded
-						: vscode.TreeItemCollapsibleState.Collapsed
-					: vscode.TreeItemCollapsibleState.None;
-			if (this.collapsibleState !== newCollapsibleState) {
-				this.collapsibleState = newCollapsibleState;
-				childrenChanged = true;
-				itemChanged = true;
-			}
-		}
-		if (itemChanged || childrenChanged) {
-			this.eventEmitter.fire(this);
-		}
-
-		this.node = node;
-
-		return childrenChanged;
-	}
-
-	/**
-	 * Opens the file path associated with this tree item.
-	 *
-	 * @returns `true` if the file was opened, `false` otherwise.
-	 */
-	public openFile(): boolean {
-		const filePath = this.getFilePath();
-		if (filePath) {
-			vscode.commands.executeCommand("vscode.open", vscode.Uri.file(filePath));
-			return true;
-		}
-		return false;
-	}
-
-	/**
-	 * Gets the file path associated with this tree item.
-	 */
-	public getFilePath(): string | null {
-		const filePath = this.node ? findPrimaryFilePath(this.node) : null;
-		return filePath ? path.join(this.root.workspacePath, filePath) : null;
-	}
-
-	/**
-	 * Gets the folder path associated with this tree item.
-	 */
-	public getFolderPath(): string | null {
-		const folderPath = this.node?.folderPath;
-		return folderPath ? path.join(this.root.workspacePath, folderPath) : null;
-	}
-
-	/**
-	 * Gets the parent tree item for this tree item, if any.
-	 */
-	public getParent(): RojoTreeItem | null {
-		return this.parent ? this.parent : null;
-	}
-
-	/**
-	 * Gets the sourcemap node for this tree item, if any.
-	 *
-	 * WARNING: Modifying this sourcemap node can have unintended side effects.
-	 */
-	public getNode(): SourcemapNode | null {
-		return this.node ? this.node : null;
-	}
-
-	/**
-	 * Gets the explorer order for this tree item, if any.
-	 */
-	public getOrder(): number | null {
-		return this.order ? this.order : null;
-	}
-
-	/**
-	 * Gets a list of all child tree items for this tree item.
-	 *
-	 * This list of children is unique and can be mutated freely.
-	 */
-	public async getChildren(): Promise<RojoTreeItem[]> {
-		if (this.node) {
-			this.childrenDesired = true;
-			if (!this.children) {
-				await this.update(this.node);
-			}
-			const children = this.children ? [...this.children] : [];
-			return children.sort(treeItemSortFunction);
-		}
-		return [];
-	}
-
-	/**
-	 * Clears the list of currently cached child tree items for this tree item.
-	 *
-	 * This may help improve performance when updating a large explorer tree.
-	 */
-	public async clearChildren() {
-		this.childrenDesired = false;
-		this.children = undefined;
-		await this.update(this.node);
+		return null;
 	}
 }
 
-const treeItemSortFunction = (left: RojoTreeItem, right: RojoTreeItem) => {
-	const orderLeft = left.getOrder();
-	const orderRight = right.getOrder();
-	if (orderLeft !== null && orderRight !== null) {
-		if (orderLeft !== orderRight) {
-			return orderLeft - orderRight;
+/**
+	Gets the initial `vscode.TreeItemCollapsibleState` for an instance,
+	as well as if the instance should be initially selected or not.
+*/
+const getInitialTreeItemState = (
+	providers: Providers,
+	workspacePath: string,
+	domInstance: DomInstance,
+	isRoot: boolean,
+): [vscode.TreeItemCollapsibleState, boolean] => {
+	const filePath = domInstance.metadata?.paths?.file;
+
+	let state = vscode.TreeItemCollapsibleState.None;
+	if (domInstance.children && domInstance.children.length > 0) {
+		/*
+			If this is the root and we only have a single workspace
+			folder, we should expand it right away, since that is
+			the only action a user can and will definitely perform
+		*/
+		if (isRoot && vscode.workspace.workspaceFolders?.length === 1) {
+			state = vscode.TreeItemCollapsibleState.Expanded;
+		} else {
+			state = vscode.TreeItemCollapsibleState.Collapsed;
+			/*
+				If any current editor is open and this instance has a
+				folder that is part of the path, we should reveal it
+
+				Doing this during creation, and as vscode calls getChildren on the tree
+				chain means we end up with visible editors also revealed in the explorer
+			*/
+			const folderPath = domInstance.metadata?.paths?.folder;
+			if (folderPath) {
+				for (const editor of vscode.window.visibleTextEditors) {
+					const editorPath = editor.document.uri.fsPath;
+					/*
+						NOTE: We don't want to expand exact matches - in case we have an init
+						file open that has children, we really just want the init file visible
+
+						At this point we would also know that no other editor corresponds
+						to this file which means we can skip checking those other editors
+					*/
+					if (filePath && editorPath.endsWith(filePath)) {
+						break;
+					}
+					if (editorPath.startsWith(folderPath)) {
+						state = vscode.TreeItemCollapsibleState.Expanded;
+						break;
+					}
+				}
+			}
 		}
 	}
-	const labelLeft = left.label?.toString();
-	const labelRight = right.label?.toString();
-	return labelLeft && labelRight ? labelLeft.localeCompare(labelRight) : 0;
+
+	/*
+		If this explorer item has a file path that is currently
+		open and active in an editor, we should make it selected
+	*/
+	let shouldSelect = false;
+	const editor = vscode.window.activeTextEditor;
+	if (editor && filePath === editor.document.uri.fsPath) {
+		shouldSelect = true;
+	}
+
+	return [state, shouldSelect];
+};
+
+/**
+	Gets the inline description text for an instance.
+*/
+const getInstanceDescription = (
+	providers: Providers,
+	workspacePath: string,
+	domInstance: DomInstance,
+	resourceUri?: vscode.Uri,
+) => {
+	const descriptionPartials: string[] = [];
+
+	if (providers.settings.get("wally.showPackageVersion")) {
+		if (domInstance.metadata?.package?.isRoot) {
+			descriptionPartials.push(domInstance.metadata.package.version);
+		}
+	}
+
+	if (providers.settings.get("explorer.showClassNames")) {
+		descriptionPartials.push(domInstance.className);
+	}
+
+	if (providers.settings.get("explorer.showFilePaths")) {
+		if (resourceUri) {
+			const relPath = resourceUri.fsPath.slice(workspacePath.length + 1);
+			descriptionPartials.push(relPath);
+		}
+	}
+
+	return descriptionPartials.length > 0 ? descriptionPartials.join(" - ") : undefined;
+};
+
+/**
+	Gets the hover tooltip markdown text for an instance.
+*/
+const getInstanceTooltip = (providers: Providers, domInstance: DomInstance) => {
+	const classData = providers.metadata.getClassData(domInstance.className);
+
+	let tooltip = `### ${domInstance.name}`;
+	if (domInstance.className !== domInstance.name) {
+		tooltip += "\n\n";
+		tooltip += `#### ${domInstance.className}`;
+	}
+
+	const desc = classData?.description ?? null;
+	if (typeof desc === "string" && desc.length > 0) {
+		tooltip += "\n\n";
+		tooltip += desc;
+	}
+
+	const link = classData?.documentationUrl ?? null;
+	if (typeof link === "string" && link.length > 0) {
+		tooltip += "\n\n";
+		tooltip += `[Learn More $(link-external)](${link})`;
+	}
+
+	tooltip += "\n";
+
+	const tooltipMarkdown = new vscode.MarkdownString(tooltip);
+	tooltipMarkdown.supportThemeIcons = true;
+	tooltipMarkdown.supportHtml = true;
+	tooltipMarkdown.isTrusted = true;
+	return tooltipMarkdown;
+};
+
+/**
+	Gets the context value for an instance.
+
+	The context value is a semicolon-separated string which is
+	used in `enablement` and `when` in the extension manifest.
+*/
+const getInstanceContextValue = (
+	providers: Providers,
+	domInstance: DomInstance,
+	isRoot: boolean,
+) => {
+	const paths = domInstance.metadata?.paths;
+	const actions = domInstance.metadata?.actions;
+	const classData = providers.metadata.getClassData(domInstance.className);
+
+	const contextPartials = new Set();
+
+	let hasAnyAction = false;
+	if (actions) {
+		for (const [key, value] of Object.entries(actions)) {
+			if (value === true) {
+				contextPartials.add(key);
+				hasAnyAction = true;
+			}
+		}
+	}
+
+	if (isRoot) {
+		if (paths?.rojo) {
+			contextPartials.add("rojoManifest");
+		}
+		if (paths?.wally) {
+			contextPartials.add("wallyManifest");
+		}
+	} else if (hasAnyAction) {
+		const isService = classData?.isService ?? false;
+		if (isService) {
+			contextPartials.add("service");
+		} else {
+			contextPartials.add("instance");
+		}
+	}
+
+	if (isRoot || paths?.file || paths?.folder) {
+		contextPartials.add("canRevealFileInOS");
+	}
+
+	return Array.from(contextPartials.values()).join(";");
+};
+
+/**
+	Comparator for sorting an array of explorer items.
+*/
+export const compareExplorerItemOrder = (a: ExplorerItem, b: ExplorerItem) => {
+	const orderA = a.providers.metadata.getExplorerOrder(a.domInstance.className) ?? null;
+	const orderB = b.providers.metadata.getExplorerOrder(b.domInstance.className) ?? null;
+
+	if (orderA !== null && orderB !== null) {
+		if (orderA !== orderB) {
+			return orderA - orderB;
+		}
+	}
+
+	const labelA = a.label?.toString();
+	const labelB = b.label?.toString();
+	return labelA && labelB ? labelA.localeCompare(labelB) : 0;
 };

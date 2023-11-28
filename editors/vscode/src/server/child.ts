@@ -8,6 +8,7 @@ const readline = require("linebyline");
 
 import { SettingsProvider } from "../providers/settings";
 import { RpcMessage, isRpcMessage } from "./message";
+import { Providers } from "../providers";
 
 let outputChannel: vscode.OutputChannel;
 
@@ -48,9 +49,8 @@ export const log = (message: string) => {
 };
 
 export const start = (
-	context: vscode.ExtensionContext,
+	providers: Providers,
 	workspacePath: string,
-	settings: SettingsProvider,
 	callback: (message: RpcMessage) => void,
 ): cp.ChildProcessWithoutNullStreams => {
 	if (outputChannel === undefined) {
@@ -58,13 +58,13 @@ export const start = (
 	}
 
 	const settingsJson = JSON.stringify({
-		autogenerate: settings.get("sourcemap.autogenerate"),
-		rojoProjectFile: settings.get("sourcemap.rojoProjectFile"),
-		includeNonScripts: settings.get("sourcemap.includeNonScripts"),
-		ignoreGlobs: settings.get("sourcemap.ignoreGlobs"),
+		autogenerate: providers.settings.get("sourcemap.autogenerate"),
+		rojoProjectFile: providers.settings.get("sourcemap.rojoProjectFile"),
+		includeNonScripts: providers.settings.get("sourcemap.includeNonScripts"),
+		ignoreGlobs: providers.settings.get("sourcemap.ignoreGlobs"),
 	});
 
-	const command = findServerExecutable(context);
+	const command = findServerExecutable(providers.extensionContext);
 	const commandArgs = ["serve"];
 	const commandEnv = {
 		// eslint-disable-next-line @typescript-eslint/naming-convention

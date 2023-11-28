@@ -1,10 +1,7 @@
 import * as vscode from "vscode";
 
-import { SettingsProvider } from "../settings";
-import { MetadataProvider } from "../metadata";
-import { IconsProvider } from "../icons";
-
 import { DomInstance } from "../../server";
+import { Providers } from "..";
 
 export class QuickOpenItem implements vscode.QuickPickItem {
 	public readonly alwaysShow: boolean = true;
@@ -13,17 +10,15 @@ export class QuickOpenItem implements vscode.QuickPickItem {
 	public readonly description?: string;
 
 	constructor(
-		public readonly settingsProvider: SettingsProvider,
-		public readonly metadataProvider: MetadataProvider,
-		public readonly iconsProvider: IconsProvider,
+		public readonly providers: Providers,
 		public readonly workspacePath: string,
 		public readonly domInstance: DomInstance,
 		readonly fullName: string[] | null,
 	) {
 		this.label = domInstance.name;
 
-		this.iconPath = iconsProvider.getClassIcon(
-			settingsProvider.get("explorer.iconPack"),
+		this.iconPath = providers.icons.getClassIcon(
+			providers.settings.get("explorer.iconPack"),
 			domInstance.className,
 		);
 
@@ -48,8 +43,7 @@ export class QuickOpenItem implements vscode.QuickPickItem {
 	}
 
 	public async reveal(select?: true | null) {
-		await vscode.commands.executeCommand(
-			"roblox-ui.explorer.reveal",
+		await this.providers.explorerTree.revealById(
 			this.workspacePath,
 			this.domInstance.id,
 			select,

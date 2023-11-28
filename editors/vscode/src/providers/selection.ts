@@ -1,17 +1,15 @@
 import * as vscode from "vscode";
 
-import { ExplorerTreeProvider } from "../explorer";
+import { Providers } from ".";
 
 export class SelectionProvider implements vscode.Disposable {
-	private readonly disposables: Array<vscode.Disposable> = new Array();
+	private readonly disposables: vscode.Disposable[];
 
-	constructor(private explorer: ExplorerTreeProvider) {
-		this.disposables.push(
-			vscode.window.onDidChangeVisibleTextEditors(this.revealVisibleEditors),
-		);
-		this.disposables.push(vscode.window.onDidChangeActiveTextEditor(this.revealActiveEditor));
-		this.revealVisibleEditors();
-		this.revealActiveEditor();
+	constructor(public readonly providers: Providers) {
+		this.disposables = [
+			vscode.window.onDidChangeVisibleTextEditors(() => this.revealVisibleEditors()),
+			vscode.window.onDidChangeActiveTextEditor(() => this.revealActiveEditor()),
+		];
 	}
 
 	dispose() {
@@ -23,7 +21,7 @@ export class SelectionProvider implements vscode.Disposable {
 	public async revealVisibleEditors() {
 		for (const editor of vscode.window.visibleTextEditors) {
 			const fsPath = editor.document.uri.fsPath;
-			await this.explorer.revealByPath(fsPath);
+			await this.providers.explorerTree.revealByPath(fsPath);
 		}
 	}
 
@@ -31,7 +29,7 @@ export class SelectionProvider implements vscode.Disposable {
 		const activeEditor = vscode.window.activeTextEditor;
 		if (activeEditor) {
 			const fsPath = activeEditor.document.uri.fsPath;
-			await this.explorer.revealByPath(fsPath, true);
+			await this.providers.explorerTree.revealByPath(fsPath, true);
 		}
 	}
 }

@@ -2,6 +2,8 @@ import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
 
+import { Providers } from ".";
+
 type Classes = {
 	classCount: number;
 	classDatas: Record<string, ClassData>;
@@ -47,9 +49,19 @@ export class MetadataProvider implements vscode.Disposable {
 	private readonly classes: Classes;
 	private readonly reflection: Reflection;
 
-	constructor(private readonly context: vscode.ExtensionContext) {
-		const classesPath = path.join(context.extensionPath, "out", "data", "classes.json");
-		const reflectionPath = path.join(context.extensionPath, "out", "data", "reflection.json");
+	constructor(public readonly providers: Providers) {
+		const classesPath = path.join(
+			providers.extensionContext.extensionPath,
+			"out",
+			"data",
+			"classes.json",
+		);
+		const reflectionPath = path.join(
+			providers.extensionContext.extensionPath,
+			"out",
+			"data",
+			"reflection.json",
+		);
 
 		const classesContents = fs.readFileSync(classesPath, "utf-8");
 		const reflectionContents = fs.readFileSync(reflectionPath, "utf-8");
