@@ -21,7 +21,7 @@
 
 A frontend for Roblox projects in external editors.
 
-Provides an Explorer view, with future plans for a Properties view and more. <br/>
+Provides an Explorer view, instance searching, and more. <br/>
 Check out the [features](#features) section for a full list of features.
 
 ## Installation
@@ -32,33 +32,22 @@ The UI can be installed as an extension from:
 
 ## Features
 
-- Explorer view, similar to Roblox Studio, with additional [Wally](https://wally.run) integration
+- Explorer view for instances, similar to Roblox Studio
+- Fuzzy finding / Quick Open dialog - quickly navigate and open files for instances
+- Support for multi-root workspaces for easy monorepo driven development
 - Included community icon packs such as [Classic] & [Vanilla]
 
 ## TODO
 
 <details>
-<summary>Quick Open</summary>
+<summary>Improvements</summary>
 
-- Dialog similar to the insert dialog, with a search field
-- Search and rank based on instance name instead of file name
-- Biased ranking for script/localscript/modulescript, preferring them over other instances
-- Opening the respective file in the editor for what you end up selecting
-- Search button at the top of explorer, add keybind to open dialog
-- Search filtering, [similar to Roblox Studio?](https://create.roblox.com/docs/studio/explorer#filtering-instances)
+- Filtering for classes / IsA in the Quick Open dialog ([reference](https://create.roblox.com/docs/studio/explorer#filtering-instances))
 
 </details>
 
 <details>
-<summary>Wally</summary>
-
-- Button for opening the wally manifest, similar to the one for the rojo manifest
-- Hover cards for wally link files displaying name, version, desc, and link to wally page
-
-</details>
-
-<details>
-<summary>Properties</summary>
+<summary>Properties View</summary>
 
 - Simple text view of properties
 - Editing properties for simple `.model.json` or `.meta` files
@@ -68,7 +57,7 @@ The UI can be installed as an extension from:
 </details>
 
 <details>
-<summary>Output</summary>
+<summary>Output View</summary>
 
 - Server that can listen for output messages from Roblox Studio
 - Plugin that sends output messages from Roblox Studio to the extension
@@ -76,14 +65,6 @@ The UI can be installed as an extension from:
 - Create an output channel/panel in VSCode that forwards received output
 - Parse output and use sourcemap to create clickable file links
 - Colorize output messages and stack traces
-
-</details>
-
-<details>
-<summary>Debugger</summary>
-
-- Press F5 to start debugger and a Roblox Studio testing session
-- Stopping the debugger by pressing F5 or any of the buttons also stops studio
 
 </details>
 
