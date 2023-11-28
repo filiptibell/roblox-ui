@@ -702,6 +702,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6fb8d784f27acf97159b40fc4db5ecd8aa23b9ad5ef69cdd136d3bc80665f0c0"
 
 [[package]]
+name = "gxhash"
+version = "2.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b7937307c84f3c373281170e67f7d79cf3cd58761cff159102478fc31a26c46d"
+dependencies = [
+ "rand",
+]
+
+[[package]]
 name = "h2"
 version = "0.3.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1510,6 +1519,7 @@ dependencies = [
  "const_format",
  "dashmap",
  "futures",
+ "gxhash",
  "notify",
  "notify-debouncer-full",
  "once_cell",

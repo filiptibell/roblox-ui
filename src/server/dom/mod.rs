@@ -1,10 +1,8 @@
 #![allow(clippy::unnecessary_to_owned)]
 
-use std::{
-    collections::{HashMap, HashSet},
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
+use gxhash::{GxHashMap as HashMap, GxHashSet as HashSet};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use rbx_dom_weak::{types::Ref, Instance, InstanceBuilder, WeakDom};
 use serde::{Deserialize, Serialize};
@@ -70,9 +68,9 @@ impl Dom {
         Self {
             _config: config,
             inner: WeakDom::new(InstanceBuilder::new(DOM_ROOT_NAME_NONE)),
-            ids: HashSet::new(),
-            metas: HashMap::new(),
-            path_map: HashMap::new(),
+            ids: HashSet::default(),
+            metas: HashMap::default(),
+            path_map: HashMap::default(),
             root_meta: InstanceMetadata::default(),
         }
     }
@@ -295,7 +293,7 @@ impl Dom {
 
             // Match new nodes to existing instances in the dom as best we can,
             // multiple stages where we prefer more strict (exact) matches first
-            let mut map = HashMap::new();
+            let mut map = HashMap::default();
             self.match_ids_to_nodes(&mut map, &mut ids, &mut nodes, MatchFilter::VeryStrict);
             self.match_ids_to_nodes(&mut map, &mut ids, &mut nodes, MatchFilter::Strict);
             self.match_ids_to_nodes(&mut map, &mut ids, &mut nodes, MatchFilter::Any);
