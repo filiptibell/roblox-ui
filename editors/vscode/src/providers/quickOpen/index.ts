@@ -109,12 +109,8 @@ export class QuickOpenProvider implements vscode.Disposable {
 
 	private async accept() {
 		for (const acceptedItem of this.picker.selectedItems) {
-			// Try to open the item, and if we couldn't open
-			// it, just reveal it in the explorer as selected
-			const didOpen = await acceptedItem.open();
-			if (!didOpen) {
-				await acceptedItem.reveal(true);
-			}
+			await acceptedItem.reveal(true);
+			await acceptedItem.open();
 		}
 		this.hide();
 	}
