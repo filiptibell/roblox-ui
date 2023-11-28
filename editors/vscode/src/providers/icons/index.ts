@@ -2,22 +2,10 @@ import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
 
-import { Providers } from ".";
+import { Providers } from "..";
 
-export type IconPack = "None" | "Classic" | "Vanilla2";
-
-type IconPackIcon = { light: vscode.Uri; dark: vscode.Uri };
-type IconPackData = Map<string, IconPackIcon>;
-
-type IconPackMetadata = {
-	classCount: number;
-	classIcons: Record<string, string>;
-};
-
-type IconPackMetadatas = {
-	light: IconPackMetadata;
-	dark: IconPackMetadata;
-};
+import type { IconPack, IconPackData, IconPackIcon, IconPackMetadatas } from "./types";
+export type { IconPack } from "./types";
 
 const getAllIconPacks = (): Array<IconPack> => {
 	return ["None", "Classic", "Vanilla2"];

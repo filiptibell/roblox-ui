@@ -2,48 +2,9 @@ import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
 
-import { Providers } from ".";
+import { Providers } from "..";
 
-type Classes = {
-	classCount: number;
-	classDatas: Record<string, ClassData>;
-};
-
-type ClassData = {
-	name: string;
-	description?: string;
-	documentationUrl?: string;
-	isService?: boolean;
-	isDeprecated?: boolean;
-	notBrowsable?: boolean;
-	notCreatable?: boolean;
-};
-
-type Reflection = {
-	classes: Record<string, ReflectionClass>;
-	enums: Record<string, ReflectionEnum>;
-};
-
-type ReflectionClass = {
-	name: string;
-	summary?: string;
-	values?: Record<string, ReflectionValue>;
-};
-
-type ReflectionEnum = {
-	name: string;
-	summary?: string;
-	values?: Record<string, ReflectionValue>;
-	items: Array<ReflectionEnumItem>;
-};
-
-type ReflectionEnumItem = {
-	name: string;
-	summary?: string;
-	values?: Record<string, ReflectionValue>;
-};
-
-type ReflectionValue = string | number | boolean;
+import type { Classes, ClassData, Reflection } from "./types";
 
 export class MetadataProvider implements vscode.Disposable {
 	private readonly classes: Classes;
