@@ -93,10 +93,18 @@ export class QuickOpenProvider implements vscode.Disposable {
 	}
 
 	private async accept() {
+		let acceptedAny = false;
 		for (const acceptedItem of this.picker.selectedItems) {
 			await acceptedItem.reveal(true);
 			await acceptedItem.open();
+			acceptedAny = true;
 		}
+
+		if (acceptedAny && !this.providers.explorerView.visible) {
+			await this.providers.commands.run("explorer.focus");
+			await this.providers.selection.revealActiveEditor();
+		}
+
 		this.hide();
 	}
 
