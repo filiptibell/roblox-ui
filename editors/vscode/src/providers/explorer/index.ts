@@ -19,9 +19,22 @@ export class ExplorerTreeProvider implements vscode.TreeDataProvider<ExplorerIte
 	public readonly onDidChangeTreeData: vscode.Event<ExplorerItem | undefined | null> =
 		this._onDidChangeTreeData.event;
 
-	constructor(public readonly providers: Providers) {}
+	private readonly intervalHandle: NodeJS.Timeout;
+
+	constructor(public readonly providers: Providers) {
+		// HACK: It seems like sometimes startup is ... too fast ?? and we run
+		// into a race condition where vscode does not show our tree properly,
+		// this here forces the tree to refresh every so often while we don't
+		// have any tree / root instance / data models loaded in, and fixes it
+		this.intervalHandle = setInterval(() => {
+			if (this.explorerRoots.size <= 0) {
+				this._onDidChangeTreeData.fire(null);
+			}
+		}, 200);
+	}
 
 	public dispose() {
+		clearInterval(this.intervalHandle);
 		this.disconnectAllServers();
 	}
 
