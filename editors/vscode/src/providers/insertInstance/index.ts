@@ -62,7 +62,9 @@ export class InsertInstanceProvider implements vscode.Disposable {
 			let currentGrouping = "";
 			for (const insertableClass of insertableClasses) {
 				const insertableGrouping =
-					insertableClass.dialogCategoryOverride ?? insertableClass.dialogCategory ?? "";
+					insertableClass.dialogCategoryOverride ??
+					insertableClass.dialogCategory ??
+					"Uncategorized";
 
 				// Insert a separator between each grouping of classes, these should
 				// already be sorted by getInsertableClasses so we get clear separators

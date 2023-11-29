@@ -14,7 +14,7 @@ export type MetadataInsertableClass = {
 	isService: boolean;
 	isPreferred: boolean;
 	dialogCategoryOverride?: string;
-	dialogCategory: string;
+	dialogCategory?: string;
 };
 
 export class MetadataProvider implements vscode.Disposable {
@@ -72,9 +72,11 @@ export class MetadataProvider implements vscode.Disposable {
 				continue;
 			}
 
+			const reflectionData = this.reflection.classes[className];
+
 			const isCommon = COMMON_INSTANCES.indexOf(className) >= 0;
 			const isService = !!classData.isService;
-			const isPreferred = classData.preferredParent === parentClassName;
+			const isPreferred = reflectionData?.values?.PreferredParent === parentClassName;
 			if (isService && !servicesOnly) {
 				continue;
 			}
@@ -86,7 +88,10 @@ export class MetadataProvider implements vscode.Disposable {
 				  : isService
 					  ? "Services"
 					  : undefined;
-			const dialogCategory = classData.category ?? "Uncategorized";
+			let dialogCategory = reflectionData?.values?.ClassCategory;
+			if (typeof dialogCategory !== "string") {
+				dialogCategory = undefined;
+			}
 
 			insertableClasses.push({
 				className,
@@ -116,7 +121,10 @@ export class MetadataProvider implements vscode.Disposable {
 				return a.isPreferred ? -1 : 1; // Preferred after
 			}
 
-			if (a.dialogCategory !== b.dialogCategory) {
+			if (!!a.dialogCategory !== !!b.dialogCategory) {
+				return a.dialogCategory ? -1 : 1; // Things that have proper categories first
+			}
+			if (a.dialogCategory && b.dialogCategory && a.dialogCategory !== b.dialogCategory) {
 				return a.dialogCategory.localeCompare(b.dialogCategory); // Different categories, alphabetically
 			}
 
