@@ -62,39 +62,14 @@ export class CommandsProvider implements vscode.Disposable {
 			}
 		});
 
-		const createInstance = async (
-			item: ExplorerItem,
-			classNameOrInsertService?: string | boolean,
-		) => {
-			// TODO: Re-implement this
-			// const [created, creationResult] = await promptNewInstanceCreation(
-			// 	treeDataProvider.settingsProvider,
-			// 	treeDataProvider.metadataProvider,
-			// 	treeDataProvider.iconsProvider,
-			// 	item.getFolderPath(),
-			// 	item.getFilePath(),
-			// 	classNameOrInsertService
-			// );
-			// if (created && creationResult) {
-			// 	// Open the new file path in the editor (if any)
-			// 	const filePath = findPrimaryFilePath(creationResult);
-			// 	if (filePath) {
-			// 		vscode.commands.executeCommand(
-			// 			"vscode.open",
-			// 			vscode.Uri.file(filePath)
-			// 		);
-			// 	}
-			// }
-		};
-
 		this.register("explorer.insertObject", (item: ExplorerItem) => {
-			createInstance(item);
+			providers.insertInstance.show(item.workspacePath, item.domInstance, null, false);
 		});
 		this.register("explorer.insertFolder", (item: ExplorerItem) => {
-			createInstance(item, "Folder");
+			providers.insertInstance.show(item.workspacePath, item.domInstance, "Folder", false);
 		});
 		this.register("explorer.insertService", (item: ExplorerItem) => {
-			createInstance(item, true);
+			providers.insertInstance.show(item.workspacePath, item.domInstance, null, true);
 		});
 
 		this.register("explorer.renameObject", async (item: ExplorerItem) => {

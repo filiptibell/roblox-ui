@@ -6,6 +6,17 @@ import { Providers } from "..";
 
 import type { Classes, ClassData, Reflection } from "./types";
 
+const COMMON_INSTANCES = new Array("ModuleScript", "LocalScript", "Script");
+
+export type MetadataInsertableClass = {
+	className: string;
+	isCommon: boolean;
+	isService: boolean;
+	isPreferred: boolean;
+	dialogCategoryOverride?: string;
+	dialogCategory: string;
+};
+
 export class MetadataProvider implements vscode.Disposable {
 	private readonly classes: Classes;
 	private readonly reflection: Reflection;
@@ -50,14 +61,69 @@ export class MetadataProvider implements vscode.Disposable {
 		return null;
 	}
 
-	public getInsertableClassNames(): Array<string> {
-		const classNames = new Array();
+	public getInsertableClasses(
+		parentClassName: string,
+		servicesOnly: boolean,
+	): Array<MetadataInsertableClass> {
+		const insertableClasses = new Array<MetadataInsertableClass>();
 
-		for (const className of Object.keys(this.classes.classDatas)) {
-			classNames.push(className);
+		for (const [className, classData] of Object.entries(this.classes.classDatas)) {
+			if (classData.notCreatable) {
+				continue;
+			}
+
+			const isCommon = COMMON_INSTANCES.indexOf(className) >= 0;
+			const isService = !!classData.isService;
+			const isPreferred = classData.preferredParent === parentClassName;
+			if (isService && !servicesOnly) {
+				continue;
+			}
+
+			const dialogCategoryOverride = isCommon
+				? "Common"
+				: isPreferred
+				  ? "Preferred"
+				  : isService
+					  ? "Services"
+					  : undefined;
+			const dialogCategory = classData.category ?? "Uncategorized";
+
+			insertableClasses.push({
+				className,
+				isCommon,
+				isService,
+				isPreferred,
+				dialogCategoryOverride,
+				dialogCategory,
+			});
 		}
 
-		return classNames;
+		insertableClasses.sort((a, b) => {
+			if (a.isCommon !== b.isCommon) {
+				return a.isCommon ? -1 : 1; // Common instances first
+			}
+			if (a.isCommon && b.isCommon) {
+				const indexA = COMMON_INSTANCES.indexOf(a.className);
+				const indexB = COMMON_INSTANCES.indexOf(b.className);
+				return indexA < indexB ? -1 : 1; // Preserve order of common instances array
+			}
+
+			if (a.isService !== b.isService) {
+				return a.isService ? -1 : 1; // Services after
+			}
+
+			if (a.isPreferred !== b.isPreferred) {
+				return a.isPreferred ? -1 : 1; // Preferred after
+			}
+
+			if (a.dialogCategory !== b.dialogCategory) {
+				return a.dialogCategory.localeCompare(b.dialogCategory); // Different categories, alphabetically
+			}
+
+			return a.className.localeCompare(b.className); // Anything else alphabetically
+		});
+
+		return insertableClasses;
 	}
 
 	dispose() {}

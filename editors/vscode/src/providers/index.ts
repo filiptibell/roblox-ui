@@ -9,6 +9,7 @@ import { ExplorerItem, ExplorerTreeProvider } from "./explorer";
 import { RenameInstanceProvider } from "./renameInstance";
 import { QuickOpenProvider } from "./quickOpen";
 import { SelectionProvider } from "./selection";
+import { InsertInstanceProvider } from "./insertInstance";
 
 export class Providers implements vscode.Disposable {
 	private readonly disposables: vscode.Disposable[];
@@ -21,6 +22,7 @@ export class Providers implements vscode.Disposable {
 	public readonly explorerTree: ExplorerTreeProvider;
 	public readonly explorerView: vscode.TreeView<ExplorerItem>;
 
+	public readonly insertInstance: InsertInstanceProvider;
 	public readonly renameInstance: RenameInstanceProvider;
 	public readonly quickOpen: QuickOpenProvider;
 	public readonly selection: SelectionProvider;
@@ -41,6 +43,7 @@ export class Providers implements vscode.Disposable {
 		});
 
 		// Providers that depend on above
+		this.insertInstance = new InsertInstanceProvider(this);
 		this.renameInstance = new RenameInstanceProvider(this);
 		this.quickOpen = new QuickOpenProvider(this);
 		this.selection = new SelectionProvider(this);
@@ -53,6 +56,7 @@ export class Providers implements vscode.Disposable {
 			this.commands,
 			this.explorerTree,
 			this.explorerView,
+			this.insertInstance,
 			this.renameInstance,
 			this.quickOpen,
 			this.selection,

@@ -5,8 +5,10 @@ export type Classes = {
 
 export type ClassData = {
 	name: string;
+	category?: string;
 	description?: string;
 	documentationUrl?: string;
+	preferredParent?: string;
 	isService?: boolean;
 	isDeprecated?: boolean;
 	notBrowsable?: boolean;
