@@ -491,6 +491,8 @@ impl Dom {
             return false;
         }
 
+        self.remove_instance_from_dom(id);
+
         self.notify(DomNotification::Removed {
             parent_id: Some(parent),
             child_id: id,
