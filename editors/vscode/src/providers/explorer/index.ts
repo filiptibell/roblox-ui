@@ -111,15 +111,19 @@ export class ExplorerTreeProvider implements vscode.TreeDataProvider<ExplorerIte
 		return item.parent;
 	}
 
-	private refreshItemById(workspacePath: string, id: string, parentMaybeChanged?: boolean) {
+	private refreshItemById(workspacePath: string, id: string) {
 		const idMap = this.explorerIdMaps.get(workspacePath);
 		if (idMap) {
+			// To properly refresh we actually need to refresh the **parent** and not
+			// this particular tree item, this is because completely new tree items
+			// need to be created with new collapsible states etc, and vscode can
+			// only properly handle that by calling the getChildren method ...
 			const item = idMap.get(id);
 			if (item) {
-				this._onDidChangeTreeData.fire(item);
-				const parent = item.parent;
-				if (parent && parentMaybeChanged) {
-					this._onDidChangeTreeData.fire(parent);
+				if (item.parent) {
+					this._onDidChangeTreeData.fire(item.parent);
+				} else {
+					this._onDidChangeTreeData.fire(null);
 				}
 			}
 		}
