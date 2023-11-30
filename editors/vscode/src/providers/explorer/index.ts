@@ -111,12 +111,16 @@ export class ExplorerTreeProvider implements vscode.TreeDataProvider<ExplorerIte
 		return item.parent;
 	}
 
-	private refreshItemById(workspacePath: string, id: string) {
+	private refreshItemById(workspacePath: string, id: string, parentMaybeChanged?: boolean) {
 		const idMap = this.explorerIdMaps.get(workspacePath);
 		if (idMap) {
 			const item = idMap.get(id);
 			if (item) {
 				this._onDidChangeTreeData.fire(item);
+				const parent = item.parent;
+				if (parent && parentMaybeChanged) {
+					this._onDidChangeTreeData.fire(parent);
+				}
 			}
 		}
 	}
@@ -319,11 +323,13 @@ export class ExplorerTreeProvider implements vscode.TreeDataProvider<ExplorerIte
 	): Promise<string | null> {
 		const server = this.servers.get(workspacePath);
 		if (server) {
-			return await server.sendRequest("instance/insert", {
-				parentId: parentDomId,
-				className: desiredClassName,
-				name: desiredName,
-			}) ?? null;
+			return (
+				(await server.sendRequest("instance/insert", {
+					parentId: parentDomId,
+					className: desiredClassName,
+					name: desiredName,
+				})) ?? null
+			);
 		}
 		return null;
 	}
