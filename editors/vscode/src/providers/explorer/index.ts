@@ -313,18 +313,58 @@ export class ExplorerTreeProvider implements vscode.TreeDataProvider<ExplorerIte
 
 	public async insertInstance(
 		workspacePath: string,
-		domId: string,
+		parentDomId: string,
 		desiredClassName: string,
 		desiredName: string,
-	) {
-		vscode.window.showInformationMessage("TODO: Implement instance insert request");
+	): Promise<boolean> {
+		const server = this.servers.get(workspacePath);
+		if (server) {
+			return await server.sendRequest("instance/insert", {
+				parentId: parentDomId,
+				className: desiredClassName,
+				name: desiredName,
+			});
+		}
+		return false;
 	}
 
-	public async renameInstance(workspacePath: string, domId: string, desiredName: string) {
-		vscode.window.showInformationMessage("TODO: Implement instance rename request");
+	public async renameInstance(
+		workspacePath: string,
+		domId: string,
+		desiredName: string,
+	): Promise<boolean> {
+		const server = this.servers.get(workspacePath);
+		if (server) {
+			return await server.sendRequest("instance/rename", {
+				id: domId,
+				name: desiredName,
+			});
+		}
+		return false;
 	}
 
-	public async deleteInstance(workspacePath: string, domId: string) {
-		vscode.window.showInformationMessage("TODO: Implement instance delete request");
+	public async deleteInstance(workspacePath: string, domId: string): Promise<boolean> {
+		const server = this.servers.get(workspacePath);
+		if (server) {
+			return await server.sendRequest("instance/delete", {
+				id: domId,
+			});
+		}
+		return false;
+	}
+
+	public async moveInstance(
+		workspacePath: string,
+		domId: string,
+		newParentId: string,
+	): Promise<boolean> {
+		const server = this.servers.get(workspacePath);
+		if (server) {
+			return await server.sendRequest("instance/move", {
+				id: domId,
+				parentId: newParentId,
+			});
+		}
+		return false;
 	}
 }

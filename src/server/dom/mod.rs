@@ -85,7 +85,7 @@ impl Dom {
         self.notification_rx.take()
     }
 
-    fn insert_instance(&mut self, parent_id: Ref, node: InstanceNode) -> Ref {
+    fn insert_instance_into_dom(&mut self, parent_id: Ref, node: InstanceNode) -> Ref {
         let inst = InstanceBuilder::new(node.class_name).with_name(node.name);
         let id = self.inner.insert(parent_id, inst);
 
@@ -101,14 +101,14 @@ impl Dom {
         // NOTE: Children must be inserted *after* this new instance, since proper
         // metadata creation may depend on the already existing metadata of a parent
         for child_node in node.children {
-            self.insert_instance(id, child_node);
+            self.insert_instance_into_dom(id, child_node);
         }
 
         self.ids.insert(id);
         id
     }
 
-    fn remove_instance(&mut self, id: Ref) {
+    fn remove_instance_from_dom(&mut self, id: Ref) {
         self.ids.remove(&id);
         self.metas.remove(&id);
         if let Some(inst) = self.inner.get_by_ref(id) {
@@ -120,7 +120,7 @@ impl Dom {
                 }
             }
             for child_id in inst.children().to_vec() {
-                self.remove_instance(child_id);
+                self.remove_instance_from_dom(child_id);
             }
             self.inner.destroy(id);
         }
@@ -237,7 +237,7 @@ impl Dom {
             if let Some(pid) = parent_id {
                 // Non-root children were added
                 for child_node in nodes {
-                    let child_id = self.insert_instance(pid, child_node);
+                    let child_id = self.insert_instance_into_dom(pid, child_node);
                     notifications.push(DomNotification::Added {
                         parent_id: Some(pid),
                         child_id,
@@ -255,7 +255,7 @@ impl Dom {
                 root.class = node.class_name.to_owned();
 
                 // Use our insert_instance method to create the entire instance tree
-                let temp_id = self.insert_instance(Ref::none(), node);
+                let temp_id = self.insert_instance_into_dom(Ref::none(), node);
                 let temp_child_ids = self.inner.get_by_ref(temp_id).unwrap().children().to_vec();
 
                 // Transfer over children from our temp instance to the real root
@@ -273,7 +273,7 @@ impl Dom {
             if let Some(pid) = parent_id {
                 // Non-root children were removed
                 for child_id in ids {
-                    self.remove_instance(child_id);
+                    self.remove_instance_from_dom(child_id);
                     notifications.push(DomNotification::Removed {
                         parent_id: Some(pid),
                         child_id,
@@ -314,7 +314,7 @@ impl Dom {
             if !ids.is_empty() {
                 let pid = parent_id.expect("what the heck");
                 for child_id in ids {
-                    self.remove_instance(child_id);
+                    self.remove_instance_from_dom(child_id);
                     notifications.push(DomNotification::Removed {
                         parent_id: Some(pid),
                         child_id,
@@ -326,7 +326,7 @@ impl Dom {
             if !nodes.is_empty() {
                 let pid = parent_id.expect("what the heck");
                 for child_node in nodes {
-                    let child_id = self.insert_instance(pid, child_node);
+                    let child_id = self.insert_instance_into_dom(pid, child_node);
                     notifications.push(DomNotification::Added {
                         parent_id: Some(pid),
                         child_id,
@@ -422,5 +422,25 @@ impl Dom {
             // NOTE: Not having any listeners is fine and is the only error case
             self.notification_tx.send(notification).ok();
         }
+    }
+
+    pub fn insert_instance(&mut self, parent: Ref, class_name: String, name: String) -> bool {
+        // TODO: Implement this
+        false
+    }
+
+    pub fn rename_instance(&mut self, id: Ref, name: String) -> bool {
+        // TODO: Implement this
+        false
+    }
+
+    pub fn delete_instance(&mut self, id: Ref) -> bool {
+        // TODO: Implement this
+        false
+    }
+
+    pub fn move_instance(&mut self, id: Ref, new_parent_id: Ref) -> bool {
+        // TODO: Implement this
+        false
     }
 }

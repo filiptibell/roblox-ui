@@ -64,6 +64,18 @@ export type DomFindByPathResponse = Option<DomInstance>;
 export type DomFindByQueryRequest = { query: string; limit: Option<number> };
 export type DomFindByQueryResponse = DomInstance[];
 
+export type InstanceInsertRequest = { parentId: string; className: string; name: string };
+export type InstanceInsertResponse = boolean;
+
+export type InstanceRenameRequest = { id: string; name: string };
+export type InstanceRenameResponse = boolean;
+
+export type InstanceDeleteRequest = { id: string };
+export type InstanceDeleteResponse = boolean;
+
+export type InstanceMoveRequest = { id: string; parentId: string };
+export type InstanceMoveResponse = boolean;
+
 // Notifications
 
 type DomNotificationAdded = {
@@ -118,5 +130,21 @@ export type MethodTypes = {
 	"dom/findByQuery": {
 		request: DomFindByQueryRequest;
 		response: DomFindByQueryResponse;
+	};
+	"instance/insert": {
+		request: InstanceInsertRequest;
+		response: InstanceInsertResponse;
+	};
+	"instance/rename": {
+		request: InstanceRenameRequest;
+		response: InstanceRenameResponse;
+	};
+	"instance/delete": {
+		request: InstanceDeleteRequest;
+		response: InstanceDeleteResponse;
+	};
+	"instance/move": {
+		request: InstanceMoveRequest;
+		response: InstanceMoveResponse;
 	};
 };
