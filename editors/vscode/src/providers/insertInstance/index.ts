@@ -127,12 +127,30 @@ export class InsertInstanceProvider implements vscode.Disposable {
 	private async acceptInput() {
 		if (this.currentWorkspacePath && this.currentInstance && this.currentClassName) {
 			if (this.input.value && !this.input.validationMessage) {
-				await this.providers.explorerTree.insertInstance(
+				// Try to create the new instance with the chosen class name & name
+				const result = await this.providers.explorerTree.insertInstance(
 					this.currentWorkspacePath,
 					this.currentInstance.id,
 					this.currentClassName,
 					this.input.value,
 				);
+				if (result) {
+					// ... also try to reveal the new instance
+					await this.providers.explorerTree.revealById(
+						this.currentWorkspacePath,
+						result.id,
+						true,
+					);
+					// ... and open its corresponding file, if it is openable
+					const canOpen = !!result.metadata?.actions?.canOpen;
+					const filePath = result.metadata?.paths?.file;
+					if (canOpen && filePath) {
+						await vscode.commands.executeCommand(
+							"vscode.open",
+							vscode.Uri.file(filePath),
+						);
+					}
+				}
 			}
 		}
 		this.hideAndReset();
