@@ -4,6 +4,7 @@ use super::{dom::Dom, rpc::RpcMessage};
 
 mod dom;
 mod instance;
+mod util;
 
 pub async fn handle_rpc_message(msg: RpcMessage, dom: &mut Dom) -> Result<()> {
     let method = msg.get_method().trim().to_ascii_lowercase();

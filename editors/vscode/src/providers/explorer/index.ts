@@ -324,7 +324,7 @@ export class ExplorerTreeProvider implements vscode.TreeDataProvider<ExplorerIte
 		parentDomId: string,
 		desiredClassName: string,
 		desiredName: string,
-	): Promise<string | null> {
+	): Promise<DomInstance | null> {
 		const server = this.servers.get(workspacePath);
 		if (server) {
 			return (

@@ -2,6 +2,7 @@ use anyhow::{Context, Result};
 use rbx_dom_weak::types::Ref;
 use serde::Deserialize;
 
+use super::util::ResponseInstance;
 use crate::server::{dom::Dom, rpc::RpcMessage};
 
 #[derive(Debug, Clone, Deserialize)]
@@ -16,7 +17,10 @@ impl InsertRequest {
     pub async fn respond_to(self, msg: RpcMessage, dom: &mut Dom) -> Result<RpcMessage> {
         let inserted_instance_id_opt = dom
             .insert_instance(self.parent_id, self.class_name, self.name)
-            .await;
+            .await
+            .and_then(|id| dom.get_instance(id))
+            .map(ResponseInstance::from_dom_instance)
+            .map(|inst| inst.with_dom_metadata(dom));
         msg.respond()
             .with_data(inserted_instance_id_opt)
             .context("failed to serialize response")

@@ -1,43 +1,15 @@
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
-use rbx_dom_weak::{types::Ref, Instance};
-use serde::{Deserialize, Serialize};
+use rbx_dom_weak::types::Ref;
+use serde::Deserialize;
 
 use crate::server::{
-    dom::{Dom, DomQueryParams, InstanceMetadata},
+    dom::{Dom, DomQueryParams},
     rpc::RpcMessage,
 };
 
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(super) struct ResponseInstance {
-    id: Ref,
-    #[serde(skip_serializing_if = "Ref::is_none")]
-    parent_id: Ref,
-    class_name: String,
-    name: String,
-    children: Vec<Ref>,
-    metadata: Option<InstanceMetadata>,
-}
-
-impl ResponseInstance {
-    fn from_dom_instance(inst: &Instance) -> Self {
-        Self {
-            id: inst.referent(),
-            parent_id: inst.parent(),
-            class_name: inst.class.to_owned(),
-            name: inst.name.to_owned(),
-            children: inst.children().to_vec(),
-            metadata: None,
-        }
-    }
-
-    fn with_dom_metadata(mut self, dom: &Dom) -> Self {
-        self.metadata = dom.get_metadata(self.id).cloned();
-        self
-    }
-}
+use super::util::ResponseInstance;
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
