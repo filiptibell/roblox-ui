@@ -14,9 +14,11 @@ pub(super) struct InsertRequest {
 
 impl InsertRequest {
     pub async fn respond_to(self, msg: RpcMessage, dom: &mut Dom) -> Result<RpcMessage> {
-        let was_inserted = dom.insert_instance(self.parent_id, self.class_name, self.name);
+        let inserted_instance_id_opt = dom
+            .insert_instance(self.parent_id, self.class_name, self.name)
+            .await;
         msg.respond()
-            .with_data(was_inserted)
+            .with_data(inserted_instance_id_opt)
             .context("failed to serialize response")
     }
 }
@@ -30,7 +32,7 @@ pub(super) struct RenameRequest {
 
 impl RenameRequest {
     pub async fn respond_to(self, msg: RpcMessage, dom: &mut Dom) -> Result<RpcMessage> {
-        let was_renamed = dom.rename_instance(self.id, self.name);
+        let was_renamed = dom.rename_instance(self.id, self.name).await;
         msg.respond()
             .with_data(was_renamed)
             .context("failed to serialize response")
@@ -45,7 +47,7 @@ pub(super) struct DeleteRequest {
 
 impl DeleteRequest {
     pub async fn respond_to(self, msg: RpcMessage, dom: &mut Dom) -> Result<RpcMessage> {
-        let was_deleted = dom.delete_instance(self.id);
+        let was_deleted = dom.delete_instance(self.id).await;
         msg.respond()
             .with_data(was_deleted)
             .context("failed to serialize response")
@@ -61,7 +63,7 @@ pub(super) struct MoveRequest {
 
 impl MoveRequest {
     pub async fn respond_to(self, msg: RpcMessage, dom: &mut Dom) -> Result<RpcMessage> {
-        let was_deleted = dom.move_instance(self.id, self.parent_id);
+        let was_deleted = dom.move_instance(self.id, self.parent_id).await;
         msg.respond()
             .with_data(was_deleted)
             .context("failed to serialize response")

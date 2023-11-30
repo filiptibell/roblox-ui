@@ -65,7 +65,7 @@ export type DomFindByQueryRequest = { query: string; limit: Option<number> };
 export type DomFindByQueryResponse = DomInstance[];
 
 export type InstanceInsertRequest = { parentId: string; className: string; name: string };
-export type InstanceInsertResponse = boolean;
+export type InstanceInsertResponse = Option<string>;
 
 export type InstanceRenameRequest = { id: string; name: string };
 export type InstanceRenameResponse = boolean;

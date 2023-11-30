@@ -6,11 +6,10 @@ import * as fs from "fs";
 const treekill = require("tree-kill");
 const readline = require("linebyline");
 
-import { SettingsProvider } from "../providers/settings";
 import { RpcMessage, isRpcMessage } from "./message";
 import { Providers } from "../providers";
 
-let outputChannel: vscode.OutputChannel;
+const outputChannel = vscode.window.createOutputChannel("Roblox UI");
 
 const KILL_SIGNALS = ["SIGHUP", "SIGINT", "SIGKILL", "SIGTERM"];
 
@@ -42,9 +41,6 @@ const findServerExecutable = (context: vscode.ExtensionContext): string => {
 };
 
 export const log = (message: string) => {
-	if (outputChannel === undefined) {
-		outputChannel = vscode.window.createOutputChannel("Roblox UI");
-	}
 	outputChannel.append(message);
 };
 
@@ -53,10 +49,6 @@ export const start = (
 	workspacePath: string,
 	callback: (message: RpcMessage) => void,
 ): cp.ChildProcessWithoutNullStreams => {
-	if (outputChannel === undefined) {
-		outputChannel = vscode.window.createOutputChannel("Roblox UI");
-	}
-
 	const settingsJson = JSON.stringify({
 		autogenerate: providers.settings.get("sourcemap.autogenerate"),
 		rojoProjectFile: providers.settings.get("sourcemap.rojoProjectFile"),
@@ -78,14 +70,18 @@ export const start = (
 	});
 
 	readline(childProcess.stdout, {
-		maxLineLength: 1024 * 256, // 256 KiB should be enough for any message
-		retainBuffer: false,
+		maxLineLength: 1024 * 512, // 512 KiB should be enough for any message
+		retainBuffer: true,
 	}).on("line", (stdout: string) => {
-		const message = JSON.parse(stdout);
-		if (isRpcMessage(message)) {
-			callback(message);
-		} else {
-			outputChannel.appendLine(`Failed to parse rpc message:\n${stdout}`);
+		try {
+			const message = JSON.parse(stdout);
+			if (isRpcMessage(message)) {
+				callback(message);
+			} else {
+				outputChannel.appendLine(`Failed to parse rpc message:\n${stdout}`);
+			}
+		} catch (e) {
+			outputChannel.appendLine(`Failed to parse rpc json:\n${e}\nContents:\n${stdout}`);
 		}
 	});
 

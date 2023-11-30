@@ -6,8 +6,10 @@ use gxhash::{GxHashMap as HashMap, GxHashSet as HashSet};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use rbx_dom_weak::{types::Ref, Instance, InstanceBuilder, WeakDom};
 use serde::{Deserialize, Serialize};
+
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 
+mod fs;
 mod meta;
 mod node;
 mod query;
@@ -83,6 +85,11 @@ impl Dom {
 
     pub fn take_notification_receiver(&mut self) -> Option<UnboundedReceiver<DomNotification>> {
         self.notification_rx.take()
+    }
+
+    fn notify(&self, notification: DomNotification) {
+        // NOTE: Not having any listeners is fine and is the only error case
+        self.notification_tx.send(notification).ok();
     }
 
     fn insert_instance_into_dom(&mut self, parent_id: Ref, node: InstanceNode) -> Ref {
@@ -419,27 +426,80 @@ impl Dom {
 
         let notifications = self.apply_children(None, root_ids, root_nodes);
         for notification in notifications {
-            // NOTE: Not having any listeners is fine and is the only error case
-            self.notification_tx.send(notification).ok();
+            self.notify(notification);
         }
     }
 
-    pub fn insert_instance(&mut self, parent: Ref, class_name: String, name: String) -> bool {
+    pub async fn insert_instance(
+        &mut self,
+        parent: Ref,
+        class_name: String,
+        name: String,
+    ) -> Option<Ref> {
+        let parent_paths = match (
+            self.get_instance(parent),
+            self.get_metadata(parent)
+                .and_then(|meta| meta.paths.as_ref()),
+        ) {
+            (i, Some(paths)) if i.is_some() => paths,
+            _ => return None,
+        };
+
+        let file_paths = match fs::create_instance(parent_paths, &class_name, &name).await {
+            Ok(paths) if !paths.is_empty() => paths,
+            _ => return None,
+        };
+
+        let child_id = self.insert_instance_into_dom(
+            parent,
+            InstanceNode {
+                class_name,
+                name,
+                file_paths,
+                children: vec![],
+            },
+        );
+
+        self.notify(DomNotification::Added {
+            parent_id: Some(parent),
+            child_id,
+        });
+
+        Some(child_id)
+    }
+
+    pub async fn rename_instance(&mut self, _id: Ref, _name: String) -> bool {
         // TODO: Implement this
         false
     }
 
-    pub fn rename_instance(&mut self, id: Ref, name: String) -> bool {
-        // TODO: Implement this
+    pub async fn delete_instance(&mut self, id: Ref) -> bool {
+        let parent = match self.get_instance(id).map(|inst| inst.parent()) {
+            Some(parent) => parent,
+            None => return false,
+        };
+
+        let instance_paths = match (
+            self.get_instance(id),
+            self.get_metadata(id).and_then(|meta| meta.paths.as_ref()),
+        ) {
+            (i, Some(paths)) if i.is_some() => paths,
+            _ => return false,
+        };
+
+        if fs::delete_instance(instance_paths).await.is_err() {
+            return false;
+        }
+
+        self.notify(DomNotification::Removed {
+            parent_id: Some(parent),
+            child_id: id,
+        });
+
         false
     }
 
-    pub fn delete_instance(&mut self, id: Ref) -> bool {
-        // TODO: Implement this
-        false
-    }
-
-    pub fn move_instance(&mut self, id: Ref, new_parent_id: Ref) -> bool {
+    pub async fn move_instance(&mut self, _id: Ref, _new_parent_id: Ref) -> bool {
         // TODO: Implement this
         false
     }

@@ -316,16 +316,16 @@ export class ExplorerTreeProvider implements vscode.TreeDataProvider<ExplorerIte
 		parentDomId: string,
 		desiredClassName: string,
 		desiredName: string,
-	): Promise<boolean> {
+	): Promise<string | null> {
 		const server = this.servers.get(workspacePath);
 		if (server) {
 			return await server.sendRequest("instance/insert", {
 				parentId: parentDomId,
 				className: desiredClassName,
 				name: desiredName,
-			});
+			}) ?? null;
 		}
-		return false;
+		return null;
 	}
 
 	public async renameInstance(
