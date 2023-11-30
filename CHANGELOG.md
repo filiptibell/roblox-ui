@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed instances sometimes not being revealed in the explorer view when the extension starts up.
 - Fixed context menu items such as "rename" and "delete" not always being available when they should be.
 - Fixed the explorer view forcefully stealing focus when opening a file by other means, eg. clicking it in search or the default VSCode explorer.
+- Fixed instances not being renamed or deleted correctly when they have meta files attached to them.
 
 ## `0.2.2` - November 12th, 2023
 
