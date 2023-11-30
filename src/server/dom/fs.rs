@@ -1,9 +1,9 @@
 use std::path::{Path, PathBuf};
 
-use tokio::fs::{create_dir, read, remove_dir_all, remove_file, write};
+use tokio::fs::{create_dir, read, remove_dir_all, remove_file, rename, write};
 use tokio::io;
 
-use crate::util::rojo::{parse_name_and_class_name, CLASS_NAME_SUFFIXES};
+use crate::util::rojo::{parse_name_and_class_name, parse_name_and_suffix, CLASS_NAME_SUFFIXES};
 
 use super::InstanceMetadataPaths;
 
@@ -118,6 +118,36 @@ pub async fn create_instance(
     }
 
     Ok((new_child_paths, changed_parent_paths))
+}
+
+pub async fn rename_instance(
+    instance_paths: &InstanceMetadataPaths,
+    current_name: &str,
+    name: &str,
+) -> io::Result<Vec<PathBuf>> {
+    let mut new_paths = Vec::new();
+
+    match get_instance_path_variant(instance_paths) {
+        InstancePathVariant::Dir(dir_path) => {
+            let new_path = dir_path.with_file_name(name);
+            rename(dir_path, &new_path).await?;
+            new_paths.push(new_path);
+        }
+        InstancePathVariant::File(_) => {
+            for current_path in instance_paths {
+                if let Some((name, suffix)) = parse_name_and_suffix(current_path) {
+                    if name == current_name {
+                        let new_path = current_path.with_file_name(format!("{name}{suffix}"));
+                        rename(current_path, &new_path).await?;
+                        new_paths.push(new_path);
+                    }
+                }
+            }
+        }
+        InstancePathVariant::None => {}
+    }
+
+    Ok(new_paths)
 }
 
 pub async fn delete_instance(instance_paths: &InstanceMetadataPaths) -> io::Result<()> {

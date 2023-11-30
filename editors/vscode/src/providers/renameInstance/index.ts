@@ -49,11 +49,20 @@ export class RenameInstanceProvider implements vscode.Disposable {
 			this.input.value &&
 			!this.input.validationMessage
 		) {
-			await this.providers.explorerTree.renameInstance(
+			// Try to rename the instance to the chosen name
+			const renamed = await this.providers.explorerTree.renameInstance(
 				this.currentWorkspacePath,
 				this.currentInstance.id,
 				this.input.value,
 			);
+			if (renamed) {
+				// ... also try to reveal the instance
+				await this.providers.explorerTree.revealById(
+					this.currentWorkspacePath,
+					this.currentInstance.id,
+					true,
+				);
+			}
 		}
 		this.hide();
 	}

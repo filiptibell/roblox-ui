@@ -449,7 +449,11 @@ impl Dom {
                 Ok((child_paths, parent_paths)) if !child_paths.is_empty() => {
                     (child_paths, parent_paths)
                 }
-                _ => return None,
+                Ok(_) => return None,
+                Err(e) => {
+                    tracing::error!("{}", e);
+                    return None;
+                }
             };
 
         let child_id = self.insert_instance_into_dom(
@@ -481,9 +485,38 @@ impl Dom {
         Some(child_id)
     }
 
-    pub async fn rename_instance(&mut self, _id: Ref, _name: String) -> bool {
-        // TODO: Implement this
-        false
+    pub async fn rename_instance(&mut self, id: Ref, name: String) -> bool {
+        let instance_paths = match (
+            self.get_instance(id),
+            self.get_metadata(id).and_then(|meta| meta.paths.as_ref()),
+        ) {
+            (i, Some(paths)) if i.is_some() => paths.clone(),
+            _ => return false,
+        };
+
+        let instance = self.inner.get_by_ref_mut(id).unwrap();
+        let instance_name = instance.name.as_str();
+
+        let changed_paths = match fs::rename_instance(&instance_paths, instance_name, &name).await {
+            Ok(paths) => paths,
+            Err(e) => {
+                tracing::error!("{}", e);
+                return false;
+            }
+        };
+
+        instance.name = name.clone();
+
+        let changed_metadata = self.apply_metadata(id, &changed_paths);
+        if changed_metadata {
+            self.notify(DomNotification::Changed {
+                id,
+                class_name: None,
+                name: Some(name),
+            });
+        }
+
+        true
     }
 
     pub async fn delete_instance(&mut self, id: Ref) -> bool {
@@ -500,8 +533,12 @@ impl Dom {
             _ => return false,
         };
 
-        if fs::delete_instance(instance_paths).await.is_err() {
-            return false;
+        match fs::delete_instance(instance_paths).await {
+            Ok(_) => {}
+            Err(e) => {
+                tracing::error!("{}", e);
+                return false;
+            }
         }
 
         self.remove_instance_from_dom(id);

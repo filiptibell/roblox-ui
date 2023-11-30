@@ -29,11 +29,20 @@ pub fn file_name_str(path: &Path) -> Option<&str> {
     path.file_name().and_then(|f| f.to_str())
 }
 
+pub fn parse_name_and_suffix(path: &Path) -> Option<(&str, &str)> {
+    let file_name = file_name_str(path)?;
+    for (suffix, _) in CLASS_NAME_SUFFIXES {
+        if let Some(name) = file_name.strip_suffix(suffix) {
+            return Some((name, suffix));
+        }
+    }
+    None
+}
+
 pub fn parse_name_and_class_name(path: &Path) -> Option<(&str, &'static str)> {
     let file_name = file_name_str(path)?;
     for (suffix, class_name) in CLASS_NAME_SUFFIXES {
-        if file_name.ends_with(suffix) {
-            let name = file_name.strip_suffix(suffix).unwrap();
+        if let Some(name) = file_name.strip_suffix(suffix) {
             return Some((name, class_name));
         }
     }
