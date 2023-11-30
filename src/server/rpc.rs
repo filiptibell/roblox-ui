@@ -129,9 +129,9 @@ impl RpcMessage {
     where
         R: AsyncWrite + Unpin,
     {
-        let line = serde_json::to_string(&self)?;
+        let mut line = serde_json::to_string(&self)?;
+        line.push('\n');
         writer.write_all(line.as_bytes()).await?;
-        writer.write_all(b"\n").await?;
         writer.flush().await?;
         Ok(())
     }
