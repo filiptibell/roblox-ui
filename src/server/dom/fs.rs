@@ -60,7 +60,7 @@ async fn transform_file_to_dir_with_init(file_path: &Path) -> io::Result<(PathBu
     create_dir(&new_dir).await?;
     write(&new_init, contents).await?;
 
-    Ok((new_init, new_dir))
+    Ok((new_dir, new_init))
 }
 
 async fn create_instance_in_dir(
