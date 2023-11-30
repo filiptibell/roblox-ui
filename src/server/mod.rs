@@ -34,8 +34,13 @@ impl Server {
         let instance_provider = provider::InstanceProvider::new(self.config.clone());
         let instance_provider = Arc::new(AsyncMutex::new(instance_provider));
 
-        // Spawn all of our tasks: watch files -> provide instances -> serve instances
+        // Spawn all of our tasks: watch files -> provide instances -> serve instances -> emit notifications
+        // These all depend on each other and pass messages upstream, so we spawn them in reverse order
         let mut set = JoinSet::new();
+        set.spawn(tasks::emit_notifications(
+            self.config.clone(),
+            Arc::clone(&instance_dom),
+        ));
         set.spawn(tasks::serve_instances(
             self.config.clone(),
             Arc::clone(&instance_dom),

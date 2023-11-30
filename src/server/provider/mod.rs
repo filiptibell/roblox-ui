@@ -48,6 +48,10 @@ impl InstanceProvider {
         }
     }
 
+    pub fn take_instance_receiver(&mut self) -> Option<UnboundedReceiver<Option<InstanceNode>>> {
+        self.instance_rx.take()
+    }
+
     async fn update_inner(&mut self, desired_kind: InstanceProviderKind) -> Result<()> {
         let smap = self.last_sourcemap.as_ref();
         let proj = self.last_project.as_ref();
@@ -151,9 +155,5 @@ impl InstanceProvider {
                 self.update_inner(InstanceProviderKind::None).await
             }
         }
-    }
-
-    pub fn take_instance_receiver(&mut self) -> Option<UnboundedReceiver<Option<InstanceNode>>> {
-        self.instance_rx.take()
     }
 }

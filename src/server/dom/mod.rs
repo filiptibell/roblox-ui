@@ -6,6 +6,7 @@ use gxhash::{GxHashMap as HashMap, GxHashSet as HashSet};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use rbx_dom_weak::{types::Ref, Instance, InstanceBuilder, WeakDom};
 use serde::{Deserialize, Serialize};
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 
 mod meta;
 mod node;
@@ -61,10 +62,13 @@ pub struct Dom {
     metas: HashMap<Ref, InstanceMetadata>,
     path_map: HashMap<PathBuf, Ref>,
     root_meta: InstanceMetadata,
+    notification_tx: UnboundedSender<DomNotification>,
+    notification_rx: Option<UnboundedReceiver<DomNotification>>,
 }
 
 impl Dom {
     pub fn new(config: Config) -> Self {
+        let (notification_tx, notification_rx) = unbounded_channel();
         Self {
             _config: config,
             inner: WeakDom::new(InstanceBuilder::new(DOM_ROOT_NAME_NONE)),
@@ -72,7 +76,13 @@ impl Dom {
             metas: HashMap::default(),
             path_map: HashMap::default(),
             root_meta: InstanceMetadata::default(),
+            notification_tx,
+            notification_rx: Some(notification_rx),
         }
+    }
+
+    pub fn take_notification_receiver(&mut self) -> Option<UnboundedReceiver<DomNotification>> {
+        self.notification_rx.take()
     }
 
     fn insert_instance(&mut self, parent_id: Ref, node: InstanceNode) -> Ref {
@@ -394,17 +404,23 @@ impl Dom {
             .collect::<Vec<_>>()
     }
 
-    pub fn apply_new_root(&mut self, node: Option<InstanceNode>) -> Vec<DomNotification> {
+    pub fn apply_new_root(&mut self, node: Option<InstanceNode>) {
         let root_ids = if self.inner.root().name != DOM_ROOT_NAME_NONE {
             vec![self.inner.root_ref()]
         } else {
             Vec::new()
         };
+
         let root_nodes = if let Some(node) = node {
             vec![node]
         } else {
             Vec::new()
         };
-        self.apply_children(None, root_ids, root_nodes)
+
+        let notifications = self.apply_children(None, root_ids, root_nodes);
+        for notification in notifications {
+            // NOTE: Not having any listeners is fine and is the only error case
+            self.notification_tx.send(notification).ok();
+        }
     }
 }

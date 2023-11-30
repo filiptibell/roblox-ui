@@ -23,6 +23,36 @@ use super::{
 type FileEvent = (AsyncFileEvent, PathBuf, Option<String>);
 
 /**
+    Emits notifications from an instance dom over stdio when they become available.
+*/
+pub async fn emit_notifications(_config: Config, instance_dom: Arc<AsyncMutex<Dom>>) -> Result<()> {
+    let mut stdout = tokio::io::stdout();
+
+    // Emit an initial 'null' (meaning no instance data) to
+    // let the consumer know instance notifications have started
+    RpcMessage::new_request("dom/notification")
+        .with_data(JsonValue::Null)?
+        .write_to(&mut stdout)
+        .await?;
+
+    // Take out the notification receiver from the dom
+    let mut notification_receiver = {
+        let mut dom = instance_dom.lock().await;
+        dom.take_notification_receiver().unwrap()
+    };
+
+    // Emit rest of notifications while they keep coming in
+    while let Some(notification) = notification_receiver.recv().await {
+        RpcMessage::new_request("dom/notification")
+            .with_data(notification)?
+            .write_to(&mut stdout)
+            .await?;
+    }
+
+    Ok(())
+}
+
+/**
     Receives instances from an instance provider (receiver) and serves them over stdio.
 */
 pub async fn serve_instances(
@@ -31,7 +61,6 @@ pub async fn serve_instances(
     instances: Arc<AsyncMutex<InstanceProvider>>,
 ) -> Result<()> {
     let stdin = tokio::io::stdin();
-    let mut stdout = tokio::io::stdout();
 
     // Spawn a task to listen for requests over stdin
     let stdin_dom = Arc::clone(&instance_dom);
@@ -57,22 +86,10 @@ pub async fn serve_instances(
         instances.take_instance_receiver().unwrap()
     };
 
-    // Emit an initial 'null' (meaning no instance data) to
-    // let the consumer know instance watching has started
-    RpcMessage::new_request("dom/notification")
-        .with_data(JsonValue::Null)?
-        .write_to(&mut stdout)
-        .await?;
-
     // Watch for further changes received from instance provider(s)
     while let Some(root_node_opt) = instance_receiver.recv().await {
         let mut dom = instance_dom.lock().await;
-        for notification in dom.apply_new_root(root_node_opt) {
-            RpcMessage::new_request("dom/notification")
-                .with_data(notification)?
-                .write_to(&mut stdout)
-                .await?;
-        }
+        dom.apply_new_root(root_node_opt);
     }
 
     // Since our stdin task was spawned in the background
