@@ -140,12 +140,8 @@ impl Dom {
         new_nodes: &mut Vec<InstanceNode>,
         filter: MatchFilter,
     ) {
-        fn match_instance_with_level(
-            inst: &Instance,
-            node: &InstanceNode,
-            filter: MatchFilter,
-        ) -> bool {
-            match filter {
+        let match_instance_with_level =
+            |inst: &Instance, node: &InstanceNode, filter: MatchFilter| match filter {
                 MatchFilter::VeryStrict => {
                     inst.name == node.name
                         && inst.class == node.class_name
@@ -153,8 +149,7 @@ impl Dom {
                 }
                 MatchFilter::Strict => inst.name == node.name && inst.class == node.class_name,
                 MatchFilter::Any => inst.name == node.name || inst.class == node.class_name,
-            }
-        }
+            };
         // NOTE: We iterate in reverse order since we may remove items during iteration
         let cloned = known_ids.to_vec();
         for (id_idx, id) in cloned.iter().enumerate().rev() {
@@ -178,6 +173,23 @@ impl Dom {
         }
     }
 
+    fn apply_metadata(&mut self, id: Ref, file_paths: &[PathBuf]) -> bool {
+        if id != self.inner.root_ref() {
+            let new_meta = InstanceMetadata::new(id, self, file_paths);
+            if self.get_metadata(id) != new_meta.as_ref() {
+                match new_meta {
+                    Some(meta) => self.metas.insert(id, meta),
+                    None => self.metas.remove(&id),
+                };
+                true
+            } else {
+                false
+            }
+        } else {
+            false
+        }
+    }
+
     fn apply_changes(&mut self, id: Ref, node: &InstanceNode) -> Option<DomNotification> {
         let inst = self.inner.get_by_ref(id).unwrap();
 
@@ -193,20 +205,7 @@ impl Dom {
             None
         };
 
-        let changed_meta = if id != self.inner.root_ref() {
-            let new_meta = InstanceMetadata::new(id, self, &node.file_paths);
-            if self.get_metadata(id) != new_meta.as_ref() {
-                match new_meta {
-                    Some(meta) => self.metas.insert(id, meta),
-                    None => self.metas.remove(&id),
-                };
-                true
-            } else {
-                false
-            }
-        } else {
-            false
-        };
+        let changed_meta = self.apply_metadata(id, &node.file_paths);
 
         if changed_class_name.is_some() || changed_name.is_some() || changed_meta {
             let inst_mut = self.inner.get_by_ref_mut(id).unwrap();
@@ -445,20 +444,34 @@ impl Dom {
             _ => return None,
         };
 
-        let file_paths = match fs::create_instance(parent_paths, &class_name, &name).await {
-            Ok(paths) if !paths.is_empty() => paths,
-            _ => return None,
-        };
+        let (new_child_paths, changed_parent_paths) =
+            match fs::create_instance(parent_paths, &class_name, &name).await {
+                Ok((child_paths, parent_paths)) if !child_paths.is_empty() => {
+                    (child_paths, parent_paths)
+                }
+                _ => return None,
+            };
 
         let child_id = self.insert_instance_into_dom(
             parent,
             InstanceNode {
                 class_name,
                 name,
-                file_paths,
+                file_paths: new_child_paths,
                 children: vec![],
             },
         );
+
+        if let Some(changed_paths) = changed_parent_paths {
+            let changed_metadata = self.apply_metadata(parent, &changed_paths);
+            if changed_metadata {
+                self.notify(DomNotification::Changed {
+                    id: parent,
+                    class_name: None,
+                    name: None,
+                });
+            }
+        }
 
         self.notify(DomNotification::Added {
             parent_id: Some(parent),

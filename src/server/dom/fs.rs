@@ -35,7 +35,7 @@ fn get_instance_path_variant(paths: &InstanceMetadataPaths) -> InstancePathVaria
     }
 }
 
-async fn transform_file_to_dir_with_init(file_path: &Path) -> io::Result<PathBuf> {
+async fn transform_file_to_dir_with_init(file_path: &Path) -> io::Result<(PathBuf, PathBuf)> {
     let parent_dir = file_path
         .parent()
         .ok_or_else(|| io::Error::new(io::ErrorKind::Unsupported, "No parent dir"))?;
@@ -54,13 +54,13 @@ async fn transform_file_to_dir_with_init(file_path: &Path) -> io::Result<PathBuf
     remove_file(&file_path).await?;
 
     let new_name = file_name.trim_end_matches(ext);
-    let new_parent = parent_dir.join(new_name);
-    let new_path = new_parent.join(format!("init{ext}"));
+    let new_dir = parent_dir.join(new_name);
+    let new_init = new_dir.join(format!("init{ext}"));
 
-    create_dir(&new_parent).await?;
-    write(&new_path, contents).await?;
+    create_dir(&new_dir).await?;
+    write(&new_init, contents).await?;
 
-    Ok(new_parent)
+    Ok((new_init, new_dir))
 }
 
 async fn create_instance_in_dir(
@@ -100,17 +100,24 @@ pub async fn create_instance(
     parent_paths: &InstanceMetadataPaths,
     class_name: &str,
     name: &str,
-) -> io::Result<Vec<PathBuf>> {
+) -> io::Result<(Vec<PathBuf>, Option<Vec<PathBuf>>)> {
+    let mut changed_parent_paths = None;
+    let mut new_child_paths = Vec::new();
+
     match get_instance_path_variant(parent_paths) {
         InstancePathVariant::Dir(dir_path) => {
-            create_instance_in_dir(dir_path, class_name, name).await
+            new_child_paths = create_instance_in_dir(dir_path, class_name, name).await?;
         }
         InstancePathVariant::File(file_path) => {
-            let new_parent = transform_file_to_dir_with_init(file_path).await?;
-            create_instance_in_dir(&new_parent, class_name, name).await
+            let (new_parent_dir, new_parent_init) =
+                transform_file_to_dir_with_init(file_path).await?;
+            new_child_paths = create_instance_in_dir(&new_parent_dir, class_name, name).await?;
+            changed_parent_paths = Some(vec![new_parent_dir, new_parent_init]);
         }
-        InstancePathVariant::None => Ok(Vec::new()),
+        InstancePathVariant::None => {}
     }
+
+    Ok((new_child_paths, changed_parent_paths))
 }
 
 pub async fn delete_instance(instance_paths: &InstanceMetadataPaths) -> io::Result<()> {
