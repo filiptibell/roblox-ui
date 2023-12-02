@@ -134,17 +134,40 @@ pub async fn rename_instance(
             new_paths.push(new_path);
         }
         InstancePathVariant::File(_) => {
-            for current_path in instance_paths {
-                if let Some((name, suffix)) = parse_name_and_suffix(current_path) {
-                    if name == current_name {
+            let mut paths_to_change = Vec::new();
+            paths_to_change.extend(instance_paths.file.as_deref());
+            paths_to_change.extend(instance_paths.file_meta.as_deref());
+            for current_path in paths_to_change {
+                if let Some((parsed_name, suffix)) = parse_name_and_suffix(current_path) {
+                    if parsed_name == current_name {
                         let new_path = current_path.with_file_name(format!("{name}{suffix}"));
                         rename(current_path, &new_path).await?;
                         new_paths.push(new_path);
+                    } else {
+                        tracing::warn!(
+                            "name mismatch while renaming instance from '{}' to '{}'\nat {}",
+                            current_name,
+                            name,
+                            current_path.display()
+                        )
                     }
+                } else {
+                    tracing::warn!(
+                        "failed to parse file name and suffix while renaming instance from '{}' to '{}'\nat {}",
+                        current_name,
+                        name,
+                        current_path.display()
+                    )
                 }
             }
         }
-        InstancePathVariant::None => {}
+        InstancePathVariant::None => {
+            tracing::warn!(
+                "no path was found while renaming instance from '{}' to '{}'",
+                current_name,
+                name
+            )
+        }
     }
 
     Ok(new_paths)
