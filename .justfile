@@ -70,8 +70,13 @@ vscode-pack TARGET_DIR DEBUG="false":
 		cp {{TARGET_DIR}}/release/{{BIN_NAME}}{{EXT}} {{VSCODE}}/out/release/
 	fi
 	#
-	cp -R {{CWD}}/icons/ {{VSCODE}}/out/icons/
-	cp -R {{CWD}}/data/ {{VSCODE}}/out/data/
+	if [ "{{os_family()}}" = "windows" ]; then
+		cp -R {{CWD}}/icons/ {{VSCODE}}/out/
+		cp -R {{CWD}}/data/ {{VSCODE}}/out/
+	else
+		cp -R {{CWD}}/icons/ {{VSCODE}}/out/icons/
+		cp -R {{CWD}}/data/ {{VSCODE}}/out/data/
+	fi
 	#
 	cp CHANGELOG.md {{VSCODE}}/CHANGELOG.md
 	cp LICENSE.txt {{VSCODE}}/LICENSE.txt
