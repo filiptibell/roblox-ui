@@ -25,13 +25,12 @@ where
     let file_idx = (0..archive.len())
         .find(|i| {
             if let Ok(file) = archive.by_index(*i) {
-                file.is_file()
-                    && matches!(
-                        file.enclosed_name()
-                            .and_then(|p| p.file_name())
-                            .and_then(|f| f.to_str()),
-                        Some(n) if n == file_name
-                    )
+                let file_name_str = file.enclosed_name().and_then(|p| {
+                    p.file_name()
+                        .and_then(|f| f.to_str())
+                        .map(|s| s.to_string())
+                });
+                file.is_file() && matches!(file_name_str, Some(n) if n == file_name)
             } else {
                 false
             }

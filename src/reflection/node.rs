@@ -179,8 +179,8 @@ impl Node {
 
 pub fn parse_reflection_tree(reflection_bytes: &[u8]) -> Result<Node> {
     let mut reader = XmlReader::from_reader(reflection_bytes);
-    reader.trim_markup_names_in_closing_tags(true);
-    reader.trim_text(true);
+    reader.config_mut().trim_markup_names_in_closing_tags = true;
+    reader.config_mut().trim_text(true);
 
     let mut xml_events = Vec::new();
     loop {

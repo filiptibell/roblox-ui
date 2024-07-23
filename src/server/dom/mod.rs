@@ -2,9 +2,9 @@
 
 use std::path::{Path, PathBuf};
 
-use gxhash::{GxHashMap as HashMap, GxHashSet as HashSet};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use rbx_dom_weak::{types::Ref, Instance, InstanceBuilder, WeakDom};
+use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 use serde::{Deserialize, Serialize};
 
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
