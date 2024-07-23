@@ -12,7 +12,7 @@ use super::{InstanceNode, RojoProjectFile, RojoProjectFileNode};
     more than this amount of levels deep before we get some real info back from Rojo,
     and limiting the depth also limits any filesystem traversal that we have to do
 */
-const MAX_DEPTH: usize = 4;
+const MAX_DEPTH: usize = 6;
 
 /**
     Generates a small portion of the complete instance tree that a Rojo project file may represent.
