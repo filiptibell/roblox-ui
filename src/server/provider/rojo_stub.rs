@@ -35,7 +35,6 @@ pub async fn generate_project_file_instance_tree(
     .await
 }
 
-#[async_recursion::async_recursion]
 async fn generate_project_node_instance(
     name: String,
     node: RojoProjectFileNode,
@@ -162,7 +161,6 @@ async fn class_name_from_path(path: impl AsRef<Path>) -> Option<&'static str> {
     }
 }
 
-#[async_recursion::async_recursion]
 async fn instance_nodes_at_path(path: PathBuf, current_depth: usize) -> Vec<InstanceNode> {
     let mut children = Vec::new();
 

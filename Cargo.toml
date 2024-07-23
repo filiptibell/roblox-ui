@@ -20,8 +20,6 @@ lto = true
 
 [dependencies]
 anyhow = "1.0"
-async-trait = "0.1"
-async-recursion = "1.0"
 bytes = "1.0"
 const_format = "0.2"
 dashmap = "6.0"

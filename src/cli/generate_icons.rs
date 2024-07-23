@@ -28,7 +28,7 @@ impl GenerateIconsCommand {
             info!("Downloading icon packs...");
             let mut all_contents_futs = Vec::new();
             for pack in packs {
-                all_contents_futs.push(pack.provider().download());
+                all_contents_futs.push(pack.download());
             }
             let mut all_contents = Vec::new();
             for result in join_all(all_contents_futs).await {
@@ -61,7 +61,6 @@ impl GenerateIconsCommand {
             info!("Downloading icon pack '{pack}'...");
 
             let contents = pack
-                .provider()
                 .download()
                 .await
                 .context("failed to download icon pack contents")?;

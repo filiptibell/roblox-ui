@@ -14,7 +14,6 @@ const PACK_ZIP_URL: &str = concat!(
 
 pub struct Classic;
 
-#[async_trait::async_trait]
 impl IconPackProvider for Classic {
     async fn download(&self) -> Result<IconPackContents> {
         let bytes = reqwest::get(PACK_ZIP_URL)

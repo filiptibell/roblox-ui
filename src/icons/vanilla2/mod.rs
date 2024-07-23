@@ -21,7 +21,6 @@ use svg::*;
 
 pub struct Vanilla2;
 
-#[async_trait::async_trait]
 impl IconPackProvider for Vanilla2 {
     async fn download(&self) -> Result<IconPackContents> {
         let client = reqwest::Client::new();

@@ -98,6 +98,7 @@ impl RojoSessionClient {
 #[serde(rename_all = "camelCase")]
 pub struct RojoSessionInfo {
     pub session_id: String,
+    #[allow(dead_code)]
     pub project_name: String,
     pub root_instance_id: String,
 }
