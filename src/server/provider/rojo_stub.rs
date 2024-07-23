@@ -1,7 +1,8 @@
 use std::path::{Path, PathBuf};
 
 use futures::future::join_all;
-use tokio::fs::{metadata, read_dir};
+use serde::Deserialize;
+use tokio::fs::{metadata, read_dir, read_to_string};
 
 use crate::util::rojo::parse_name_and_class_name;
 
@@ -130,29 +131,44 @@ async fn read_dir_all(path: &Path) -> Vec<PathBuf> {
     paths
 }
 
-async fn class_name_from_path(path: impl AsRef<Path>) -> Option<&'static str> {
+async fn class_name_from_path(path: impl AsRef<Path>) -> Option<String> {
     let path = path.as_ref();
     let meta = match metadata(path).await {
         Err(_) => return None,
         Ok(m) => m,
     };
     if meta.is_dir() {
-        Some(
-            read_dir_all(path)
+        let init_meta_path = path.join("init.meta.json");
+        let init_meta_class =
+            read_to_string(&init_meta_path)
                 .await
-                .iter()
-                .find_map(|p| {
-                    if let Some(("init", class_name)) = parse_name_and_class_name(p) {
-                        Some(class_name)
-                    } else {
-                        None
-                    }
-                })
-                .unwrap_or("Folder"),
-        )
+                .ok()
+                .and_then(|init_meta_str| {
+                    serde_json::from_str::<InitMetaJsonStub>(&init_meta_str)
+                        .ok()
+                        .and_then(|init_meta| init_meta.class_name)
+                });
+        if let Some(class_name) = init_meta_class {
+            Some(class_name)
+        } else {
+            Some(
+                read_dir_all(path)
+                    .await
+                    .iter()
+                    .find_map(|p| {
+                        if let Some(("init", class_name)) = parse_name_and_class_name(p) {
+                            Some(class_name)
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap_or("Folder")
+                    .to_string(),
+            )
+        }
     } else if meta.is_file() {
         if let Some((_, class_name)) = parse_name_and_class_name(path) {
-            Some(class_name)
+            Some(class_name.to_string())
         } else {
             None
         }
@@ -189,7 +205,7 @@ async fn instance_nodes_at_path(
         } else {
             let class_name = class_name_from_path(&path).await;
             children.push(InstanceNode {
-                class_name: class_name.unwrap_or("Folder").to_string(),
+                class_name: class_name.unwrap_or_else(|| String::from("Folder")),
                 name: path.file_name().unwrap().to_string_lossy().to_string(),
                 file_paths: vec![path],
                 children: dir_children,
@@ -209,4 +225,10 @@ async fn instance_nodes_at_path(
     }
 
     children
+}
+
+#[derive(Deserialize)]
+struct InitMetaJsonStub {
+    #[serde(default, rename = "className")]
+    class_name: Option<String>,
 }
