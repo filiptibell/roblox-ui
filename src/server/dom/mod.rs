@@ -211,10 +211,10 @@ impl Dom {
             let inst_mut = self.inner.get_by_ref_mut(id).unwrap();
 
             if let Some(new_class_name) = changed_class_name {
-                inst_mut.class = new_class_name.to_owned();
+                new_class_name.clone_into(&mut inst_mut.class);
             }
             if let Some(new_name) = changed_name {
-                inst_mut.name = new_name.to_owned();
+                new_name.clone_into(&mut inst_mut.name);
             }
 
             Some(DomNotification::Changed {
@@ -257,8 +257,8 @@ impl Dom {
                 let root = self.inner.root_mut();
 
                 // Overwrite root instance properties with the ones from root node
-                root.name = node.name.to_owned();
-                root.class = node.class_name.to_owned();
+                node.name.clone_into(&mut root.name);
+                node.class_name.clone_into(&mut root.class);
 
                 // Use our insert_instance method to create the entire instance tree
                 let temp_id = self.insert_instance_into_dom(Ref::none(), node);
@@ -505,7 +505,7 @@ impl Dom {
             }
         };
 
-        instance.name = name.clone();
+        instance.name.clone_from(&name);
 
         let changed_metadata = self.apply_metadata(id, &changed_paths);
         if changed_metadata {
