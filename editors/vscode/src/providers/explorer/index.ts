@@ -42,7 +42,7 @@ export class ExplorerTreeProvider implements vscode.TreeDataProvider<ExplorerIte
 		return item;
 	}
 
-	public async getChildren(parent?: ExplorerItem) {
+	public async getChildren(parent?: ExplorerItem): Promise<ExplorerItem[]> {
 		const items = new Array<ExplorerItem>();
 
 		if (parent) {
@@ -74,11 +74,27 @@ export class ExplorerTreeProvider implements vscode.TreeDataProvider<ExplorerIte
 		} else {
 			// We got no explorer item to get children of, so here
 			// we fetch the root items for all known workspace paths
-			// TODO: Re-implement the explorer.showDataModel setting, if not set to true
-			// then we should show datamodel children directly for single-root workspaces
 			this.explorerRoots.clear();
 			for (const [workspacePath, server] of this.servers) {
 				const rootInstance = await server.sendRequest("dom/root", null);
+
+				// If the setting for showing the DataModel instance is not explicitly enabled,
+				// then we should show datamodel children instead for single-root workspaces
+				if (
+					rootInstance
+					&& rootInstance.className === "DataModel"
+					&& this.providers.settings.get("explorer.showDataModel") !== true
+				) {
+					const tempRootItem = new ExplorerItem(
+						this.providers,
+						workspacePath,
+						rootInstance,
+						true,
+						null
+					);
+					return await this.getChildren(tempRootItem);
+				}
+
 				if (rootInstance) {
 					const item = new ExplorerItem(
 						this.providers,
