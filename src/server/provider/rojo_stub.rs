@@ -103,7 +103,7 @@ async fn generate_project_node_instance(
         // Add instances from filesystem if we got a path,
         // replicating some very basic behavior from Rojo
         if let Some(path) = node.path.as_deref() {
-            children.extend(instance_nodes_at_path(path.to_path_buf(), current_depth).await);
+            children.extend(instance_nodes_at_path(path.to_path_buf(), current_depth, true).await);
         }
 
         // Return the new full node with children
@@ -161,7 +161,11 @@ async fn class_name_from_path(path: impl AsRef<Path>) -> Option<&'static str> {
     }
 }
 
-async fn instance_nodes_at_path(path: PathBuf, current_depth: usize) -> Vec<InstanceNode> {
+async fn instance_nodes_at_path(
+    path: PathBuf,
+    current_depth: usize,
+    is_root: bool,
+) -> Vec<InstanceNode> {
     let mut children = Vec::new();
 
     let meta = match metadata(&path).await {
@@ -170,12 +174,27 @@ async fn instance_nodes_at_path(path: PathBuf, current_depth: usize) -> Vec<Inst
     };
 
     if meta.is_dir() && current_depth <= MAX_DEPTH {
-        let child_futs = read_dir_all(&path)
+        let dir_children_futs = read_dir_all(&path)
             .await
             .into_iter()
-            .map(|child_path| instance_nodes_at_path(child_path, current_depth + 1))
+            .map(|child_path| instance_nodes_at_path(child_path, current_depth + 1, false))
             .collect::<Vec<_>>();
-        children.extend(join_all(child_futs).await.into_iter().flatten());
+        let dir_children = join_all(dir_children_futs)
+            .await
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>();
+        if is_root {
+            children.extend(dir_children);
+        } else {
+            let class_name = class_name_from_path(&path).await;
+            children.push(InstanceNode {
+                class_name: class_name.unwrap_or("Folder").to_string(),
+                name: path.file_name().unwrap().to_string_lossy().to_string(),
+                file_paths: vec![path],
+                children: dir_children,
+            });
+        }
     } else if meta.is_file() {
         if let Some((name, class_name)) = parse_name_and_class_name(&path) {
             if name != "init" {
