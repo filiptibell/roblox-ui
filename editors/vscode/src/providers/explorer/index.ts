@@ -11,7 +11,7 @@ export class ExplorerTreeProvider implements vscode.TreeDataProvider<ExplorerIte
 	private readonly loaded: Map<string, boolean> = new Map();
 	private readonly servers: Map<string, RpcServer> = new Map();
 	private readonly disconnects: Map<string, () => boolean> = new Map();
-	private readonly explorerRoots: Map<string, ExplorerItem | null> = new Map();
+	private readonly explorerRoots: Map<string, ExplorerItem | ExplorerItem[] | null> = new Map();
 	private readonly explorerIdMaps: Map<string, Map<string, ExplorerItem>> = new Map();
 
 	private readonly _onDidChangeTreeData: vscode.EventEmitter<ExplorerItem | undefined | null> =
@@ -75,27 +75,40 @@ export class ExplorerTreeProvider implements vscode.TreeDataProvider<ExplorerIte
 			// We got no explorer item to get children of, so here
 			// we fetch the root items for all known workspace paths
 			this.explorerRoots.clear();
+			const numWorkspaces = this.servers.size;
 			for (const [workspacePath, server] of this.servers) {
 				const rootInstance = await server.sendRequest("dom/root", null);
 
-				// If the setting for showing the DataModel instance is not explicitly enabled,
-				// then we should show datamodel children instead for single-root workspaces
 				if (
 					rootInstance
 					&& rootInstance.className === "DataModel"
 					&& this.providers.settings.get("explorer.showDataModel") !== true
+					&& numWorkspaces === 1
 				) {
-					const tempRootItem = new ExplorerItem(
+					// If the setting for showing the DataModel instance is not explicitly enabled,
+					// then we should show datamodel children instead for single-root workspaces
+					const tempItem = new ExplorerItem(
 						this.providers,
 						workspacePath,
 						rootInstance,
 						true,
 						null
 					);
-					return await this.getChildren(tempRootItem);
-				}
+					const realItems = await this.getChildren(tempItem);
 
-				if (rootInstance) {
+					this.explorerRoots.set(workspacePath, realItems);
+					const idMap = this.explorerIdMaps.get(workspacePath);
+					if (idMap === undefined) {
+						throw new Error("Missing id map");
+					}
+
+					for (const item of realItems) {
+						idMap.set(item.domInstance.id, item);
+						items.push(item);
+					}
+				} else if (rootInstance) {
+					// Otherwise, we show the single root instance for the workspace,
+					// or single roots for multiple workspaces if we have more than one
 					const item = new ExplorerItem(
 						this.providers,
 						workspacePath,
@@ -103,13 +116,15 @@ export class ExplorerTreeProvider implements vscode.TreeDataProvider<ExplorerIte
 						true,
 						null,
 					);
+
+					this.explorerRoots.set(workspacePath, item);
 					const idMap = this.explorerIdMaps.get(workspacePath);
 					if (idMap === undefined) {
 						throw new Error("Missing id map");
 					}
+
 					idMap.set(item.domInstance.id, item);
 					items.push(item);
-					this.explorerRoots.set(workspacePath, item);
 				}
 			}
 		}
