@@ -1,5 +1,6 @@
 mod classes;
 mod cli;
+mod data;
 mod icons;
 mod reflection;
 mod server;

@@ -56,8 +56,6 @@ impl<'de> serde::Deserialize<'de> for ApiDocKey {
 struct ApiDocItem {
     documentation: Option<String>,
     learn_more_link: Option<String>,
-    #[serde(default)]
-    keys: BTreeMap<String, String>,
 }
 
 pub async fn insert_documentation(classes: &mut Classes) -> Result<()> {

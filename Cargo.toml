@@ -33,6 +33,7 @@ strsim = "0.11"
 thiserror = "1.0"
 usvg = "0.37"
 
+strum = { version = "0.26", features = ["derive"] }
 url = { version = "2.4", features = ["serde"] }
 
 serde = { version = "1.0", features = ["rc"] }
