@@ -36,6 +36,8 @@ impl Classes {
 #[serde(rename_all = "camelCase")]
 pub struct ClassData {
     pub name: String,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub members: Vec<ClassDataMember>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -63,6 +65,7 @@ impl ClassData {
 
         Ok(Self {
             name,
+            members: Vec::new(),
             description: None,
             documentation_url: None,
             is_service: desc.tags.contains(&ClassTag::Service),
@@ -72,3 +75,7 @@ impl ClassData {
         })
     }
 }
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "kind", content = "data", rename_all = "PascalCase")]
+pub enum ClassDataMember {}
