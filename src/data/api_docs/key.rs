@@ -2,8 +2,10 @@ use std::fmt;
 
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIs, EnumString};
+use ustr::Ustr;
 
 const MAIN_SEPARATOR: char = '/';
+const PATH_SEPARATOR: char = '.';
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, EnumString, EnumIs, Display)]
 #[strum(ascii_case_insensitive, serialize_all = "lowercase", prefix = "@")]
@@ -81,7 +83,7 @@ impl fmt::Display for ApiDocKeyPathExtra {
 pub struct ApiDocKey {
     pub scope: ApiDocKeyScope,
     pub subscope: ApiDocKeySubscope,
-    pub path: String,
+    pub path: Vec<Ustr>,
     pub extra: Option<ApiDocKeyPathExtra>,
 }
 
@@ -93,9 +95,11 @@ impl ApiDocKey {
         let scope = ApiDocKeyScope::parse(scope_str)?;
         let subscope = ApiDocKeySubscope::parse(subscope_str)?;
         let (path, extra) = match rest.split_once(MAIN_SEPARATOR) {
-            Some((path, rest)) => (path.to_string(), ApiDocKeyPathExtra::parse(rest)),
-            None => (rest.to_string(), None),
+            Some((path, rest)) => (path, ApiDocKeyPathExtra::parse(rest)),
+            None => (rest, None),
         };
+
+        let path = path.split(PATH_SEPARATOR).map(Ustr::from).collect();
 
         Some(Self {
             scope,
@@ -108,17 +112,25 @@ impl ApiDocKey {
 
 impl fmt::Display for ApiDocKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}{MAIN_SEPARATOR}{}{MAIN_SEPARATOR}{}{}",
-            self.scope,
-            self.subscope,
-            self.path,
-            match self.extra.as_ref() {
-                None => String::new(),
-                Some(e) => format!("{MAIN_SEPARATOR}{e}"),
+        write!(f, "{}", self.scope)?;
+        write!(f, "{MAIN_SEPARATOR}")?;
+        write!(f, "{}", self.subscope)?;
+        write!(f, "{MAIN_SEPARATOR}")?;
+
+        let num_parts = self.path.len();
+        for (i, part) in self.path.iter().enumerate() {
+            write!(f, "{}", part)?;
+            if i < num_parts - 1 {
+                write!(f, "{PATH_SEPARATOR}")?;
             }
-        )
+        }
+
+        if let Some(extra) = self.extra.as_ref() {
+            write!(f, "{MAIN_SEPARATOR}")?;
+            write!(f, "{extra}")?;
+        }
+
+        Ok(())
     }
 }
 
