@@ -27,6 +27,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		"explorer.showClassNames",
 		"explorer.showFilePaths",
 		"explorer.iconPack",
+		"explorer.customIconDir",
 		"wally.modifyPackagesDir",
 		"wally.showPackageVersion",
 	];
@@ -39,6 +40,14 @@ export async function activate(context: vscode.ExtensionContext) {
 			}),
 		);
 	}
+
+	// When custom icons get recompiled, we also need to re-connect
+	// the workspaces, since the icon file paths are now different
+	context.subscriptions.push(
+		providers.icons.onDidChangeCustomIcons(() => {
+			reconnectAllWorkspaces();
+		})
+	);
 
 	// Listen for workspace folders changing, and re-connect
 	// current workspace folders when that happens as well

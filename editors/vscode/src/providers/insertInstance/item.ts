@@ -14,10 +14,7 @@ export class InsertInstanceItem implements vscode.QuickPickItem {
 		public readonly className: string,
 	) {
 		this.label = className;
-		this.iconPath = providers.icons.getClassIcon(
-			providers.settings.get("explorer.iconPack"),
-			className,
-		);
+		this.iconPath = providers.icons.getClassIcon(className);
 	}
 }
 

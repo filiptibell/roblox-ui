@@ -10,6 +10,7 @@ const DEFAULT_VALUES = {
 	"explorer.showClassNames": false,
 	"explorer.showFilePaths": false,
 	"explorer.iconPack": "Vanilla2" as IconPack,
+	"explorer.customIconDir": null as string | null,
 	"sourcemap.autogenerate": true,
 	"sourcemap.ignoreGlobs": [],
 	"sourcemap.includeNonScripts": false,

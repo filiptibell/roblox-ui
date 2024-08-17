@@ -45,10 +45,7 @@ export class ExplorerItem extends vscode.TreeItem {
 			resourceUri,
 		);
 		this.tooltip = getInstanceTooltip(providers, domInstance);
-		this.iconPath = providers.icons.getClassIcon(
-			providers.settings.get("explorer.iconPack"),
-			domInstance.className,
-		);
+		this.iconPath = providers.icons.getClassIcon(domInstance.className);
 
 		// If this instance can be clicked to open, link that up
 		if (domInstance.metadata?.actions?.canOpen) {

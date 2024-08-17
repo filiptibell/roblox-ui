@@ -57,6 +57,11 @@
                     "default": "Vanilla2",
                     "markdownDescription": "Icon pack used for instances in the explorer."
                 },
+                "roblox-ui.explorer.customIconDir": {
+                    "type": "string",
+                    "default": null,
+                    "markdownDescription": "Path to a custom icon pack to use for instances in the explorer.\n\nThis should be a directory containing `light` and `dark` subdirectories with `index.theme` files in each."
+                },
                 "roblox-ui.sourcemap.autogenerate": {
                     "type": "boolean",
                     "default": true,

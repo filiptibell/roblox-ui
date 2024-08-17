@@ -17,10 +17,7 @@ export class QuickOpenItem implements vscode.QuickPickItem {
 	) {
 		this.label = domInstance.name;
 
-		this.iconPath = providers.icons.getClassIcon(
-			providers.settings.get("explorer.iconPack"),
-			domInstance.className,
-		);
+		this.iconPath = providers.icons.getClassIcon(domInstance.className);
 
 		if (fullName) {
 			const wfolders = vscode.workspace.workspaceFolders;

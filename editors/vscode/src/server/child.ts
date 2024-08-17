@@ -128,3 +128,29 @@ export const kill = (childProcess: cp.ChildProcessWithoutNullStreams): Promise<v
 		}
 	});
 };
+
+export const runCommand = async (
+	providers: Providers,
+	args: string[],
+): Promise<string> => {
+	const path = findServerExecutable(providers.extensionContext);
+	const childProcess = cp.spawn(path, args);
+
+	return new Promise((resolve, reject) => {
+		let stdout = "";
+		let stderr = "";
+		childProcess.stdout.on("data", (data) => {
+			stdout += data;
+		});
+		childProcess.stderr.on("data", (data) => {
+			stderr += data;
+		});
+		childProcess.on("close", (code) => {
+			if (code === 0) {
+				resolve(stdout);
+			} else {
+				reject(new Error(`Command exited with code ${code}\n${stderr}`));
+			}
+		});
+	});
+};
