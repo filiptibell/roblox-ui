@@ -8,6 +8,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## `0.3.3` - July 24th, 2024
+
+### Added
+
+- Added support for custom icon packs! These work exactly like custom icon packs in Roblox Studio do, and have the same setting, which is called `roblox-ui.explorer.customIconDir` in the VSCode extension. Note that you may need to restart VSCode after changing this setting.
+
 ## `0.3.2` - July 24th, 2024
 
 ### Fixed
