@@ -96,7 +96,7 @@ export class InsertInstanceProvider implements vscode.Disposable {
 		if (this.currentWorkspacePath && this.currentInstance) {
 			if (hasDisallowedCharacter(this.input.value)) {
 				this.input.validationMessage =
-					"Name must only contain alphanumeric characters, underscores, and dashes"
+					'Name must only contain alphanumeric characters, or one of the following characters: ".", "_", "-", " "'
 			} else {
 				this.input.validationMessage = undefined
 			}
@@ -226,5 +226,5 @@ export class InsertInstanceProvider implements vscode.Disposable {
 }
 
 const hasDisallowedCharacter = (s: string): boolean => {
-	return /[^a-zA-Z0-9_-]/.test(s)
+	return /[^a-zA-Z0-9_. -]/.test(s)
 }
