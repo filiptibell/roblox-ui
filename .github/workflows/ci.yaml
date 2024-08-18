@@ -10,7 +10,6 @@ defaults:
     shell: bash
 
 jobs:
-
   fmt:
     name: Check formatting
     runs-on: ubuntu-latest

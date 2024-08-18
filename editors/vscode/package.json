@@ -1,358 +1,358 @@
 {
-    "name": "roblox-ui",
-    "displayName": "Roblox UI",
-    "description": "A frontend for Roblox projects",
-    "version": "0.3.3",
-    "license": "MIT",
-    "publisher": "filiptibell",
-    "author": {
-        "name": "Filip Tibell",
-        "email": "filip.tibell@gmail.com",
-        "url": "https://github.com/filiptibell/"
-    },
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/filiptibell/roblox-ui.git"
-    },
-    "icon": "assets/icon-128.png",
-    "engines": {
-        "vscode": "^1.81.0"
-    },
-    "categories": [
-        "Other",
-        "Visualization"
-    ],
-    "activationEvents": [],
-    "main": "./out/extension.js",
-    "contributes": {
-        "configuration": {
-            "title": "Roblox UI",
-            "properties": {
-                "roblox-ui.explorer.showDataModel": {
-                    "type": "boolean",
-                    "default": false,
-                    "markdownDescription": "Show the DataModel (game) in the explorer. Note that for multi-root workspaces, the DataModel top-level instance is always shown."
-                },
-                "roblox-ui.explorer.showClassNames": {
-                    "type": "boolean",
-                    "default": false,
-                    "markdownDescription": "Show class names next to instances in the explorer."
-                },
-                "roblox-ui.explorer.showFilePaths": {
-                    "type": "boolean",
-                    "default": false,
-                    "markdownDescription": "Show file paths next to instances in the explorer."
-                },
-                "roblox-ui.explorer.iconPack": {
-                    "enum": [
-                        "Classic",
-                        "Vanilla2",
-                        "None"
-                    ],
-                    "markdownEnumDescriptions": [
-                        "The [Classic](https://github.com/legacy-icons/famfamfam-silk) (also known as Silk) icon pack, created by famfamfam.\n\n Licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)",
-                        "The [Vanilla](https://github.com/Elttob/Vanilla) version 2.1 icon pack, created by Elttob.\n\nLicensed under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/)",
-                        "No icon pack - the extension will use VSCode file icons from the currently selected theme, when possible."
-                    ],
-                    "default": "Vanilla2",
-                    "markdownDescription": "Icon pack used for instances in the explorer."
-                },
-                "roblox-ui.explorer.customIconDir": {
-                    "type": "string",
-                    "default": null,
-                    "markdownDescription": "Path to a custom icon pack to use for instances in the explorer.\n\nThis should be a directory containing `light` and `dark` subdirectories with `index.theme` files in each."
-                },
-                "roblox-ui.sourcemap.autogenerate": {
-                    "type": "boolean",
-                    "default": true,
-                    "markdownDescription": "Autogenerate sourcemap using a project file.\n\nTurn this setting off to watch a `sourcemap.json` file instead."
-                },
-                "roblox-ui.sourcemap.ignoreGlobs": {
-                    "type": "array",
-                    "default": [],
-                    "markdownDescription": "Glob patterns of file paths to hide from the explorer."
-                },
-                "roblox-ui.sourcemap.includeNonScripts": {
-                    "type": "boolean",
-                    "default": true,
-                    "markdownDescription": "If instances that are not scripts should be included in the explorer."
-                },
-                "roblox-ui.sourcemap.rojoProjectFile": {
-                    "type": "string",
-                    "default": "default.project.json",
-                    "markdownDescription": "Which project file to use for generating sourcemaps."
-                },
-                "roblox-ui.wally.modifyPackagesDir": {
-                    "type": "boolean",
-                    "default": true,
-                    "markdownDescription": "Show Wally package directory as Package instances in the explorer."
-                },
-                "roblox-ui.wally.showPackageVersion": {
-                    "type": "boolean",
-                    "default": true,
-                    "markdownDescription": "Show Wally package versions on Package instances in the explorer."
-                }
-            }
-        },
-        "commands": [
-            {
-                "command": "roblox-ui.explorer.refresh",
-                "title": "Roblox UI: Refresh Explorer",
-                "icon": "$(refresh)"
-            },
-            {
-                "command": "roblox-ui.explorer.quickOpen",
-                "title": "Roblox UI: Quick Open",
-                "icon": "$(search)"
-            },
-            {
-                "command": "roblox-ui.explorer.revealFileInOS.windows",
-                "title": "Reveal in File Explorer",
-                "icon": "$(file-open)",
-                "enablement": "view == roblox-ui.explorer && viewItem =~ /canRevealFileInOS/ && isWindows"
-            },
-            {
-                "command": "roblox-ui.explorer.revealFileInOS.mac",
-                "title": "Reveal in Finder",
-                "icon": "$(file-open)",
-                "enablement": "view == roblox-ui.explorer && viewItem =~ /canRevealFileInOS/ && isMac"
-            },
-            {
-                "command": "roblox-ui.explorer.insertObject",
-                "title": "New Instance...",
-                "icon": "$(file-add)",
-                "enablement": "view == roblox-ui.explorer && viewItem =~ /canInsertObject/"
-            },
-            {
-                "command": "roblox-ui.explorer.insertFolder",
-                "title": "New Folder...",
-                "icon": "$(file-add)",
-                "enablement": "view == roblox-ui.explorer && viewItem =~ /canInsertObject/"
-            },
-            {
-                "command": "roblox-ui.explorer.insertService",
-                "title": "New Service...",
-                "icon": "$(file-add)",
-                "enablement": "view == roblox-ui.explorer && viewItem =~ /canInsertService/"
-            },
-            {
-                "command": "roblox-ui.explorer.instanceCut",
-                "title": "Cut",
-                "icon": "$(file)",
-                "enablement": "view == roblox-ui.explorer && viewItem =~ /canMove/"
-            },
-            {
-                "command": "roblox-ui.explorer.instanceCopy",
-                "title": "Copy",
-                "icon": "$(files)",
-                "enablement": "view == roblox-ui.explorer && viewItem =~ /canMove/"
-            },
-            {
-                "command": "roblox-ui.explorer.instancePaste",
-                "title": "Paste",
-                "icon": "$(file)",
-                "enablement": "view == roblox-ui.explorer && viewItem =~ /canPasteSibling/"
-            },
-            {
-                "command": "roblox-ui.explorer.instancePasteInto",
-                "title": "Paste Into",
-                "icon": "$(file)",
-                "enablement": "view == roblox-ui.explorer && viewItem =~ /canPasteInto/"
-            },
-            {
-                "command": "roblox-ui.explorer.renameObject",
-                "title": "Rename...",
-                "icon": "$(file-rename)",
-                "enablement": "view == roblox-ui.explorer && viewItem =~ /instance/"
-            },
-            {
-                "command": "roblox-ui.explorer.deleteObject",
-                "title": "Delete",
-                "icon": "$(file-remove)",
-                "enablement": "view == roblox-ui.explorer && viewItem =~ /instance/"
-            },
-            {
-                "command": "roblox-ui.explorer.openRojoManifest",
-                "title": "Open Rojo Project File",
-                "icon": "$(arrow-right)",
-                "enablement": "view == roblox-ui.explorer && viewItem =~ /rojoManifest/"
-            },
-            {
-                "command": "roblox-ui.explorer.openWallyManifest",
-                "title": "Open Wally Manifest File",
-                "icon": "$(arrow-right)",
-                "enablement": "view == roblox-ui.explorer && viewItem =~ /wallyManifest/"
-            }
-        ],
-        "keybindings": [
-            {
-                "command": "roblox-ui.explorer.quickOpen",
-                "key": "alt+R",
-                "mac": "opt+R"
-            },
-            {
-                "command": "roblox-ui.explorer.revealFileInOS.windows",
-                "key": "ctrl+alt+R"
-            },
-            {
-                "command": "roblox-ui.explorer.revealFileInOS.mac",
-                "mac": "opt+cmd+R"
-            },
-            {
-                "command": "roblox-ui.explorer.instanceCut",
-                "key": "ctrl+X",
-                "mac": "cmd+X"
-            },
-            {
-                "command": "roblox-ui.explorer.instanceCopy",
-                "key": "ctrl+C",
-                "mac": "cmd+C"
-            },
-            {
-                "command": "roblox-ui.explorer.instancePaste",
-                "key": "ctrl+V",
-                "mac": "cmd+V"
-            },
-            {
-                "command": "roblox-ui.explorer.instancePasteInto",
-                "key": "shift+ctrl+V",
-                "mac": "shift+cmd+V"
-            },
-            {
-                "command": "roblox-ui.explorer.renameObject",
-                "key": "F2",
-                "mac": "enter"
-            },
-            {
-                "command": "roblox-ui.explorer.deleteObject",
-                "key": "backspace",
-                "mac": "cmd+backspace"
-            }
-        ],
-        "menus": {
-            "view/title": [
-                {
-                    "command": "roblox-ui.explorer.quickOpen",
-                    "when": "view == roblox-ui.explorer",
-                    "group": "navigation@1"
-                },
-                {
-                    "command": "roblox-ui.explorer.refresh",
-                    "when": "view == roblox-ui.explorer",
-                    "group": "navigation@2"
-                }
-            ],
-            "view/item/context": [
-                {
-                    "command": "roblox-ui.explorer.revealFileInOS.windows",
-                    "when": "view == roblox-ui.explorer && viewItem =~ /canRevealFileInOS/ && isWindows",
-                    "group": "navigation_1@1"
-                },
-                {
-                    "command": "roblox-ui.explorer.revealFileInOS.mac",
-                    "when": "view == roblox-ui.explorer && viewItem =~ /canRevealFileInOS/ && isMac",
-                    "group": "navigation_1@1"
-                },
-                {
-                    "command": "roblox-ui.explorer.insertObject",
-                    "when": "view == roblox-ui.explorer && !(viewItem =~ /canInsertService/)",
-                    "group": "navigation_2@1"
-                },
-                {
-                    "command": "roblox-ui.explorer.insertFolder",
-                    "when": "view == roblox-ui.explorer && !(viewItem =~ /canInsertService/)",
-                    "group": "navigation_2@2"
-                },
-                {
-                    "command": "roblox-ui.explorer.insertService",
-                    "when": "view == roblox-ui.explorer && viewItem =~ /canInsertService/",
-                    "group": "navigation_2@3"
-                },
-                {
-                    "command": "roblox-ui.explorer.instanceCut",
-                    "group": "navigation_3@1"
-                },
-                {
-                    "command": "roblox-ui.explorer.instanceCopy",
-                    "group": "navigation_3@2"
-                },
-                {
-                    "command": "roblox-ui.explorer.instancePaste",
-                    "group": "navigation_3@3"
-                },
-                {
-                    "command": "roblox-ui.explorer.instancePasteInto",
-                    "group": "navigation_3@4"
-                },
-                {
-                    "command": "roblox-ui.explorer.openRojoManifest",
-                    "when": "view == roblox-ui.explorer && viewItem =~ /rojoManifest/",
-                    "group": "navigation_4@3"
-                },
-                {
-                    "command": "roblox-ui.explorer.openWallyManifest",
-                    "when": "view == roblox-ui.explorer && viewItem =~ /wallyManifest/",
-                    "group": "navigation_4@3"
-                },
-                {
-                    "command": "roblox-ui.explorer.renameObject",
-                    "group": "navigation_5@1"
-                },
-                {
-                    "command": "roblox-ui.explorer.deleteObject",
-                    "group": "navigation_5@2"
-                }
-            ]
-        },
-        "viewsContainers": {
-            "activitybar": [
-                {
-                    "id": "roblox-ui",
-                    "title": "Roblox UI",
-                    "icon": "$(remote-explorer)"
-                }
-            ]
-        },
-        "views": {
-            "roblox-ui": [
-                {
-                    "id": "roblox-ui.explorer",
-                    "name": "Explorer",
-                    "visibility": "visible"
-                }
-            ]
-        },
-        "viewsWelcome": [
-            {
-                "view": "roblox-ui.explorer",
-                "contents": "To use the explorer, a Rojo project or sourcemap must exist in the current directory.\nYou can customize this behavior in the extension settings.\n[Extension Settings](command:workbench.action.openSettings?%5B%22roblox-ui%22%5D)"
-            }
-        ]
-    },
-    "scripts": {
-        "vscode:prepublish": "npm run esbuild -- --minify",
-        "esbuild": "esbuild ./src/extension.js --bundle --outfile=out/extension.js --external:vscode --platform=node --target=node16.13 --sourcemap",
-        "esbuild-watch": "npm run esbuild -- --watch",
-        "compile": "tsc -p ./ && npm run esbuild",
-        "watch": "tsc -p ./ && npm run esbuild-watch",
-        "lint": "eslint src --ext ts"
-    },
-    "devDependencies": {
-        "@biomejs/biome": "1.4.0",
-        "@types/glob": "^8.1.0",
-        "@types/mocha": "^10.0.1",
-        "@types/node": "20.x",
-        "@types/vscode": "^1.81.0",
-        "@vscode/test-electron": "^2.3.0",
-        "esbuild": "0.19.8",
-        "glob": "10.3.10",
-        "mocha": "^10.2.0",
-        "typescript": "5.3.2"
-    },
-    "dependencies": {
-        "anymatch": "^3.1.3",
-        "linebyline": "^1.3.0",
-        "semver": "^7.5.0",
-        "tree-kill": "^1.2.2"
-    }
+	"name": "roblox-ui",
+	"displayName": "Roblox UI",
+	"description": "A frontend for Roblox projects",
+	"version": "0.3.3",
+	"license": "MIT",
+	"publisher": "filiptibell",
+	"author": {
+		"name": "Filip Tibell",
+		"email": "filip.tibell@gmail.com",
+		"url": "https://github.com/filiptibell/"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/filiptibell/roblox-ui.git"
+	},
+	"icon": "assets/icon-128.png",
+	"engines": {
+		"vscode": "^1.81.0"
+	},
+	"categories": [
+		"Other",
+		"Visualization"
+	],
+	"activationEvents": [],
+	"main": "./out/extension.js",
+	"contributes": {
+		"configuration": {
+			"title": "Roblox UI",
+			"properties": {
+				"roblox-ui.explorer.showDataModel": {
+					"type": "boolean",
+					"default": false,
+					"markdownDescription": "Show the DataModel (game) in the explorer. Note that for multi-root workspaces, the DataModel top-level instance is always shown."
+				},
+				"roblox-ui.explorer.showClassNames": {
+					"type": "boolean",
+					"default": false,
+					"markdownDescription": "Show class names next to instances in the explorer."
+				},
+				"roblox-ui.explorer.showFilePaths": {
+					"type": "boolean",
+					"default": false,
+					"markdownDescription": "Show file paths next to instances in the explorer."
+				},
+				"roblox-ui.explorer.iconPack": {
+					"enum": [
+						"Classic",
+						"Vanilla2",
+						"None"
+					],
+					"markdownEnumDescriptions": [
+						"The [Classic](https://github.com/legacy-icons/famfamfam-silk) (also known as Silk) icon pack, created by famfamfam.\n\n Licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)",
+						"The [Vanilla](https://github.com/Elttob/Vanilla) version 2.1 icon pack, created by Elttob.\n\nLicensed under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/)",
+						"No icon pack - the extension will use VSCode file icons from the currently selected theme, when possible."
+					],
+					"default": "Vanilla2",
+					"markdownDescription": "Icon pack used for instances in the explorer."
+				},
+				"roblox-ui.explorer.customIconDir": {
+					"type": "string",
+					"default": null,
+					"markdownDescription": "Path to a custom icon pack to use for instances in the explorer.\n\nThis should be a directory containing `light` and `dark` subdirectories with `index.theme` files in each."
+				},
+				"roblox-ui.sourcemap.autogenerate": {
+					"type": "boolean",
+					"default": true,
+					"markdownDescription": "Autogenerate sourcemap using a project file.\n\nTurn this setting off to watch a `sourcemap.json` file instead."
+				},
+				"roblox-ui.sourcemap.ignoreGlobs": {
+					"type": "array",
+					"default": [],
+					"markdownDescription": "Glob patterns of file paths to hide from the explorer."
+				},
+				"roblox-ui.sourcemap.includeNonScripts": {
+					"type": "boolean",
+					"default": true,
+					"markdownDescription": "If instances that are not scripts should be included in the explorer."
+				},
+				"roblox-ui.sourcemap.rojoProjectFile": {
+					"type": "string",
+					"default": "default.project.json",
+					"markdownDescription": "Which project file to use for generating sourcemaps."
+				},
+				"roblox-ui.wally.modifyPackagesDir": {
+					"type": "boolean",
+					"default": true,
+					"markdownDescription": "Show Wally package directory as Package instances in the explorer."
+				},
+				"roblox-ui.wally.showPackageVersion": {
+					"type": "boolean",
+					"default": true,
+					"markdownDescription": "Show Wally package versions on Package instances in the explorer."
+				}
+			}
+		},
+		"commands": [
+			{
+				"command": "roblox-ui.explorer.refresh",
+				"title": "Roblox UI: Refresh Explorer",
+				"icon": "$(refresh)"
+			},
+			{
+				"command": "roblox-ui.explorer.quickOpen",
+				"title": "Roblox UI: Quick Open",
+				"icon": "$(search)"
+			},
+			{
+				"command": "roblox-ui.explorer.revealFileInOS.windows",
+				"title": "Reveal in File Explorer",
+				"icon": "$(file-open)",
+				"enablement": "view == roblox-ui.explorer && viewItem =~ /canRevealFileInOS/ && isWindows"
+			},
+			{
+				"command": "roblox-ui.explorer.revealFileInOS.mac",
+				"title": "Reveal in Finder",
+				"icon": "$(file-open)",
+				"enablement": "view == roblox-ui.explorer && viewItem =~ /canRevealFileInOS/ && isMac"
+			},
+			{
+				"command": "roblox-ui.explorer.insertObject",
+				"title": "New Instance...",
+				"icon": "$(file-add)",
+				"enablement": "view == roblox-ui.explorer && viewItem =~ /canInsertObject/"
+			},
+			{
+				"command": "roblox-ui.explorer.insertFolder",
+				"title": "New Folder...",
+				"icon": "$(file-add)",
+				"enablement": "view == roblox-ui.explorer && viewItem =~ /canInsertObject/"
+			},
+			{
+				"command": "roblox-ui.explorer.insertService",
+				"title": "New Service...",
+				"icon": "$(file-add)",
+				"enablement": "view == roblox-ui.explorer && viewItem =~ /canInsertService/"
+			},
+			{
+				"command": "roblox-ui.explorer.instanceCut",
+				"title": "Cut",
+				"icon": "$(file)",
+				"enablement": "view == roblox-ui.explorer && viewItem =~ /canMove/"
+			},
+			{
+				"command": "roblox-ui.explorer.instanceCopy",
+				"title": "Copy",
+				"icon": "$(files)",
+				"enablement": "view == roblox-ui.explorer && viewItem =~ /canMove/"
+			},
+			{
+				"command": "roblox-ui.explorer.instancePaste",
+				"title": "Paste",
+				"icon": "$(file)",
+				"enablement": "view == roblox-ui.explorer && viewItem =~ /canPasteSibling/"
+			},
+			{
+				"command": "roblox-ui.explorer.instancePasteInto",
+				"title": "Paste Into",
+				"icon": "$(file)",
+				"enablement": "view == roblox-ui.explorer && viewItem =~ /canPasteInto/"
+			},
+			{
+				"command": "roblox-ui.explorer.renameObject",
+				"title": "Rename...",
+				"icon": "$(file-rename)",
+				"enablement": "view == roblox-ui.explorer && viewItem =~ /instance/"
+			},
+			{
+				"command": "roblox-ui.explorer.deleteObject",
+				"title": "Delete",
+				"icon": "$(file-remove)",
+				"enablement": "view == roblox-ui.explorer && viewItem =~ /instance/"
+			},
+			{
+				"command": "roblox-ui.explorer.openRojoManifest",
+				"title": "Open Rojo Project File",
+				"icon": "$(arrow-right)",
+				"enablement": "view == roblox-ui.explorer && viewItem =~ /rojoManifest/"
+			},
+			{
+				"command": "roblox-ui.explorer.openWallyManifest",
+				"title": "Open Wally Manifest File",
+				"icon": "$(arrow-right)",
+				"enablement": "view == roblox-ui.explorer && viewItem =~ /wallyManifest/"
+			}
+		],
+		"keybindings": [
+			{
+				"command": "roblox-ui.explorer.quickOpen",
+				"key": "alt+R",
+				"mac": "opt+R"
+			},
+			{
+				"command": "roblox-ui.explorer.revealFileInOS.windows",
+				"key": "ctrl+alt+R"
+			},
+			{
+				"command": "roblox-ui.explorer.revealFileInOS.mac",
+				"mac": "opt+cmd+R"
+			},
+			{
+				"command": "roblox-ui.explorer.instanceCut",
+				"key": "ctrl+X",
+				"mac": "cmd+X"
+			},
+			{
+				"command": "roblox-ui.explorer.instanceCopy",
+				"key": "ctrl+C",
+				"mac": "cmd+C"
+			},
+			{
+				"command": "roblox-ui.explorer.instancePaste",
+				"key": "ctrl+V",
+				"mac": "cmd+V"
+			},
+			{
+				"command": "roblox-ui.explorer.instancePasteInto",
+				"key": "shift+ctrl+V",
+				"mac": "shift+cmd+V"
+			},
+			{
+				"command": "roblox-ui.explorer.renameObject",
+				"key": "F2",
+				"mac": "enter"
+			},
+			{
+				"command": "roblox-ui.explorer.deleteObject",
+				"key": "backspace",
+				"mac": "cmd+backspace"
+			}
+		],
+		"menus": {
+			"view/title": [
+				{
+					"command": "roblox-ui.explorer.quickOpen",
+					"when": "view == roblox-ui.explorer",
+					"group": "navigation@1"
+				},
+				{
+					"command": "roblox-ui.explorer.refresh",
+					"when": "view == roblox-ui.explorer",
+					"group": "navigation@2"
+				}
+			],
+			"view/item/context": [
+				{
+					"command": "roblox-ui.explorer.revealFileInOS.windows",
+					"when": "view == roblox-ui.explorer && viewItem =~ /canRevealFileInOS/ && isWindows",
+					"group": "navigation_1@1"
+				},
+				{
+					"command": "roblox-ui.explorer.revealFileInOS.mac",
+					"when": "view == roblox-ui.explorer && viewItem =~ /canRevealFileInOS/ && isMac",
+					"group": "navigation_1@1"
+				},
+				{
+					"command": "roblox-ui.explorer.insertObject",
+					"when": "view == roblox-ui.explorer && !(viewItem =~ /canInsertService/)",
+					"group": "navigation_2@1"
+				},
+				{
+					"command": "roblox-ui.explorer.insertFolder",
+					"when": "view == roblox-ui.explorer && !(viewItem =~ /canInsertService/)",
+					"group": "navigation_2@2"
+				},
+				{
+					"command": "roblox-ui.explorer.insertService",
+					"when": "view == roblox-ui.explorer && viewItem =~ /canInsertService/",
+					"group": "navigation_2@3"
+				},
+				{
+					"command": "roblox-ui.explorer.instanceCut",
+					"group": "navigation_3@1"
+				},
+				{
+					"command": "roblox-ui.explorer.instanceCopy",
+					"group": "navigation_3@2"
+				},
+				{
+					"command": "roblox-ui.explorer.instancePaste",
+					"group": "navigation_3@3"
+				},
+				{
+					"command": "roblox-ui.explorer.instancePasteInto",
+					"group": "navigation_3@4"
+				},
+				{
+					"command": "roblox-ui.explorer.openRojoManifest",
+					"when": "view == roblox-ui.explorer && viewItem =~ /rojoManifest/",
+					"group": "navigation_4@3"
+				},
+				{
+					"command": "roblox-ui.explorer.openWallyManifest",
+					"when": "view == roblox-ui.explorer && viewItem =~ /wallyManifest/",
+					"group": "navigation_4@3"
+				},
+				{
+					"command": "roblox-ui.explorer.renameObject",
+					"group": "navigation_5@1"
+				},
+				{
+					"command": "roblox-ui.explorer.deleteObject",
+					"group": "navigation_5@2"
+				}
+			]
+		},
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "roblox-ui",
+					"title": "Roblox UI",
+					"icon": "$(remote-explorer)"
+				}
+			]
+		},
+		"views": {
+			"roblox-ui": [
+				{
+					"id": "roblox-ui.explorer",
+					"name": "Explorer",
+					"visibility": "visible"
+				}
+			]
+		},
+		"viewsWelcome": [
+			{
+				"view": "roblox-ui.explorer",
+				"contents": "To use the explorer, a Rojo project or sourcemap must exist in the current directory.\nYou can customize this behavior in the extension settings.\n[Extension Settings](command:workbench.action.openSettings?%5B%22roblox-ui%22%5D)"
+			}
+		]
+	},
+	"scripts": {
+		"vscode:prepublish": "npm run esbuild -- --minify",
+		"esbuild": "esbuild ./src/extension.js --bundle --outfile=out/extension.js --external:vscode --platform=node --target=node16.13 --sourcemap",
+		"esbuild-watch": "npm run esbuild -- --watch",
+		"compile": "tsc -p ./ && npm run esbuild",
+		"watch": "tsc -p ./ && npm run esbuild-watch",
+		"lint": "eslint src --ext ts"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "1.4.0",
+		"@types/glob": "^8.1.0",
+		"@types/mocha": "^10.0.1",
+		"@types/node": "20.x",
+		"@types/vscode": "^1.81.0",
+		"@vscode/test-electron": "^2.3.0",
+		"esbuild": "0.19.8",
+		"glob": "10.3.10",
+		"mocha": "^10.2.0",
+		"typescript": "5.3.2"
+	},
+	"dependencies": {
+		"anymatch": "^3.1.3",
+		"linebyline": "^1.3.0",
+		"semver": "^7.5.0",
+		"tree-kill": "^1.2.2"
+	}
 }

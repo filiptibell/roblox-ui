@@ -1,15 +1,15 @@
-export type RpcMessageKind = "Request" | "Response";
+export type RpcMessageKind = "Request" | "Response"
 
 export type RpcMessageData = {
-	id: number;
-	method: string;
-	value?: unknown;
-};
+	id: number
+	method: string
+	value?: unknown
+}
 
 export type RpcMessage = {
-	kind: RpcMessageKind;
-	data: RpcMessageData;
-};
+	kind: RpcMessageKind
+	data: RpcMessageData
+}
 
 // biome-ignore lint/suspicious/noExplicitAny:
 export const isRpcMessage = (arg: any): arg is RpcMessage => {
@@ -19,8 +19,8 @@ export const isRpcMessage = (arg: any): arg is RpcMessage => {
 		typeof arg.data === "object" &&
 		typeof arg.data.id === "number" &&
 		typeof arg.data.method === "string"
-	);
-};
+	)
+}
 
 export const createRpcRequest = (method: string, id: number, request?: unknown): RpcMessage => {
 	return {
@@ -30,8 +30,8 @@ export const createRpcRequest = (method: string, id: number, request?: unknown):
 			method,
 			value: request,
 		},
-	};
-};
+	}
+}
 
 export const respondToRpcMessage = (message: RpcMessage, response?: unknown): RpcMessage => {
 	return {
@@ -41,5 +41,5 @@ export const respondToRpcMessage = (message: RpcMessage, response?: unknown): Rp
 			method: message.data.method,
 			value: response,
 		},
-	};
-};
+	}
+}

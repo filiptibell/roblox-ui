@@ -1,9 +1,9 @@
-import * as vscode from "vscode";
+import * as vscode from "vscode"
 
-import { IconPack } from "./icons";
-import { Providers } from ".";
+import { IconPack } from "./icons"
+import { Providers } from "."
 
-const EXTENSION_NAME = "roblox-ui";
+const EXTENSION_NAME = "roblox-ui"
 
 const DEFAULT_VALUES = {
 	"explorer.showDataModel": true,
@@ -17,68 +17,68 @@ const DEFAULT_VALUES = {
 	"sourcemap.rojoProjectFile": "default.project.json",
 	"wally.modifyPackagesDir": true,
 	"wally.showPackageVersion": true,
-};
+}
 
-export type Settings = typeof DEFAULT_VALUES;
-export type SettingsName = keyof Settings;
-export type SettingsValue<K extends SettingsName> = Settings[K];
+export type Settings = typeof DEFAULT_VALUES
+export type SettingsName = keyof Settings
+export type SettingsValue<K extends SettingsName> = Settings[K]
 
 // biome-ignore lint/suspicious/noExplicitAny:
-export type SettingsCallback<K extends SettingsName> = (value: SettingsValue<K>) => any;
+export type SettingsCallback<K extends SettingsName> = (value: SettingsValue<K>) => any
 
 export class SettingsProvider implements vscode.Disposable {
 	// biome-ignore lint/suspicious/noExplicitAny:
-	private readonly values: Map<string, any> = new Map();
+	private readonly values: Map<string, any> = new Map()
 	// biome-ignore lint/suspicious/noExplicitAny:
-	private readonly events: Map<string, vscode.EventEmitter<any>> = new Map();
-	private readonly disposable: vscode.Disposable;
+	private readonly events: Map<string, vscode.EventEmitter<any>> = new Map()
+	private readonly disposable: vscode.Disposable
 
 	constructor(public readonly providers: Providers) {
 		// Add in defaults as current values
 		for (const [key, value] of Object.entries(DEFAULT_VALUES)) {
-			this.values.set(key, value);
-			this.events.set(key, new vscode.EventEmitter());
+			this.values.set(key, value)
+			this.events.set(key, new vscode.EventEmitter())
 		}
 
 		// Add in current settings values
-		const initialConfig = vscode.workspace.getConfiguration(EXTENSION_NAME);
+		const initialConfig = vscode.workspace.getConfiguration(EXTENSION_NAME)
 		for (const key of Object.keys(DEFAULT_VALUES)) {
-			const initialValue = initialConfig.get(key);
+			const initialValue = initialConfig.get(key)
 			if (this.values.get(key) !== initialValue && initialValue !== undefined) {
-				this.values.set(key, initialValue);
+				this.values.set(key, initialValue)
 			}
 		}
 
 		// Listen for changes
 		this.disposable = vscode.workspace.onDidChangeConfiguration((event) => {
-			const changes: Array<string> = new Array();
+			const changes: Array<string> = new Array()
 			for (const key of this.values.keys()) {
 				if (event.affectsConfiguration(`${EXTENSION_NAME}.${key}`)) {
-					changes.push(key);
+					changes.push(key)
 				}
 			}
 			if (changes.length > 0) {
-				const config = vscode.workspace.getConfiguration(EXTENSION_NAME);
+				const config = vscode.workspace.getConfiguration(EXTENSION_NAME)
 				for (const key of changes) {
-					const value = config.get(key);
+					const value = config.get(key)
 					if (this.values.get(key) !== value) {
-						this.values.set(key, value);
-						this.events.get(key)?.fire(value);
+						this.values.set(key, value)
+						this.events.get(key)?.fire(value)
 					}
 				}
 			}
-		});
+		})
 	}
 
 	/**
 	 * Get the current value for a given setting.
 	 */
 	public get<K extends SettingsName>(key: K): SettingsValue<K> {
-		const value = this.values.get(key);
+		const value = this.values.get(key)
 		if (value === undefined) {
-			throw new Error(`Missing default value for setting "${key}"`);
+			throw new Error(`Missing default value for setting "${key}"`)
 		}
-		return value;
+		return value
 	}
 
 	/**
@@ -88,24 +88,24 @@ export class SettingsProvider implements vscode.Disposable {
 	 */
 	public listen<K extends SettingsName>(
 		key: K,
-		callback: SettingsCallback<K>,
+		callback: SettingsCallback<K>
 	): vscode.Disposable {
-		const initialValue = this.values.get(key);
+		const initialValue = this.values.get(key)
 		if (initialValue === undefined) {
-			throw new Error(`Missing initial setting value for setting "${key}"`);
+			throw new Error(`Missing initial setting value for setting "${key}"`)
 		}
-		callback(initialValue);
-		const event = this.events.get(key);
+		callback(initialValue)
+		const event = this.events.get(key)
 		if (event === undefined) {
-			throw new Error(`Missing event for setting "${key}"`);
+			throw new Error(`Missing event for setting "${key}"`)
 		}
-		return event.event(callback);
+		return event.event(callback)
 	}
 
 	dispose() {
 		for (const event of this.events.values()) {
-			event.dispose();
+			event.dispose()
 		}
-		this.disposable.dispose();
+		this.disposable.dispose()
 	}
 }

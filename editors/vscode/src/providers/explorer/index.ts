@@ -1,25 +1,25 @@
-import * as vscode from "vscode";
+import * as vscode from "vscode"
 
-import { DomFindByQueryRequest, DomInstance, RpcServer } from "../../server";
+import { DomFindByQueryRequest, DomInstance, RpcServer } from "../../server"
 
-import { ExplorerItem, compareExplorerItemOrder } from "./item";
-import { Providers } from "..";
+import { ExplorerItem, compareExplorerItemOrder } from "./item"
+import { Providers } from ".."
 
-export * from "./item";
+export * from "./item"
 
 export class ExplorerTreeProvider implements vscode.TreeDataProvider<ExplorerItem> {
-	private readonly loaded: Map<string, boolean> = new Map();
-	private readonly servers: Map<string, RpcServer> = new Map();
-	private readonly disconnects: Map<string, () => boolean> = new Map();
-	private readonly explorerRoots: Map<string, ExplorerItem | ExplorerItem[] | null> = new Map();
-	private readonly explorerIdMaps: Map<string, Map<string, ExplorerItem>> = new Map();
+	private readonly loaded: Map<string, boolean> = new Map()
+	private readonly servers: Map<string, RpcServer> = new Map()
+	private readonly disconnects: Map<string, () => boolean> = new Map()
+	private readonly explorerRoots: Map<string, ExplorerItem | ExplorerItem[] | null> = new Map()
+	private readonly explorerIdMaps: Map<string, Map<string, ExplorerItem>> = new Map()
 
 	private readonly _onDidChangeTreeData: vscode.EventEmitter<ExplorerItem | undefined | null> =
-		new vscode.EventEmitter();
+		new vscode.EventEmitter()
 	public readonly onDidChangeTreeData: vscode.Event<ExplorerItem | undefined | null> =
-		this._onDidChangeTreeData.event;
+		this._onDidChangeTreeData.event
 
-	private readonly intervalHandle: NodeJS.Timeout;
+	private readonly intervalHandle: NodeJS.Timeout
 
 	constructor(public readonly providers: Providers) {
 		// HACK: It seems like sometimes startup is ... too fast ?? and we run
@@ -28,36 +28,36 @@ export class ExplorerTreeProvider implements vscode.TreeDataProvider<ExplorerIte
 		// have any tree / root instance / data models loaded in, and fixes it
 		this.intervalHandle = setInterval(() => {
 			if (this.explorerRoots.size <= 0) {
-				this._onDidChangeTreeData.fire(null);
+				this._onDidChangeTreeData.fire(null)
 			}
-		}, 200);
+		}, 200)
 	}
 
 	public dispose() {
-		clearInterval(this.intervalHandle);
-		this.disconnectAllServers();
+		clearInterval(this.intervalHandle)
+		this.disconnectAllServers()
 	}
 
 	public async getTreeItem(item: ExplorerItem) {
-		return item;
+		return item
 	}
 
 	public async getChildren(parent?: ExplorerItem): Promise<ExplorerItem[]> {
-		const items = new Array<ExplorerItem>();
+		const items = new Array<ExplorerItem>()
 
 		if (parent) {
 			// We got an explorer item to get the children of, so request that from the server
-			const idMap = this.explorerIdMaps.get(parent.workspacePath);
+			const idMap = this.explorerIdMaps.get(parent.workspacePath)
 			if (idMap === undefined) {
-				throw new Error("Missing id map");
+				throw new Error("Missing id map")
 			}
-			const server = this.servers.get(parent.workspacePath);
+			const server = this.servers.get(parent.workspacePath)
 			if (server === undefined) {
-				throw new Error("Missing server");
+				throw new Error("Missing server")
 			}
 			const children = await server.sendRequest("dom/children", {
 				id: parent.domInstance.id,
-			});
+			})
 			if (children && children.length > 0) {
 				for (const childInstance of children) {
 					const item = new ExplorerItem(
@@ -65,25 +65,25 @@ export class ExplorerTreeProvider implements vscode.TreeDataProvider<ExplorerIte
 						parent.workspacePath,
 						childInstance,
 						false,
-						parent,
-					);
-					idMap.set(item.domInstance.id, item);
-					items.push(item);
+						parent
+					)
+					idMap.set(item.domInstance.id, item)
+					items.push(item)
 				}
 			}
 		} else {
 			// We got no explorer item to get children of, so here
 			// we fetch the root items for all known workspace paths
-			this.explorerRoots.clear();
-			const numWorkspaces = this.servers.size;
+			this.explorerRoots.clear()
+			const numWorkspaces = this.servers.size
 			for (const [workspacePath, server] of this.servers) {
-				const rootInstance = await server.sendRequest("dom/root", null);
+				const rootInstance = await server.sendRequest("dom/root", null)
 
 				if (
-					rootInstance
-					&& rootInstance.className === "DataModel"
-					&& this.providers.settings.get("explorer.showDataModel") !== true
-					&& numWorkspaces === 1
+					rootInstance &&
+					rootInstance.className === "DataModel" &&
+					this.providers.settings.get("explorer.showDataModel") !== true &&
+					numWorkspaces === 1
 				) {
 					// If the setting for showing the DataModel instance is not explicitly enabled,
 					// then we should show datamodel children instead for single-root workspaces
@@ -93,18 +93,18 @@ export class ExplorerTreeProvider implements vscode.TreeDataProvider<ExplorerIte
 						rootInstance,
 						true,
 						null
-					);
-					const realItems = await this.getChildren(tempItem);
+					)
+					const realItems = await this.getChildren(tempItem)
 
-					this.explorerRoots.set(workspacePath, realItems);
-					const idMap = this.explorerIdMaps.get(workspacePath);
+					this.explorerRoots.set(workspacePath, realItems)
+					const idMap = this.explorerIdMaps.get(workspacePath)
 					if (idMap === undefined) {
-						throw new Error("Missing id map");
+						throw new Error("Missing id map")
 					}
 
 					for (const item of realItems) {
-						idMap.set(item.domInstance.id, item);
-						items.push(item);
+						idMap.set(item.domInstance.id, item)
+						items.push(item)
 					}
 				} else if (rootInstance) {
 					// Otherwise, we show the single root instance for the workspace,
@@ -114,237 +114,237 @@ export class ExplorerTreeProvider implements vscode.TreeDataProvider<ExplorerIte
 						workspacePath,
 						rootInstance,
 						true,
-						null,
-					);
+						null
+					)
 
-					this.explorerRoots.set(workspacePath, item);
-					const idMap = this.explorerIdMaps.get(workspacePath);
+					this.explorerRoots.set(workspacePath, item)
+					const idMap = this.explorerIdMaps.get(workspacePath)
 					if (idMap === undefined) {
-						throw new Error("Missing id map");
+						throw new Error("Missing id map")
 					}
 
-					idMap.set(item.domInstance.id, item);
-					items.push(item);
+					idMap.set(item.domInstance.id, item)
+					items.push(item)
 				}
 			}
 		}
 
-		items.sort(compareExplorerItemOrder);
+		items.sort(compareExplorerItemOrder)
 
 		if (parent) {
-			parent.setChildReferences(items);
+			parent.setChildReferences(items)
 		}
 
-		return items;
+		return items
 	}
 
 	public getParent(item: ExplorerItem) {
-		return item.parent;
+		return item.parent
 	}
 
 	private refreshItemById(workspacePath: string, id: string) {
-		const idMap = this.explorerIdMaps.get(workspacePath);
+		const idMap = this.explorerIdMaps.get(workspacePath)
 		if (idMap) {
 			// To properly refresh we actually need to refresh the **parent** and not
 			// this particular tree item, this is because completely new tree items
 			// need to be created with new collapsible states etc, and vscode can
 			// only properly handle that by calling the getChildren method ...
-			const item = idMap.get(id);
+			const item = idMap.get(id)
 			if (item) {
 				if (item.parent) {
-					this._onDidChangeTreeData.fire(item.parent);
+					this._onDidChangeTreeData.fire(item.parent)
 				} else {
-					this._onDidChangeTreeData.fire(null);
+					this._onDidChangeTreeData.fire(null)
 				}
 			}
 		}
 	}
 
 	private deleteItemById(workspacePath: string, id: string) {
-		const idMap = this.explorerIdMaps.get(workspacePath);
+		const idMap = this.explorerIdMaps.get(workspacePath)
 		if (idMap) {
-			const item = idMap.get(id);
+			const item = idMap.get(id)
 			if (item?.domInstance.children) {
 				for (const childId of item.domInstance.children) {
-					this.deleteItemById(workspacePath, childId);
+					this.deleteItemById(workspacePath, childId)
 				}
 			}
-			idMap.delete(id);
+			idMap.delete(id)
 		}
 	}
 
 	public getWorkspacePaths() {
-		return Array.from(this.servers.keys());
+		return Array.from(this.servers.keys())
 	}
 
 	public getServer(workspacePath: string) {
-		return this.servers.get(workspacePath);
+		return this.servers.get(workspacePath)
 	}
 
 	public disconnectAllServers() {
 		for (const [_, disconnect] of this.disconnects) {
-			disconnect();
+			disconnect()
 		}
 
-		this.explorerRoots.clear();
-		this.explorerIdMaps.clear();
-		this.disconnects.clear();
-		this.servers.clear();
-		this.loaded.clear();
+		this.explorerRoots.clear()
+		this.explorerIdMaps.clear()
+		this.disconnects.clear()
+		this.servers.clear()
+		this.loaded.clear()
 
-		this._onDidChangeTreeData.fire(null);
+		this._onDidChangeTreeData.fire(null)
 	}
 
 	public disconnectServer(workspacePath: string) {
-		const server = this.servers.get(workspacePath);
+		const server = this.servers.get(workspacePath)
 		if (server !== undefined) {
-			const disconnect = this.disconnects.get(workspacePath);
+			const disconnect = this.disconnects.get(workspacePath)
 			if (disconnect !== undefined) {
-				disconnect();
+				disconnect()
 			}
 
-			this.explorerRoots.delete(workspacePath);
-			this.explorerIdMaps.delete(workspacePath);
-			this.disconnects.delete(workspacePath);
-			this.servers.delete(workspacePath);
-			this.loaded.delete(workspacePath);
-			this._onDidChangeTreeData.fire(null);
+			this.explorerRoots.delete(workspacePath)
+			this.explorerIdMaps.delete(workspacePath)
+			this.disconnects.delete(workspacePath)
+			this.servers.delete(workspacePath)
+			this.loaded.delete(workspacePath)
+			this._onDidChangeTreeData.fire(null)
 		}
 	}
 
 	public connectServer(workspacePath: string, server: RpcServer) {
-		this.disconnectServer(workspacePath);
-		this.explorerIdMaps.set(workspacePath, new Map());
+		this.disconnectServer(workspacePath)
+		this.explorerIdMaps.set(workspacePath, new Map())
 		const disconnect = server.onRequest("dom/notification", (notif) => {
 			if (notif !== null) {
 				if (notif.kind === "Added") {
 					if (notif.data.parentId) {
-						this.refreshItemById(workspacePath, notif.data.parentId);
+						this.refreshItemById(workspacePath, notif.data.parentId)
 					}
 				} else if (notif.kind === "Removed") {
-					this.deleteItemById(workspacePath, notif.data.childId);
+					this.deleteItemById(workspacePath, notif.data.childId)
 					if (notif.data.parentId) {
-						this.refreshItemById(workspacePath, notif.data.parentId);
+						this.refreshItemById(workspacePath, notif.data.parentId)
 					}
 				} else if (notif.kind === "Changed") {
-					this.refreshItemById(workspacePath, notif.data.id);
+					this.refreshItemById(workspacePath, notif.data.id)
 				}
 				if (this.loaded.get(workspacePath) === false) {
-					this.loaded.set(workspacePath, true);
-					this._onDidChangeTreeData.fire(null);
+					this.loaded.set(workspacePath, true)
+					this._onDidChangeTreeData.fire(null)
 				}
 			} else {
 				if (this.loaded.get(workspacePath) === true) {
-					this.loaded.set(workspacePath, false);
-					this._onDidChangeTreeData.fire(null);
+					this.loaded.set(workspacePath, false)
+					this._onDidChangeTreeData.fire(null)
 				}
 			}
-		});
-		this.disconnects.set(workspacePath, disconnect);
-		this.servers.set(workspacePath, server);
-		this._onDidChangeTreeData.fire(null);
+		})
+		this.disconnects.set(workspacePath, disconnect)
+		this.servers.set(workspacePath, server)
+		this._onDidChangeTreeData.fire(null)
 	}
 
 	public async getAncestors(workspacePath: string, domId: string): Promise<DomInstance[] | null> {
-		const server = this.servers.get(workspacePath);
+		const server = this.servers.get(workspacePath)
 		if (server) {
 			const response = await server.sendRequest("dom/ancestors", {
 				id: domId,
-			});
+			})
 			if (response) {
-				return response;
+				return response
 			}
 		}
-		return null;
+		return null
 	}
 
 	public async getFullName(workspacePath: string, domId: string): Promise<string[] | null> {
-		const ancestors = await this.getAncestors(workspacePath, domId);
+		const ancestors = await this.getAncestors(workspacePath, domId)
 		if (ancestors) {
-			const names = new Array<string>();
+			const names = new Array<string>()
 			for (const ancestor of ancestors) {
-				names.push(ancestor.name);
+				names.push(ancestor.name)
 			}
-			return names;
+			return names
 		}
-		return null;
+		return null
 	}
 
 	public findById(workspacePath: string, domId: string): ExplorerItem | null {
-		const idMap = this.explorerIdMaps.get(workspacePath);
+		const idMap = this.explorerIdMaps.get(workspacePath)
 		if (idMap) {
-			const item = idMap.get(domId);
+			const item = idMap.get(domId)
 			if (item) {
-				return item;
+				return item
 			}
 		}
-		return null;
+		return null
 	}
 
 	public async findByPath(workspacePath: string, path: string): Promise<DomInstance | null> {
-		const server = this.servers.get(workspacePath);
+		const server = this.servers.get(workspacePath)
 		if (server) {
 			const response = await server.sendRequest("dom/findByPath", {
 				path,
-			});
+			})
 			if (response) {
-				return response;
+				return response
 			}
 		}
-		return null;
+		return null
 	}
 
 	public async findByQuery(
 		workspacePath: string,
-		query: string | DomFindByQueryRequest,
+		query: string | DomFindByQueryRequest
 	): Promise<DomInstance[]> {
-		const server = this.servers.get(workspacePath);
+		const server = this.servers.get(workspacePath)
 		if (server) {
 			const response = await server.sendRequest(
 				"dom/findByQuery",
-				typeof query === "string" ? { query, limit: undefined } : query,
-			);
+				typeof query === "string" ? { query, limit: undefined } : query
+			)
 			if (response && response.length > 0) {
-				return response;
+				return response
 			}
 		}
-		return [];
+		return []
 	}
 
 	public async revealById(workspacePath: string, domId: string, select?: true | null) {
-		const ancestors = await this.getAncestors(workspacePath, domId);
+		const ancestors = await this.getAncestors(workspacePath, domId)
 		if (!ancestors) {
-			return;
+			return
 		}
 
-		let foundAll = true;
+		let foundAll = true
 		for (const [index, ancestor] of ancestors.entries()) {
-			const item = this.findById(workspacePath, ancestor.id);
+			const item = this.findById(workspacePath, ancestor.id)
 			if (!item) {
-				foundAll = false;
-				break;
+				foundAll = false
+				break
 			}
 			if (index < ancestors.length - 1) {
-				await item.expand(); // NOTE: Don't expand the last item
+				await item.expand() // NOTE: Don't expand the last item
 			}
 		}
 
 		if (foundAll && select === true && ancestors.length > 0) {
-			const last = ancestors[ancestors.length - 1];
-			const item = this.findById(workspacePath, last.id);
+			const last = ancestors[ancestors.length - 1]
+			const item = this.findById(workspacePath, last.id)
 			if (item === null) {
-				throw new Error("Missing item");
+				throw new Error("Missing item")
 			}
-			await item.select();
+			await item.select()
 		}
 	}
 
 	public async revealByPath(path: string, select?: true | null) {
 		for (const [workspacePath, _] of this.servers) {
 			if (path.startsWith(workspacePath)) {
-				const domInstance = await this.findByPath(workspacePath, path);
+				const domInstance = await this.findByPath(workspacePath, path)
 				if (domInstance) {
-					await this.revealById(workspacePath, domInstance.id, select);
+					await this.revealById(workspacePath, domInstance.id, select)
 				}
 			}
 		}
@@ -354,9 +354,9 @@ export class ExplorerTreeProvider implements vscode.TreeDataProvider<ExplorerIte
 		workspacePath: string,
 		parentDomId: string,
 		desiredClassName: string,
-		desiredName: string,
+		desiredName: string
 	): Promise<DomInstance | null> {
-		const server = this.servers.get(workspacePath);
+		const server = this.servers.get(workspacePath)
 		if (server) {
 			return (
 				(await server.sendRequest("instance/insert", {
@@ -364,48 +364,48 @@ export class ExplorerTreeProvider implements vscode.TreeDataProvider<ExplorerIte
 					className: desiredClassName,
 					name: desiredName,
 				})) ?? null
-			);
+			)
 		}
-		return null;
+		return null
 	}
 
 	public async renameInstance(
 		workspacePath: string,
 		domId: string,
-		desiredName: string,
+		desiredName: string
 	): Promise<boolean> {
-		const server = this.servers.get(workspacePath);
+		const server = this.servers.get(workspacePath)
 		if (server) {
 			return await server.sendRequest("instance/rename", {
 				id: domId,
 				name: desiredName,
-			});
+			})
 		}
-		return false;
+		return false
 	}
 
 	public async deleteInstance(workspacePath: string, domId: string): Promise<boolean> {
-		const server = this.servers.get(workspacePath);
+		const server = this.servers.get(workspacePath)
 		if (server) {
 			return await server.sendRequest("instance/delete", {
 				id: domId,
-			});
+			})
 		}
-		return false;
+		return false
 	}
 
 	public async moveInstance(
 		workspacePath: string,
 		domId: string,
-		newParentId: string,
+		newParentId: string
 	): Promise<boolean> {
-		const server = this.servers.get(workspacePath);
+		const server = this.servers.get(workspacePath)
 		if (server) {
 			return await server.sendRequest("instance/move", {
 				id: domId,
 				parentId: newParentId,
-			});
+			})
 		}
-		return false;
+		return false
 	}
 }
