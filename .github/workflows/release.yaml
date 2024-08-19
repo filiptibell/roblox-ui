@@ -74,8 +74,8 @@ jobs:
         with:
           targets: ${{ matrix.cargo-target }}
 
-      - name: Install Just
-        uses: extractions/setup-just@v2
+      - name: Install Tools
+        uses: CompeyDev/setup-rokit@v0.1.2
 
       - name: Install Node
         uses: actions/setup-node@v4
@@ -118,8 +118,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Just
-        uses: extractions/setup-just@v2
+      - name: Install Tools
+        uses: CompeyDev/setup-rokit@v0.1.2
 
       - name: Download releases
         uses: actions/download-artifact@v4

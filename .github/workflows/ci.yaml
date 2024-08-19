@@ -24,6 +24,9 @@ jobs:
         with:
           components: rustfmt
 
+      - name: Install Tools
+        uses: CompeyDev/setup-rokit@v0.1.2
+
       - name: Check Formatting
         run: cargo fmt -- --check
 
@@ -58,6 +61,9 @@ jobs:
         with:
           components: clippy
           targets: ${{ matrix.cargo-target }}
+
+      - name: Install Tools
+        uses: CompeyDev/setup-rokit@v0.1.2
 
       - name: Build
         run: |
