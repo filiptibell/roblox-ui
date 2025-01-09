@@ -44,6 +44,15 @@ export type DomInstanceMetadataPaths = {
 	wallyLock?: string
 }
 
+// Output types
+
+export type OutputTraceLine = {
+	file: string
+	line?: Option<number>
+	column?: Option<number>
+	function?: Option<string>
+}
+
 // Request & response types
 
 export type DomRootRequest = None
@@ -100,6 +109,12 @@ export type DomNotification =
 	| { kind: "Removed"; data: DomNotificationRemoved }
 	| { kind: "Changed"; data: DomNotificationChanged }
 
+export type OutputNotification = null | {
+	kind: "Error" | "Warning" | "Info" | "Debug"
+	message: string
+	trace?: Option<OutputTraceLine[]>
+}
+
 // Method -> request & response type maps
 
 export type MethodTypes = {
@@ -146,5 +161,9 @@ export type MethodTypes = {
 	"instance/move": {
 		request: InstanceMoveRequest
 		response: InstanceMoveResponse
+	}
+	"output/notification": {
+		request: OutputNotification
+		response: None
 	}
 }

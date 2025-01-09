@@ -10,6 +10,7 @@ mod config;
 mod dom;
 mod handlers;
 mod notify;
+mod output;
 mod provider;
 mod rpc;
 mod tasks;
@@ -25,7 +26,7 @@ impl Server {
         Self { config }
     }
 
-    pub async fn serve(self) -> Result<()> {
+    pub async fn serve_instances(self) -> Result<()> {
         let (file_event_tx, file_event_rx) = unbounded_channel();
 
         let instance_dom = dom::Dom::new(self.config.clone());
@@ -37,7 +38,7 @@ impl Server {
         // Spawn all of our tasks: watch files -> provide instances -> serve instances -> emit notifications
         // These all depend on each other and pass messages upstream, so we spawn them in reverse order
         let mut set = JoinSet::new();
-        set.spawn(tasks::emit_notifications(
+        set.spawn(tasks::emit_notifications_dom(
             self.config.clone(),
             Arc::clone(&instance_dom),
         ));
@@ -53,6 +54,32 @@ impl Server {
             file_event_rx,
         ));
         set.spawn(tasks::watch_files(self.config.clone(), file_event_tx));
+
+        // Whenever a task errors fatally, we should bubble that up, which
+        // will drop our JoinSet and cancel all of our other tasks as well
+        while let Some(res) = set.join_next().await {
+            res.context("failed to join task")?
+                .context("task errored")?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn serve_output(self) -> Result<()> {
+        let output_processor = output::OutputProcessor::new(self.config.clone());
+        let output_processor = Arc::new(AsyncMutex::new(output_processor));
+
+        // Spawn all of our tasks: start server for plugin -> emit notifications
+        // These all depend on each other and pass messages upstream, so we spawn them in reverse order
+        let mut set = JoinSet::new();
+        set.spawn(tasks::emit_notifications_output(
+            self.config.clone(),
+            Arc::clone(&output_processor),
+        ));
+        set.spawn(tasks::connect_notifications_plugin(
+            self.config.clone(),
+            Arc::clone(&output_processor),
+        ));
 
         // Whenever a task errors fatally, we should bubble that up, which
         // will drop our JoinSet and cancel all of our other tasks as well

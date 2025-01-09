@@ -46,7 +46,8 @@ export const log = (message: string) => {
 
 export const start = (
 	providers: Providers,
-	workspacePath: string,
+	workspacePath: string | undefined | null,
+	serveOutput: boolean,
 	callback: (message: RpcMessage) => void
 ): cp.ChildProcessWithoutNullStreams => {
 	const settingsJson = JSON.stringify({
@@ -57,14 +58,14 @@ export const start = (
 	})
 
 	const command = findServerExecutable(providers.extensionContext)
-	const commandArgs = ["serve"]
+	const commandArgs = [serveOutput ? "serve-output" : "serve-instances"]
 	const commandEnv = {
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		SETTINGS: settingsJson,
 	}
 
 	const childProcess = cp.spawn(command, commandArgs, {
-		cwd: workspacePath,
+		...(workspacePath && { cwd: workspacePath }),
 		env: { ...process.env, ...commandEnv },
 		shell: true,
 	})

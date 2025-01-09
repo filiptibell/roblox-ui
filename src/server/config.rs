@@ -9,7 +9,7 @@ use serde::Deserialize;
 use crate::util::path::make_absolute_and_clean;
 
 /**
-    Configuration for the instance server.
+    Configuration for the server.
 
     Note that all fields are optional for deserializing or parsing
     from a string, but have some defaults that may be surprising:

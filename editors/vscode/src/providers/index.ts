@@ -10,6 +10,7 @@ import { RenameInstanceProvider } from "./renameInstance"
 import { QuickOpenProvider } from "./quickOpen"
 import { SelectionProvider } from "./selection"
 import { InsertInstanceProvider } from "./insertInstance"
+import { OutputProvider } from "./output"
 
 export class Providers implements vscode.Disposable {
 	private readonly disposables: vscode.Disposable[]
@@ -26,6 +27,8 @@ export class Providers implements vscode.Disposable {
 	public readonly renameInstance: RenameInstanceProvider
 	public readonly quickOpen: QuickOpenProvider
 	public readonly selection: SelectionProvider
+
+	public readonly output: OutputProvider
 
 	constructor(public readonly extensionContext: vscode.ExtensionContext) {
 		// Basic providers used by all others
@@ -48,6 +51,9 @@ export class Providers implements vscode.Disposable {
 		this.quickOpen = new QuickOpenProvider(this)
 		this.selection = new SelectionProvider(this)
 
+		// Output provider
+		this.output = new OutputProvider(this)
+
 		// Store them all to dispose properly later
 		this.disposables = [
 			this.settings,
@@ -60,6 +66,7 @@ export class Providers implements vscode.Disposable {
 			this.renameInstance,
 			this.quickOpen,
 			this.selection,
+			this.output,
 		]
 	}
 

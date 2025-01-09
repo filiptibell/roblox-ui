@@ -5,14 +5,16 @@ mod generate_classes;
 mod generate_data;
 mod generate_icons;
 mod generate_reflection;
-mod serve;
+mod serve_instances;
+mod serve_output;
 mod tracing;
 
 use generate_classes::*;
 use generate_data::*;
 use generate_icons::*;
 use generate_reflection::*;
-use serve::*;
+use serve_instances::*;
+use serve_output::*;
 use tracing::*;
 
 #[derive(Debug, Clone, Subcommand)]
@@ -21,7 +23,8 @@ pub enum CliSubcommand {
     GenerateData(GenerateDataCommand),
     GenerateIcons(GenerateIconsCommand),
     GenerateReflection(GenerateReflectionCommand),
-    Serve(ServeCommand),
+    ServeInstances(ServeInstancesCommand),
+    ServeOutput(ServeOutputCommand),
 }
 
 #[derive(Debug, Clone, Parser)]
@@ -44,7 +47,8 @@ impl Cli {
             CliSubcommand::GenerateData(cmd) => cmd.run().await,
             CliSubcommand::GenerateIcons(cmd) => cmd.run().await,
             CliSubcommand::GenerateReflection(cmd) => cmd.run().await,
-            CliSubcommand::Serve(cmd) => cmd.run().await,
+            CliSubcommand::ServeInstances(cmd) => cmd.run().await,
+            CliSubcommand::ServeOutput(cmd) => cmd.run().await,
         }
     }
 }

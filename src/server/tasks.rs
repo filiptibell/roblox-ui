@@ -16,6 +16,7 @@ use super::{
     dom::Dom,
     handlers::handle_rpc_message,
     notify::{AsyncFileCache, AsyncFileEvent, AsyncFileWatcher},
+    output::OutputProcessor,
     provider::InstanceProvider,
     rpc::RpcMessage,
 };
@@ -25,7 +26,10 @@ type FileEvent = (AsyncFileEvent, PathBuf, Option<String>);
 /**
     Emits notifications from an instance dom over stdio when they become available.
 */
-pub async fn emit_notifications(_config: Config, instance_dom: Arc<AsyncMutex<Dom>>) -> Result<()> {
+pub async fn emit_notifications_dom(
+    _config: Config,
+    instance_dom: Arc<AsyncMutex<Dom>>,
+) -> Result<()> {
     let mut stdout = tokio::io::stdout();
 
     // Emit an initial 'null' (meaning no instance data) to
@@ -168,6 +172,51 @@ pub async fn watch_files(config: Config, file_event_tx: UnboundedSender<FileEven
             ))?;
         }
     }
+
+    Ok(())
+}
+
+/**
+    Emits notifications from an output processor over stdio when they become available.
+*/
+pub async fn emit_notifications_output(
+    _config: Config,
+    output_processor: Arc<AsyncMutex<OutputProcessor>>,
+) -> Result<()> {
+    let mut stdout = tokio::io::stdout();
+
+    // Emit an initial 'null' (meaning no instance data) to
+    // let the consumer know instance notifications have started
+    RpcMessage::new_request("output/notification")
+        .with_data(JsonValue::Null)?
+        .write_to(&mut stdout)
+        .await?;
+
+    // Take out the notification receiver from the processor
+    let mut notification_receiver = {
+        let mut output_processor = output_processor.lock().await;
+        output_processor.take_notification_receiver().unwrap()
+    };
+
+    // Emit rest of notifications while they keep coming in
+    while let Some(notification) = notification_receiver.recv().await {
+        RpcMessage::new_request("output/notification")
+            .with_data(notification)?
+            .write_to(&mut stdout)
+            .await?;
+    }
+
+    Ok(())
+}
+
+/**
+    Starts the plugin server for the output processor.
+*/
+pub async fn connect_notifications_plugin(
+    _config: Config,
+    output_processor: Arc<AsyncMutex<OutputProcessor>>,
+) -> Result<()> {
+    // TODO: Implement this
 
     Ok(())
 }

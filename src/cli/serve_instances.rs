@@ -5,17 +5,17 @@ use tracing::debug;
 use crate::server::{Config, Server};
 
 #[derive(Debug, Clone, Parser)]
-pub struct ServeCommand {
+pub struct ServeInstancesCommand {
     #[arg(long, env)]
     pub settings: Option<Config>,
 }
 
-impl ServeCommand {
+impl ServeInstancesCommand {
     pub async fn run(self) -> Result<()> {
         let config = self.settings.unwrap_or_default();
 
         debug!("Parsed arguments\nconfig: {config:#?}");
 
-        Server::new(config).serve().await
+        Server::new(config).serve_instances().await
     }
 }

@@ -22,8 +22,12 @@ export class RpcServer {
 	private child: cp.ChildProcessWithoutNullStreams
 	private idCounter = 0
 
-	constructor(public readonly providers: Providers, public readonly workspacePath: string) {
-		this.child = start(providers, workspacePath, (message) => {
+	constructor(
+		public readonly providers: Providers,
+		public readonly workspacePath: string | undefined | null,
+		public readonly isServingOutput: boolean
+	) {
+		this.child = start(providers, workspacePath, isServingOutput, (message) => {
 			this.onMessage(message)
 		})
 	}
@@ -36,7 +40,7 @@ export class RpcServer {
 	public async restart() {
 		await kill(this.child)
 		this.idCounter = 0
-		this.child = start(this.providers, this.workspacePath, (message) => {
+		this.child = start(this.providers, this.workspacePath, this.isServingOutput, (message) => {
 			this.onMessage(message)
 		})
 	}

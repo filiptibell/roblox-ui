@@ -5,6 +5,8 @@ import { Providers } from "./providers"
 
 const workspaceServers: Map<string, RpcServer> = new Map()
 
+let outputServer: RpcServer | null = null
+
 let currentProviders: Providers
 
 export const connectAllWorkspaces = async (providers: Providers) => {
@@ -17,11 +19,14 @@ export const connectAllWorkspaces = async (providers: Providers) => {
 	if (vscode.workspace.workspaceFolders) {
 		for (const workspaceFolder of vscode.workspace.workspaceFolders) {
 			const workspacePath = workspaceFolder.uri.fsPath
-			const workspaceServer = new RpcServer(providers, workspacePath)
+			const workspaceServer = new RpcServer(providers, workspacePath, false)
 			workspaceServers.set(workspacePath, workspaceServer)
 			providers.explorerTree.connectServer(workspacePath, workspaceServer)
 		}
 	}
+
+	outputServer = new RpcServer(providers, null, true)
+	providers.output.connectServer(outputServer)
 
 	await Promise.all(promises)
 }
@@ -29,6 +34,7 @@ export const connectAllWorkspaces = async (providers: Providers) => {
 export const disconnectAllWorkspaces = async () => {
 	if (currentProviders) {
 		currentProviders.explorerTree.disconnectAllServers()
+		currentProviders.output.disconnectServer()
 	}
 
 	const promises = new Array<Promise<void>>()
@@ -37,6 +43,11 @@ export const disconnectAllWorkspaces = async () => {
 		promises.push(server.stop())
 	}
 	workspaceServers.clear()
+
+	if (outputServer) {
+		promises.push(outputServer.stop())
+		outputServer = null
+	}
 
 	await Promise.all(promises)
 }
