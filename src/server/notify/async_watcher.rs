@@ -8,7 +8,7 @@ use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
 use tracing::error;
 
 use notify_debouncer_full::{
-    new_debouncer, notify::*, DebounceEventResult, DebouncedEvent, Debouncer, FileIdMap,
+    new_debouncer, notify::*, DebounceEventResult, DebouncedEvent, Debouncer, RecommendedCache,
 };
 
 fn is_matching_path(path: &Path, relevant_paths: &[PathBuf]) -> bool {
@@ -52,7 +52,7 @@ fn matching_paths(event: &DebouncedEvent, relevant_paths: &[PathBuf]) -> Vec<Pat
 pub struct AsyncFileWatcher {
     // NOTE: We can't drop the debouncer since it would then stop watching,
     // so we keep it in the same struct that the consumer gets events from
-    _debouncer: Debouncer<RecommendedWatcher, FileIdMap>,
+    _debouncer: Debouncer<RecommendedWatcher, RecommendedCache>,
     receiver: UnboundedReceiver<PathBuf>,
 }
 
@@ -75,9 +75,7 @@ impl AsyncFileWatcher {
             },
         )?;
 
-        debouncer
-            .watcher()
-            .watch(Path::new("."), RecursiveMode::Recursive)?;
+        debouncer.watch(Path::new("."), RecursiveMode::Recursive)?;
 
         Ok(Self {
             _debouncer: debouncer,
