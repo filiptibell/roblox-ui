@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use anyhow::Result;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tracing::error;
@@ -81,7 +83,7 @@ impl InstanceProvider {
         Ok(())
     }
 
-    pub async fn update_file(&mut self, contents: Option<&str>) -> Result<()> {
+    pub async fn update_file(&mut self, _path: &Path, contents: Option<&str>) -> Result<()> {
         let smap = contents
             .and_then(|c| if c.is_empty() { None } else { Some(c) })
             .and_then(|s| match InstanceNode::from_json(s) {
@@ -112,16 +114,18 @@ impl InstanceProvider {
         Ok(())
     }
 
-    pub async fn update_rojo(&mut self, contents: Option<&str>) -> Result<()> {
+    pub async fn update_rojo(&mut self, path: &Path, contents: Option<&str>) -> Result<()> {
         let proj = contents
-            .and_then(|c| if c.is_empty() { None } else { Some(c) })
-            .and_then(|s| match RojoProjectFile::from_json(s) {
-                Ok(v) => Some(v),
-                Err(e) => {
-                    error!("failed to deserialize rojo project file - {e}");
-                    None
-                }
-            });
+            .filter(|contents| !contents.trim().is_empty())
+            .and_then(
+                |contents| match RojoProjectFile::from_file(path, contents) {
+                    Ok(v) => Some(v),
+                    Err(e) => {
+                        error!("failed to deserialize rojo project file - {e}");
+                        None
+                    }
+                },
+            );
 
         if let Some(proj) = &proj {
             if let Some(_session) = proj.find_serve_session().await {

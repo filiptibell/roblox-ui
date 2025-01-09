@@ -117,10 +117,14 @@ pub async fn provide_instances(
 
         let res = if config.is_sourcemap_path(&file_path) {
             let mut instances = instances.lock().await;
-            instances.update_file(file_contents.as_deref()).await
+            instances
+                .update_file(file_path.as_path(), file_contents.as_deref())
+                .await
         } else if config.is_rojo_project_path(&file_path) {
             let mut instances = instances.lock().await;
-            instances.update_rojo(file_contents.as_deref()).await
+            instances
+                .update_rojo(file_path.as_path(), file_contents.as_deref())
+                .await
         } else {
             Ok(())
         };

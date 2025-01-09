@@ -1,4 +1,4 @@
-use std::{collections::HashMap, net::SocketAddr};
+use std::{collections::HashMap, net::SocketAddr, path::PathBuf};
 
 use anyhow::{bail, Context, Result};
 use serde::Deserialize;
@@ -73,7 +73,7 @@ impl RojoSessionClient {
     pub async fn read(&self, id: impl AsRef<str>) -> Result<RojoSessionReadResponse> {
         let read_res = self
             .client
-            .get(&format!("{}{}", self.url_read, id.as_ref()))
+            .get(format!("{}{}", self.url_read, id.as_ref()))
             .send()
             .await
             .context("failed to make request")?;
@@ -118,4 +118,10 @@ pub struct RojoSessionInstance {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct RojoSessionInstanceMetadata {}
+pub struct RojoSessionInstanceMetadata {
+    /// NOTE: This field does not exist yet, but will probably be added in a future PR
+    ///
+    /// https://github.com/rojo-rbx/rojo/pull/337
+    #[serde(default)]
+    pub relevant_paths: Vec<PathBuf>,
+}

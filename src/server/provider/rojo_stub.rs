@@ -28,8 +28,8 @@ pub async fn generate_project_file_instance_tree(
     project_file: &RojoProjectFile,
 ) -> Option<InstanceNode> {
     generate_project_node_instance(
-        project_file.name.to_string(),
-        project_file.tree.clone(),
+        project_file.name().to_string(),
+        project_file.root().clone(),
         1,
         false,
     )
