@@ -3,8 +3,7 @@ use std::num::{ParseFloatError, ParseIntError};
 use std::str::{FromStr, ParseBoolError};
 
 use anyhow::Result;
-use serde::Serialize;
-use serde_json::Value as JsonValue;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 #[derive(Debug, Clone, Error)]
@@ -51,7 +50,7 @@ impl FromStr for ValueKind {
 
 #[derive(Debug, Clone, Error)]
 pub enum ValueParseError {
-    #[error("invalid conversion-  {0}")]
+    #[error("invalid conversion - {0}")]
     InvalidConversion(&'static str),
     #[error(transparent)]
     InvalidBool(#[from] ParseBoolError),
@@ -159,17 +158,59 @@ impl Serialize for Value {
     where
         S: serde::Serializer,
     {
-        let json_value = match self {
-            Self::None => JsonValue::Null,
-            Self::Bool(b) => JsonValue::Bool(*b),
-            Self::Double(n) => JsonValue::Number(
-                serde_json::Number::from_f64(*n)
-                    .expect("nan and inf values are not serializable as json"),
-            ),
-            Self::Integer(i) => JsonValue::Number(serde_json::Number::from(*i)),
-            Self::String(s) => JsonValue::String(s.clone()),
-            Self::Token(s) => JsonValue::String(s.clone()),
-        };
-        json_value.serialize(serializer)
+        match self {
+            Self::None => serializer.serialize_none(),
+            Self::Bool(b) => serializer.serialize_bool(*b),
+            Self::Double(n) => serializer.serialize_f64(*n),
+            Self::Integer(i) => serializer.serialize_i64(*i),
+            Self::String(s) => serializer.serialize_str(s),
+            Self::Token(s) => serializer.serialize_str(s),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for Value {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct ValueVisitor;
+
+        impl<'de> serde::de::Visitor<'de> for ValueVisitor {
+            type Value = Value;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("one of: bool, i64, f64, string, null")
+            }
+
+            fn visit_bool<E: serde::de::Error>(self, v: bool) -> Result<Self::Value, E> {
+                Ok(Value::Bool(v))
+            }
+
+            fn visit_i64<E: serde::de::Error>(self, v: i64) -> Result<Self::Value, E> {
+                Ok(Value::Integer(v))
+            }
+
+            fn visit_f64<E: serde::de::Error>(self, v: f64) -> Result<Self::Value, E> {
+                Ok(Value::Double(v))
+            }
+
+            fn visit_str<E: serde::de::Error>(self, v: &str) -> Result<Self::Value, E> {
+                Ok(Value::String(v.to_string()))
+            }
+
+            fn visit_none<E: serde::de::Error>(self) -> Result<Self::Value, E> {
+                Ok(Value::None)
+            }
+
+            fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+            where
+                D: serde::Deserializer<'de>,
+            {
+                deserializer.deserialize_any(ValueVisitor)
+            }
+        }
+
+        deserializer.deserialize_any(ValueVisitor)
     }
 }
