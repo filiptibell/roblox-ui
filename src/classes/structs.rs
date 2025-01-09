@@ -1,13 +1,13 @@
 use std::collections::BTreeMap;
-use std::ops::Not; // Skip serializing 'false' bools
+use std::ops::Not; // Skip serializing 'false' bools.
+use std::sync::LazyLock;
 
 use anyhow::{Context, Result};
-use once_cell::sync::Lazy;
 use rbx_reflection::{ClassTag, ReflectionDatabase};
 use serde::Serialize;
 use url::Url;
 
-static CLASS_DATABASE: Lazy<&ReflectionDatabase> = Lazy::new(rbx_reflection_database::get);
+static CLASS_DATABASE: LazyLock<&ReflectionDatabase> = LazyLock::new(rbx_reflection_database::get);
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]

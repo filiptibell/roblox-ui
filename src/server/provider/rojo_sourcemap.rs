@@ -1,8 +1,7 @@
-use std::{process::Stdio, time::Duration};
+use std::{process::Stdio, sync::LazyLock, time::Duration};
 
 use anyhow::{bail, Context, Result};
 use command_group::{AsyncCommandGroup, AsyncGroupChild};
-use once_cell::sync::Lazy;
 use semver::{Version, VersionReq};
 use tracing::{debug, error, trace};
 
@@ -20,7 +19,8 @@ use super::{
 };
 
 const SPAWN_TIMEOUT: Duration = Duration::from_secs(5);
-static REQUIRED_VERSION: Lazy<VersionReq> = Lazy::new(|| VersionReq::parse("7.3.0").unwrap());
+static REQUIRED_VERSION: LazyLock<VersionReq> =
+    LazyLock::new(|| VersionReq::parse("7.3.0").unwrap());
 
 /**
     An instance provider that uses a rojo project

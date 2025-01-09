@@ -1,9 +1,9 @@
 use std::{
     path::{Path, PathBuf},
     str::FromStr,
+    sync::LazyLock,
 };
 
-use once_cell::sync::Lazy;
 use serde::Deserialize;
 
 use crate::util::path::make_absolute_and_clean;
@@ -151,12 +151,12 @@ impl Default for ConfigDeserializable {
     }
 }
 
-static DEFAULT_SOURCEMAP_PATH: Lazy<PathBuf> = Lazy::new(|| {
+static DEFAULT_SOURCEMAP_PATH: LazyLock<PathBuf> = LazyLock::new(|| {
     let path = PathBuf::from("sourcemap.json");
     make_absolute_and_clean(path)
 });
 
-static DEFAULT_ROJO_PROJECT_PATH: Lazy<PathBuf> = Lazy::new(|| {
+static DEFAULT_ROJO_PROJECT_PATH: LazyLock<PathBuf> = LazyLock::new(|| {
     let path = PathBuf::from("default.project.json");
     make_absolute_and_clean(path)
 });

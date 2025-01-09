@@ -2,10 +2,11 @@
 
 use std::path::{Path, PathBuf};
 
+use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use rbx_dom_weak::{types::Ref, Instance, InstanceBuilder, WeakDom};
-use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 use serde::{Deserialize, Serialize};
+use ustr::Ustr;
 
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 
@@ -38,7 +39,7 @@ pub enum DomNotification {
     Changed {
         id: Ref,
         #[serde(skip_serializing_if = "Option::is_none", rename = "className")]
-        class_name: Option<String>,
+        class_name: Option<Ustr>,
         #[serde(skip_serializing_if = "Option::is_none")]
         name: Option<String>,
     },
@@ -194,7 +195,7 @@ impl Dom {
         let inst = self.inner.get_by_ref(id).unwrap();
 
         let changed_class_name = if inst.class != node.class_name {
-            Some(node.class_name.as_str())
+            Some(node.class_name)
         } else {
             None
         };
@@ -219,7 +220,7 @@ impl Dom {
 
             Some(DomNotification::Changed {
                 id,
-                class_name: changed_class_name.map(ToOwned::to_owned),
+                class_name: changed_class_name,
                 name: changed_name.map(ToOwned::to_owned),
             })
         } else {
@@ -293,7 +294,7 @@ impl Dom {
                 // We cant remove the root of a weak dom completely, so we have to replace
                 // name & class with dummy properties and manually clear out its children
                 root.name = String::from(DOM_ROOT_NAME_NONE);
-                root.class = String::from(DOM_ROOT_NAME_NONE);
+                root.class = Ustr::from(DOM_ROOT_NAME_NONE);
                 for child_id in root.children().to_vec() {
                     self.inner.destroy(child_id);
                 }
@@ -432,7 +433,7 @@ impl Dom {
     pub async fn insert_instance(
         &mut self,
         parent: Ref,
-        class_name: String,
+        class_name: Ustr,
         name: String,
     ) -> Option<Ref> {
         let parent_paths = match (

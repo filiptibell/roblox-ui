@@ -1,6 +1,7 @@
 use std::{cmp::Ordering, path::PathBuf};
 
 use serde::{Deserialize, Serialize};
+use ustr::Ustr;
 
 /**
     A node representing an instance and its children.
@@ -10,9 +11,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InstanceNode {
-    // TODO: Do some benchmarking and see if it would be better to
-    // use one of Arc<str>, Rc<str>, Cow<str> for all this string data
-    pub class_name: String,
+    pub class_name: Ustr,
     pub name: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub file_paths: Vec<PathBuf>,

@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use futures::future::join_all;
 use serde::Deserialize;
 use tokio::fs::{metadata, read_dir, read_to_string};
+use ustr::Ustr;
 
 use crate::util::rojo::parse_name_and_class_name;
 
@@ -42,13 +43,13 @@ async fn generate_project_node_instance(
     current_depth: usize,
     parent_is_datamodel: bool,
 ) -> Option<InstanceNode> {
-    let mut class_name = node.class_name.clone().or_else(|| {
+    let mut class_name = node.class_name.or_else(|| {
         // HACK: We assume that all children of a DataModel are services which have
         // class names that are the same as their names, this is not necessarily
         // accurate, but to verify this we would have to deserialize and parse
         // the entire rbx-dom database which unnecessarily adds ~10ms to startup
         if parent_is_datamodel {
-            Some(name.clone())
+            Some(Ustr::from(&name))
         } else {
             None
         }
@@ -59,7 +60,7 @@ async fn generate_project_node_instance(
     if class_name.is_none() {
         if let Some(path) = node.path.as_deref() {
             if let Some(class) = class_name_from_path(path).await {
-                class_name.replace(class.to_owned());
+                class_name.replace(class);
             }
         }
     }
@@ -131,7 +132,7 @@ async fn read_dir_all(path: &Path) -> Vec<PathBuf> {
     paths
 }
 
-async fn class_name_from_path(path: impl AsRef<Path>) -> Option<String> {
+async fn class_name_from_path(path: impl AsRef<Path>) -> Option<Ustr> {
     let path = path.as_ref();
     let meta = match metadata(path).await {
         Err(_) => return None,
@@ -162,13 +163,12 @@ async fn class_name_from_path(path: impl AsRef<Path>) -> Option<String> {
                             None
                         }
                     })
-                    .unwrap_or("Folder")
-                    .to_string(),
+                    .unwrap_or_else(|| Ustr::from("Folder")),
             )
         }
     } else if meta.is_file() {
         if let Some((_, class_name)) = parse_name_and_class_name(path) {
-            Some(class_name.to_string())
+            Some(class_name)
         } else {
             None
         }
@@ -205,7 +205,7 @@ async fn instance_nodes_at_path(
         } else {
             let class_name = class_name_from_path(&path).await;
             children.push(InstanceNode {
-                class_name: class_name.unwrap_or_else(|| String::from("Folder")),
+                class_name: class_name.unwrap_or_else(|| Ustr::from("Folder")),
                 name: path.file_name().unwrap().to_string_lossy().to_string(),
                 file_paths: vec![path],
                 children: dir_children,
@@ -215,7 +215,7 @@ async fn instance_nodes_at_path(
         if let Some((name, class_name)) = parse_name_and_class_name(&path) {
             if name != "init" {
                 children.push(InstanceNode {
-                    class_name: class_name.to_string(),
+                    class_name,
                     name: name.to_string(),
                     file_paths: vec![path],
                     children: vec![],
@@ -230,5 +230,5 @@ async fn instance_nodes_at_path(
 #[derive(Deserialize)]
 struct InitMetaJsonStub {
     #[serde(default, rename = "className")]
-    class_name: Option<String>,
+    class_name: Option<Ustr>,
 }

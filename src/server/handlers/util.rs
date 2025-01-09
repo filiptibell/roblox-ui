@@ -1,5 +1,6 @@
 use rbx_dom_weak::{types::Ref, Instance};
 use serde::Serialize;
+use ustr::Ustr;
 
 use crate::server::dom::{Dom, InstanceMetadata};
 
@@ -9,7 +10,7 @@ pub(super) struct ResponseInstance {
     id: Ref,
     #[serde(skip_serializing_if = "Ref::is_none")]
     parent_id: Ref,
-    class_name: String,
+    class_name: Ustr,
     name: String,
     children: Vec<Ref>,
     metadata: Option<InstanceMetadata>,
@@ -20,7 +21,7 @@ impl ResponseInstance {
         Self {
             id: inst.referent(),
             parent_id: inst.parent(),
-            class_name: inst.class.to_owned(),
+            class_name: inst.class,
             name: inst.name.to_owned(),
             children: inst.children().to_vec(),
             metadata: None,

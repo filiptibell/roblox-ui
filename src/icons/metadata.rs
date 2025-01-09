@@ -1,14 +1,14 @@
 use std::borrow::Borrow;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+use std::sync::LazyLock;
 
 use anyhow::{bail, Context, Result};
 use bytes::Bytes;
-use once_cell::sync::Lazy;
 use rbx_reflection::ReflectionDatabase;
 use serde::Serialize;
 
-static CLASS_DATABASE: Lazy<&ReflectionDatabase> = Lazy::new(rbx_reflection_database::get);
+static CLASS_DATABASE: LazyLock<&ReflectionDatabase> = LazyLock::new(rbx_reflection_database::get);
 const CLASS_ICON_FALLBACKS: &[(&str, &[&str])] = &[("Package", &["PackageLink"])];
 
 fn class_name_from_path(path: &Path) -> Result<&str> {

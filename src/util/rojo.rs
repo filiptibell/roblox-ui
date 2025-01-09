@@ -1,5 +1,7 @@
 use std::path::Path;
 
+use ustr::Ustr;
+
 /**
     File extension -> class name conversions as defined by the Rojo spec:
 
@@ -39,11 +41,11 @@ pub fn parse_name_and_suffix(path: &Path) -> Option<(&str, &str)> {
     None
 }
 
-pub fn parse_name_and_class_name(path: &Path) -> Option<(&str, &'static str)> {
+pub fn parse_name_and_class_name(path: &Path) -> Option<(&str, Ustr)> {
     let file_name = file_name_str(path)?;
     for (suffix, class_name) in CLASS_NAME_SUFFIXES {
         if let Some(name) = file_name.strip_suffix(suffix) {
-            return Some((name, class_name));
+            return Some((name, Ustr::from(class_name)));
         }
     }
     None

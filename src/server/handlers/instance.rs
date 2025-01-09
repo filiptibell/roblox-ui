@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use rbx_dom_weak::types::Ref;
 use serde::Deserialize;
+use ustr::Ustr;
 
 use super::util::ResponseInstance;
 use crate::server::{dom::Dom, rpc::RpcMessage};
@@ -9,7 +10,7 @@ use crate::server::{dom::Dom, rpc::RpcMessage};
 #[serde(rename_all = "camelCase")]
 pub(super) struct InsertRequest {
     parent_id: Ref,
-    class_name: String,
+    class_name: Ustr,
     name: String,
 }
 

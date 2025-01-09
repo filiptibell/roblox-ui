@@ -6,6 +6,7 @@ use std::{
 use anyhow::Result;
 use serde::Deserialize;
 use serde_json::{Map as JsonMap, Value as JsonValue};
+use ustr::Ustr;
 
 use super::rojo_client::{RojoClient, RojoSessionInfo};
 
@@ -18,7 +19,7 @@ pub struct RojoProjectFileNode {
     #[serde(rename = "$path")]
     pub path: Option<PathBuf>,
     #[serde(rename = "$className")]
-    pub class_name: Option<String>,
+    pub class_name: Option<Ustr>,
     #[serde(flatten)]
     pub other_fields: JsonMap<String, JsonValue>,
 }
