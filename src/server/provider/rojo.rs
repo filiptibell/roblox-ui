@@ -7,7 +7,7 @@ use anyhow::Result;
 use serde::Deserialize;
 use serde_json::{Map as JsonMap, Value as JsonValue};
 
-use super::rojo_client::{RojoSessionClient, RojoSessionInfo};
+use super::rojo_client::{RojoClient, RojoSessionInfo};
 
 /**
     Stub representing a rojo project file instance node.
@@ -95,7 +95,7 @@ impl RojoProjectFile {
         let addr = self.serve_address();
 
         // Try to connect and request info about any current serve session
-        let client = RojoSessionClient::connect(addr).await.ok()?;
+        let client = RojoClient::connect(addr).await.ok()?;
         let info = client.get_info().await.ok()?;
 
         // Now that we have the info struct we need to verify that it actually

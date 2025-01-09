@@ -4,13 +4,13 @@ use anyhow::{bail, Context, Result};
 use serde::Deserialize;
 use tokio::net::TcpStream;
 
-pub struct RojoSessionClient {
+pub struct RojoClient {
     client: reqwest::Client,
     url_info: String,
     url_read: String,
 }
 
-impl RojoSessionClient {
+impl RojoClient {
     /**
         Connect and create a client for the rojo serve session at the given `addr`.
 
