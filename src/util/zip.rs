@@ -63,12 +63,9 @@ where
     let mut reader = Cursor::new(zip_bytes);
     let mut contents = Vec::new();
 
-    let mut archive =
-        zip::ZipArchive::new(&mut reader).context("failed to read classic icon pack zip file")?;
+    let mut archive = zip::ZipArchive::new(&mut reader).context("failed to read zip file")?;
     for i in 0..archive.len() {
-        let mut file = archive
-            .by_index(i)
-            .context("failed to read classic icon pack zip file")?;
+        let mut file = archive.by_index(i).context("failed to read zip file")?;
 
         if !file.is_file() {
             continue;

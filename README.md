@@ -1,7 +1,7 @@
 <!-- markdownlint-disable MD033 -->
 <!-- markdownlint-disable MD041 -->
 
-<img align="right" width="256" src="assets/icon-256.png" />
+<img align="right" width="256" src="assets/icon-256.png" alt="Roblox UI icon" />
 
 <h1 align="center">Roblox UI</h1>
 

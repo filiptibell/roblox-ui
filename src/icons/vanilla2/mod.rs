@@ -2,7 +2,6 @@ use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 use bytes::Bytes;
-use tokio::join;
 
 use usvg::{
     NodeExt as _, NodeKind, NonZeroRect, Options as SvgOptions, Paint, Rect, Size, Tree as SvgTree,
@@ -22,34 +21,10 @@ use svg::*;
 pub struct Vanilla2;
 
 impl IconPackProvider for Vanilla2 {
-    async fn download(&self) -> Result<IconPackContents> {
-        let client = reqwest::Client::new();
-
-        let (response_palettes, response_icondata, response_icons_svg) = join!(
-            client.get(PACK_PALETTES_URL).send(),
-            client.get(PACK_ICON_DATA_URL).send(),
-            client.get(PACK_ICONS_SVG_URL).send()
-        );
-
-        let (bytes_palettes, bytes_icondata, bytes_icons_svg) = join!(
-            response_palettes
-                .context("failed to download palettes (1)")?
-                .bytes(),
-            response_icondata
-                .context("failed to download icondata (1)")?
-                .bytes(),
-            response_icons_svg
-                .context("failed to download icons svg (1)")?
-                .bytes()
-        );
-
-        let bytes_palettes = bytes_palettes.context("failed to download palettes (2)")?;
-        let bytes_icondata = bytes_icondata.context("failed to download palettes (2)")?;
-        let bytes_icons_svg = bytes_icons_svg.context("failed to download icons svg (2)")?;
-
-        let palettes: Palettes = serde_json::from_slice(bytes_palettes.as_ref())
+    async fn get(&self) -> Result<IconPackContents> {
+        let palettes: Palettes = serde_json::from_slice(PACK_CONTENTS_PALETTES)
             .context("failed to deserialize palettes")?;
-        let icon_datas: Vec<IconData> = serde_json::from_slice(bytes_icondata.as_ref())
+        let icon_datas: Vec<IconData> = serde_json::from_slice(PACK_CONTENTS_ICON_DATA)
             .context("failed to deserialize icondata")?;
 
         let palette_id_light = palettes
@@ -78,14 +53,21 @@ impl IconPackProvider for Vanilla2 {
             .context("failed to find dark palette")?;
 
         let mut contents = IconPackContents::new();
-        for (path, bytes) in
-            generate_svgs(palette_source, palette_light, &icon_datas, &bytes_icons_svg)?
-        {
+
+        for (path, bytes) in generate_svgs(
+            palette_source,
+            palette_light,
+            &icon_datas,
+            PACK_CONTENTS_ICONS_SVG,
+        )? {
             contents.insert_icon_light(path, bytes);
         }
-        for (path, bytes) in
-            generate_svgs(palette_source, palette_dark, &icon_datas, &bytes_icons_svg)?
-        {
+        for (path, bytes) in generate_svgs(
+            palette_source,
+            palette_dark,
+            &icon_datas,
+            PACK_CONTENTS_ICONS_SVG,
+        )? {
             contents.insert_icon_dark(path, bytes);
         }
 

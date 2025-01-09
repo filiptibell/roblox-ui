@@ -20,10 +20,10 @@ impl IconPack {
         &[Self::Classic, Self::Vanilla2]
     }
 
-    pub async fn download(self) -> Result<IconPackContents> {
+    pub async fn get(self) -> Result<IconPackContents> {
         match self {
-            Self::Classic => Classic.download().await,
-            Self::Vanilla2 => Vanilla2.download().await,
+            Self::Classic => Classic.get().await,
+            Self::Vanilla2 => Vanilla2.get().await,
         }
     }
 }
@@ -56,5 +56,5 @@ impl FromStr for IconPack {
 }
 
 pub trait IconPackProvider {
-    async fn download(&self) -> Result<IconPackContents>;
+    async fn get(&self) -> Result<IconPackContents>;
 }
