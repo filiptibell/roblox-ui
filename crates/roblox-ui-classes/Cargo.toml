@@ -1,0 +1,17 @@
+[package]
+name = "roblox-ui-classes"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+anyhow = { workspace = true }
+const_format = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+url = { workspace = true }
+reqwest = { workspace = true }
+rbx_reflection = { workspace = true }
+rbx_reflection_database = { workspace = true }

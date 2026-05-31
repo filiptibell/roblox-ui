@@ -1711,36 +1711,128 @@ dependencies = [
 name = "roblox-ui"
 version = "0.3.3"
 dependencies = [
- "ahash",
  "anyhow",
  "bytes",
  "clap",
- "command-group",
+ "futures",
+ "rayon",
+ "roblox-ui-classes",
+ "roblox-ui-data",
+ "roblox-ui-icons",
+ "roblox-ui-reflection",
+ "roblox-ui-server",
+ "roblox-ui-util",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "roblox-ui-classes"
+version = "0.3.3"
+dependencies = [
+ "anyhow",
  "const_format",
+ "rbx_reflection",
+ "rbx_reflection_database",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "url",
+]
+
+[[package]]
+name = "roblox-ui-data"
+version = "0.3.3"
+dependencies = [
+ "anyhow",
+ "const_format",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "strum",
+ "url",
+ "ustr",
+]
+
+[[package]]
+name = "roblox-ui-icons"
+version = "0.3.3"
+dependencies = [
+ "anyhow",
+ "bytes",
+ "futures",
+ "rbx_reflection",
+ "rbx_reflection_database",
+ "roblox-ui-util",
+ "serde",
+ "serde_json",
+ "serde_with",
+ "thiserror 2.0.10",
+ "tokio",
+ "usvg",
+]
+
+[[package]]
+name = "roblox-ui-project"
+version = "0.3.3"
+dependencies = [
+ "ahash",
+ "anyhow",
+ "command-group",
  "futures",
  "notify",
  "notify-debouncer-full",
  "path-clean",
- "quick-xml",
  "rayon",
  "rbx_dom_weak",
- "rbx_reflection",
- "rbx_reflection_database",
  "reqwest",
+ "roblox-ui-util",
  "semver",
  "serde",
  "serde_json",
- "serde_with",
  "strsim",
- "strum",
+ "tokio",
+ "tracing",
+ "ustr",
+]
+
+[[package]]
+name = "roblox-ui-reflection"
+version = "0.3.3"
+dependencies = [
+ "anyhow",
+ "const_format",
+ "quick-xml",
+ "reqwest",
+ "serde",
+ "thiserror 2.0.10",
+]
+
+[[package]]
+name = "roblox-ui-server"
+version = "0.3.3"
+dependencies = [
+ "anyhow",
+ "rbx_dom_weak",
+ "roblox-ui-project",
+ "serde",
+ "serde_json",
  "thiserror 2.0.10",
  "tokio",
- "toml",
  "tracing",
- "tracing-subscriber",
- "url",
  "ustr",
- "usvg",
+]
+
+[[package]]
+name = "roblox-ui-util"
+version = "0.3.3"
+dependencies = [
+ "anyhow",
+ "bytes",
+ "path-clean",
+ "ustr",
  "zip",
 ]
 
@@ -1889,15 +1981,6 @@ dependencies = [
  "itoa",
  "memchr",
  "ryu",
- "serde",
-]
-
-[[package]]
-name = "serde_spanned"
-version = "0.6.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87607cb1398ed59d48732e575a4c28a7a8ebf2454b964fe3f224f2afc07909e1"
-dependencies = [
  "serde",
 ]
 
@@ -2285,40 +2368,6 @@ dependencies = [
  "futures-sink",
  "pin-project-lite",
  "tokio",
-]
-
-[[package]]
-name = "toml"
-version = "0.8.19"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a1ed1f98e3fdc28d6d910e6737ae6ab1a93bf1985935a1193e68f93eeb68d24e"
-dependencies = [
- "serde",
- "serde_spanned",
- "toml_datetime",
- "toml_edit",
-]
-
-[[package]]
-name = "toml_datetime"
-version = "0.6.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0dd7358ecb8fc2f8d014bf86f6f638ce72ba252a2c3a2572f2a795f1d23efb41"
-dependencies = [
- "serde",
-]
-
-[[package]]
-name = "toml_edit"
-version = "0.22.22"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ae48d6208a266e853d946088ed816055e556cc6028c5e8e2b84d9fa5dd7c7f5"
-dependencies = [
- "indexmap 2.7.0",
- "serde",
- "serde_spanned",
- "toml_datetime",
- "winnow",
 ]
 
 [[package]]
@@ -2863,15 +2912,6 @@ name = "windows_x86_64_msvc"
 version = "0.52.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "589f6da84c646204747d1270a2a5661ea66ed1cced2631d546fdfb155959f9ec"
-
-[[package]]
-name = "winnow"
-version = "0.6.22"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39281189af81c07ec09db316b302a3e67bf9bd7cbf6c820b50e35fee9c2fa980"
-dependencies = [
- "memchr",
-]
 
 [[package]]
 name = "write16"

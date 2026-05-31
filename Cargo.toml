@@ -1,5 +1,8 @@
-[package]
-name = "roblox-ui"
+[workspace]
+resolver = "2"
+members = ["crates/*"]
+
+[workspace.package]
 version = "0.3.3"
 edition = "2021"
 description = "A frontend for Roblox projects"
@@ -9,16 +12,17 @@ repository = "https://github.com/filiptibell/roblox-ui"
 license = "MPL-2.0"
 publish = false
 
-[[bin]]
-name = "roblox-ui"
-path = "src/main.rs"
+[workspace.dependencies]
+# Internal crates
+roblox-ui-util = { path = "crates/roblox-ui-util" }
+roblox-ui-reflection = { path = "crates/roblox-ui-reflection" }
+roblox-ui-classes = { path = "crates/roblox-ui-classes" }
+roblox-ui-data = { path = "crates/roblox-ui-data" }
+roblox-ui-icons = { path = "crates/roblox-ui-icons" }
+roblox-ui-project = { path = "crates/roblox-ui-project" }
+roblox-ui-server = { path = "crates/roblox-ui-server" }
 
-[profile.release]
-opt-level = "z"
-strip = true
-lto = true
-
-[dependencies]
+# External crates
 ahash = "0.8"
 anyhow = "1.0"
 bytes = "1.0"
@@ -35,10 +39,9 @@ strum = { version = "0.26", features = ["derive"] }
 url = { version = "2.4", features = ["serde"] }
 ustr = { version = "1.0", features = ["serde"] }
 
-serde = { version = "1.0", features = ["rc"] }
+serde = { version = "1.0", features = ["rc", "derive"] }
 serde_with = "3.4"
 serde_json = "1.0"
-toml = "0.8"
 
 futures = "0.3"
 tokio = { version = "1.34", features = ["full"] }
@@ -50,24 +53,16 @@ rbx_dom_weak = { git = "https://github.com/rojo-rbx/rbx-dom", rev = "8e750dcc37b
 rbx_reflection = { git = "https://github.com/rojo-rbx/rbx-dom", rev = "8e750dcc37b68a76b854edc3bcbe17896d72a6a1" }
 rbx_reflection_database = { git = "https://github.com/rojo-rbx/rbx-dom", rev = "8e750dcc37b68a76b854edc3bcbe17896d72a6a1" }
 
-[dependencies.notify]
-version = "7.0"
-default-features = false
+notify = { version = "7.0", default-features = false }
+notify-debouncer-full = { version = "0.4", default-features = false }
 
-[dependencies.notify-debouncer-full]
-version = "0.4"
-default-features = false
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "gzip"] }
 
-[dependencies.reqwest]
-version = "0.12"
-default-features = false
-features = ["rustls-tls", "gzip"]
+clap = { version = "4.4", features = ["derive", "env"] }
 
-[dependencies.clap]
-version = "4.4"
-features = ["derive", "env"]
+zip = { version = "2.1", default-features = false, features = ["deflate", "bzip2", "zstd"] }
 
-[dependencies.zip]
-version = "2.1"
-default-features = false
-features = ["deflate", "bzip2", "zstd"]
+[profile.release]
+opt-level = "z"
+strip = true
+lto = true

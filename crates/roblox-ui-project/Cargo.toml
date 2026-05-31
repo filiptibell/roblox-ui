@@ -1,0 +1,28 @@
+[package]
+name = "roblox-ui-project"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+roblox-ui-util = { workspace = true }
+
+ahash = { workspace = true }
+anyhow = { workspace = true }
+command-group = { workspace = true }
+futures = { workspace = true }
+path-clean = { workspace = true }
+rayon = { workspace = true }
+semver = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+strsim = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+ustr = { workspace = true }
+rbx_dom_weak = { workspace = true }
+notify = { workspace = true }
+notify-debouncer-full = { workspace = true }
+reqwest = { workspace = true }

@@ -1,0 +1,14 @@
+[package]
+name = "roblox-ui-util"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+anyhow = { workspace = true }
+bytes = { workspace = true }
+path-clean = { workspace = true }
+ustr = { workspace = true }
+zip = { workspace = true }
