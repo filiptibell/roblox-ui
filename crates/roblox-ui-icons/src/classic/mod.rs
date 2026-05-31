@@ -7,6 +7,7 @@ use roblox_ui_util::zip::extract_files_from_zip;
 use super::*;
 
 mod constants;
+
 use constants::*;
 
 pub struct Classic;

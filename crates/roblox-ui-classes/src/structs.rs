@@ -1,5 +1,5 @@
 use std::collections::BTreeMap;
-use std::ops::Not; // Skip serializing 'false' bools.
+use std::ops::Not;
 use std::sync::LazyLock;
 
 use anyhow::{Context, Result};

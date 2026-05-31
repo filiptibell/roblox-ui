@@ -1,5 +1,4 @@
 use anyhow::{bail, Context, Result};
-
 use usvg::Color;
 
 pub fn color_from_hex(hex: impl AsRef<str>) -> Result<Color> {

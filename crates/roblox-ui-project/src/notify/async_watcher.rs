@@ -4,12 +4,11 @@ use std::{
 };
 
 use anyhow::Result;
-use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
-use tracing::error;
-
 use notify_debouncer_full::{
     new_debouncer, notify::*, DebounceEventResult, DebouncedEvent, Debouncer, RecommendedCache,
 };
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
+use tracing::error;
 
 fn is_matching_path(path: &Path, relevant_paths: &[PathBuf]) -> bool {
     let file_name = path.file_name().and_then(|f| f.to_str());

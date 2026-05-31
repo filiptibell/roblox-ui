@@ -6,9 +6,10 @@ use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use rbx_dom_weak::{types::Ref, Instance, InstanceBuilder, WeakDom};
 use serde::{Deserialize, Serialize};
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use ustr::Ustr;
 
-use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
+use roblox_ui_util::path::make_absolute_and_clean;
 
 mod fs;
 mod meta;
@@ -19,8 +20,6 @@ mod util;
 pub use meta::*;
 pub use node::*;
 pub use query::*;
-
-use roblox_ui_util::path::make_absolute_and_clean;
 
 // NOTE: If anyone ever names their root instance this, things may break... let's hope they don't
 const DOM_ROOT_NAME_NONE: &str = "<|<|<|ROOT|>|>|>";

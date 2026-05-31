@@ -4,6 +4,9 @@ use anyhow::Result;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tracing::error;
 
+use crate::config::Config;
+use crate::dom::InstanceNode;
+
 mod file_sourcemap;
 mod none;
 mod rojo;
@@ -14,9 +17,6 @@ mod variant;
 
 pub use rojo::*;
 pub use variant::*;
-
-use crate::config::Config;
-use crate::dom::InstanceNode;
 
 /**
     A fault-tolerant instance provider & watcher.

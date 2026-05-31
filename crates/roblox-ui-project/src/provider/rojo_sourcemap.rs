@@ -3,8 +3,6 @@ use std::{process::Stdio, sync::LazyLock, time::Duration};
 use anyhow::{bail, Context, Result};
 use command_group::{AsyncCommandGroup, AsyncGroupChild};
 use semver::{Version, VersionReq};
-use tracing::{debug, error, trace};
-
 use tokio::{
     io::{AsyncBufReadExt, AsyncReadExt, BufReader},
     process::{ChildStderr, ChildStdout, Command},
@@ -12,6 +10,7 @@ use tokio::{
     task::{self},
     time::sleep,
 };
+use tracing::{debug, error, trace};
 
 use super::{
     super::config::Config, rojo_stub::generate_project_file_instance_tree, InstanceNode,

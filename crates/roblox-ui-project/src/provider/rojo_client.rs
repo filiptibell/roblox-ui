@@ -119,9 +119,11 @@ pub struct RojoSessionInstance {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RojoSessionInstanceMetadata {
-    /// NOTE: This field does not exist yet, but will probably be added in a future PR
-    ///
-    /// https://github.com/rojo-rbx/rojo/pull/337
+    /**
+        NOTE: This field does not exist yet, but will probably be added in a future PR
+
+        https://github.com/rojo-rbx/rojo/pull/337
+    */
     #[serde(default)]
     pub relevant_paths: Vec<PathBuf>,
 }

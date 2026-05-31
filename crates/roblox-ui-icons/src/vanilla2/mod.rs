@@ -2,7 +2,6 @@ use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 use bytes::Bytes;
-
 use usvg::{
     NodeExt as _, NodeKind, NonZeroRect, Options as SvgOptions, Paint, Rect, Size, Tree as SvgTree,
     TreeParsing as _, TreeWriting as _, ViewBox, XmlOptions,

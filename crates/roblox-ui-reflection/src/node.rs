@@ -1,8 +1,10 @@
 use std::collections::{BTreeMap, VecDeque};
 
 use anyhow::{bail, Context, Result};
-use quick_xml::events::{BytesStart, Event as XmlEvent};
-use quick_xml::Reader as XmlReader;
+use quick_xml::{
+    events::{BytesStart, Event as XmlEvent},
+    Reader as XmlReader,
+};
 
 use super::value::*;
 

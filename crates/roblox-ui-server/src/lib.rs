@@ -6,14 +6,14 @@ use tokio::{
     task::JoinSet,
 };
 
+use roblox_ui_project::{Dom, InstanceProvider};
+
+pub use roblox_ui_project::Config;
+
 mod handlers;
 mod output;
 mod rpc;
 mod tasks;
-
-use roblox_ui_project::{Dom, InstanceProvider};
-
-pub use roblox_ui_project::Config;
 
 pub struct Server {
     config: Config,

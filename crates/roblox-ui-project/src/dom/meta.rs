@@ -1,9 +1,8 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use serde::Serialize;
-
 use rbx_dom_weak::types::Ref;
+use serde::Serialize;
 
 use roblox_ui_util::path::make_absolute_and_clean;
 
@@ -242,23 +241,35 @@ impl InstanceMetadataPackage {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InstanceMetadataActions {
-    /// If the instance can be "opened" by directly clicking on it or not.
+    /**
+        If the instance can be "opened" by directly clicking on it or not.
+    */
     #[serde(skip_serializing_if = "is_false")]
     pub can_open: bool,
-    /// If the instance can be moved or not.
-    /// This includes actions such as drag & drop, copy, and cut.
+    /**
+        If the instance can be moved or not.
+        This includes actions such as drag & drop, copy, and cut.
+    */
     #[serde(skip_serializing_if = "is_false")]
     pub can_move: bool,
-    /// If an instance can be pasted as a sibling (next to this instance) or not.
+    /**
+        If an instance can be pasted as a sibling (next to this instance) or not.
+    */
     #[serde(skip_serializing_if = "is_false")]
     pub can_paste_sibling: bool,
-    /// If an instance can be pasted as a child of this instance or not.
+    /**
+        If an instance can be pasted as a child of this instance or not.
+    */
     #[serde(skip_serializing_if = "is_false")]
     pub can_paste_into: bool,
-    /// If a service can be inserted as a child of this instance or not.
+    /**
+        If a service can be inserted as a child of this instance or not.
+    */
     #[serde(skip_serializing_if = "is_false")]
     pub can_insert_service: bool,
-    /// If a non-service / normal instance can be inserted as a child of this instance or not.
+    /**
+        If a non-service / normal instance can be inserted as a child of this instance or not.
+    */
     #[serde(skip_serializing_if = "is_false")]
     pub can_insert_object: bool,
 }
@@ -285,26 +296,38 @@ impl InstanceMetadataActions {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InstanceMetadataPaths {
-    /// Source directory of the instance. Should only be present if the
-    /// instance was created by a file, or a directory with only a meta file.
+    /**
+        Source directory of the instance. Should only be present if the
+        instance was created by a file, or a directory with only a meta file.
+    */
     #[serde(skip_serializing_if = "Option::is_none")]
     pub folder: Option<PathBuf>,
-    /// Main file that created this instance.
+    /**
+        Main file that created this instance.
+    */
     #[serde(skip_serializing_if = "Option::is_none")]
     pub file: Option<PathBuf>,
-    /// Metadata file (`.meta.json`) for this instance.
+    /**
+        Metadata file (`.meta.json`) for this instance.
+    */
     #[serde(skip_serializing_if = "Option::is_none")]
     pub file_meta: Option<PathBuf>,
-    /// Path to the Rojo manifest, if the instance came from Rojo.
-    /// Only present for the root instance / dom root metadata.
+    /**
+        Path to the Rojo manifest, if the instance came from Rojo.
+        Only present for the root instance / dom root metadata.
+    */
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rojo: Option<PathBuf>,
-    /// Path to the Wally manifest, if one was found.
-    /// Only present for the root instance / dom root metadata.
+    /**
+        Path to the Wally manifest, if one was found.
+        Only present for the root instance / dom root metadata.
+    */
     #[serde(skip_serializing_if = "Option::is_none")]
     pub wally: Option<PathBuf>,
-    /// Path to the Wally lockfile, if one was found.
-    /// Only present for the root instance / dom root metadata.
+    /**
+        Path to the Wally lockfile, if one was found.
+        Only present for the root instance / dom root metadata.
+    */
     #[serde(skip_serializing_if = "Option::is_none")]
     pub wally_lock: Option<PathBuf>,
 }
