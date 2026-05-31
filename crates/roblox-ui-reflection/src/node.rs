@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, VecDeque};
 use anyhow::{bail, Context, Result};
 use quick_xml::{
     events::{BytesStart, Event as XmlEvent},
-    Reader as XmlReader,
+    Reader as XmlReader, XmlVersion,
 };
 
 use super::value::*;
@@ -56,7 +56,7 @@ impl Node {
             .try_get_attribute("class")
             .context("failed to get xml attribute")?
             .context("missing class attribute for item node")?
-            .unescape_value()?
+            .normalized_value(XmlVersion::Implicit1_0)?
             .trim_start_matches("ReflectionMetadata")
             .to_string();
         Ok(Self::Item {
@@ -76,7 +76,7 @@ impl Node {
             .try_get_attribute("name")
             .context("failed to get xml attribute")?
             .context("missing name attribute for value node")?
-            .unescape_value()?
+            .normalized_value(XmlVersion::Implicit1_0)?
             .into_owned();
 
         Ok(Self::Value {
@@ -243,7 +243,7 @@ pub fn parse_reflection_tree(reflection_bytes: &[u8]) -> Result<Node> {
                     ref mut value,
                 }) = last_inserted_child
                 {
-                    let value_str: &str = &e.unescape()?;
+                    let value_str: &str = &e.xml_content(XmlVersion::Implicit1_0)?;
                     let value_new = Value::parse(*kind, name, value_str).with_context(|| {
                         format!("failed to parse value '{value_str}' as {kind} for prop '{name}'")
                     })?;

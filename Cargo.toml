@@ -26,30 +26,30 @@ roblox-ui-server = { path = "crates/roblox-ui-server" }
 # External crates
 ahash = "0.8"
 anyhow = "1.0"
-bytes = "1.0"
+bytes = "1.11"
 const_format = "0.2"
 path-clean = "1.0"
-quick-xml = "0.37"
+quick-xml = "0.40"
 semver = "1.0"
 strsim = "0.11"
 thiserror = "2.0"
 usvg = "0.47"
 
-strum = { version = "0.26", features = ["derive"] }
+strum = { version = "0.28", features = ["derive"] }
 url = { version = "2.5", features = ["serde"] }
-ustr = { version = "1.0", features = ["serde"] }
+ustr = { version = "1.1", features = ["serde"] }
 
 serde = { version = "1.0", features = ["rc", "derive"] }
-serde_with = "3.4"
+serde_with = "3.20"
 serde_json = "1.0"
 
 # Async runtime (smol / async-* ecosystem, matching lune-org/lune)
-async-global-executor = { version = "3", features = ["async-io"] }
-async-channel = "2.3"
+async-global-executor = { version = "3.1", features = ["async-io"] }
+async-channel = "2.5"
 async-lock = "3.4"
-async-io = "2.4"
+async-io = "2.6"
 async-net = "2.0"
-async-fs = "2.1"
+async-fs = "2.2"
 async-process = "2.3"
 blocking = "1.6"
 futures-lite = "2.6"
@@ -59,23 +59,23 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # HTTP client stack (hyper, matching lune-org/lune)
-hyper = { version = "1.6", default-features = false, features = ["http1", "client"] }
+hyper = { version = "1.10", default-features = false, features = ["http1", "client"] }
 http-body-util = "0.1"
 futures-rustls = "0.26"
 rustls = { version = "0.23", default-features = false, features = ["std", "tls12", "ring"] }
-rustls-pki-types = "1.11"
+rustls-pki-types = "1.14"
 webpki-roots = "1.0"
 
-rbx_dom_weak = "4.0"
-rbx_reflection = "6.0"
+rbx_dom_weak = "4.1"
+rbx_reflection = "6.1"
 rbx_reflection_database = "2.0"
 
-notify = { version = "7.0", default-features = false }
-notify-debouncer-full = { version = "0.4", default-features = false }
+notify = { version = "8.2", default-features = false }
+notify-debouncer-full = { version = "0.7", default-features = false }
 
-clap = { version = "4.4", features = ["derive", "env"] }
+clap = { version = "4.6", features = ["derive", "env"] }
 
-zip = { version = "2.1", default-features = false, features = ["deflate", "bzip2", "zstd"] }
+zip = { version = "8.6", default-features = false, features = ["deflate", "bzip2", "zstd"] }
 
 [profile.release]
 opt-level = "z"
