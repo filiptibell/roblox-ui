@@ -1,11 +1,9 @@
+use std::fmt::Write;
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 use bytes::Bytes;
-use usvg::{
-    NodeExt as _, NodeKind, NonZeroRect, Options as SvgOptions, Paint, Rect, Size, Tree as SvgTree,
-    TreeParsing as _, TreeWriting as _, ViewBox, XmlOptions,
-};
+use usvg::{tiny_skia_path::PathSegment, Node, Options, Paint, Transform, Tree};
 
 use super::*;
 
@@ -51,22 +49,18 @@ impl IconPackProvider for Vanilla2 {
             .find(|p| p.id == *palette_id_dark)
             .context("failed to find dark palette")?;
 
-        let mut contents = IconPackContents::new();
+        // Parse the icon sprite sheet once. usvg 0.44 trees are immutable, so
+        // rather than mutating it we read each path's absolute geometry + fill
+        // out of it and re-render one small SVG per icon below.
+        let tree = Tree::from_data(PACK_CONTENTS_ICONS_SVG, &Options::default())
+            .context("failed to parse icons svg")?;
+        let sprites = collect_sprite_paths(&tree);
 
-        for (path, bytes) in generate_svgs(
-            palette_source,
-            palette_light,
-            &icon_datas,
-            PACK_CONTENTS_ICONS_SVG,
-        )? {
+        let mut contents = IconPackContents::new();
+        for (path, bytes) in generate_svgs(palette_source, palette_light, &icon_datas, &sprites) {
             contents.insert_icon_light(path, bytes);
         }
-        for (path, bytes) in generate_svgs(
-            palette_source,
-            palette_dark,
-            &icon_datas,
-            PACK_CONTENTS_ICONS_SVG,
-        )? {
+        for (path, bytes) in generate_svgs(palette_source, palette_dark, &icon_datas, &sprites) {
             contents.insert_icon_dark(path, bytes);
         }
 
@@ -74,17 +68,144 @@ impl IconPackProvider for Vanilla2 {
     }
 }
 
+/**
+    A single path extracted from the sprite sheet, in absolute coordinates.
+*/
+struct SpritePath {
+    /// Left edge of the path's absolute bounding box.
+    left: f32,
+    /// Right edge of the path's absolute bounding box.
+    right: f32,
+    /// The SVG path `d` attribute, in absolute sprite-sheet coordinates.
+    data: String,
+    /// The path's solid fill color, if any.
+    fill: Option<Rgb>,
+    /// The fill opacity in the range 0.0..=1.0.
+    opacity: f32,
+    /// Whether the fill uses the even-odd rule.
+    even_odd: bool,
+}
+
+/**
+    Walks the parsed tree and extracts every path with its absolute geometry.
+*/
+fn collect_sprite_paths(tree: &Tree) -> Vec<SpritePath> {
+    let mut out = Vec::new();
+    collect_from_group(tree.root(), 1.0, &mut out);
+    out
+}
+
+/**
+    `inherited_opacity` is the product of all ancestor group opacities, which
+    usvg keeps on the group rather than baking into each path's fill.
+*/
+fn collect_from_group(group: &usvg::Group, inherited_opacity: f32, out: &mut Vec<SpritePath>) {
+    let group_opacity = inherited_opacity * group.opacity().get();
+    for node in group.children() {
+        match node {
+            Node::Group(child) => collect_from_group(child, group_opacity, out),
+            Node::Path(path) => {
+                let bbox = path.abs_bounding_box();
+
+                let fill = path.fill().and_then(|fill| match fill.paint() {
+                    Paint::Color(color) => Some((color.red, color.green, color.blue)),
+                    _ => None,
+                });
+                let even_odd = path
+                    .fill()
+                    .map(|f| matches!(f.rule(), usvg::FillRule::EvenOdd))
+                    .unwrap_or(false);
+                let fill_opacity = path.fill().map(|f| f.opacity().get()).unwrap_or(1.0);
+                let opacity = group_opacity * fill_opacity;
+
+                out.push(SpritePath {
+                    left: bbox.x(),
+                    right: bbox.x() + bbox.width(),
+                    data: path_to_abs_d(path),
+                    fill,
+                    opacity,
+                    even_odd,
+                });
+            }
+            _ => {}
+        }
+    }
+}
+
+/**
+    Renders a usvg path's geometry to an SVG `d` string, applying the path's
+    absolute transform so the result is in sprite-sheet coordinates.
+*/
+fn path_to_abs_d(path: &usvg::Path) -> String {
+    let ts = path.abs_transform();
+    let mut d = String::new();
+    for segment in path.data().segments() {
+        match segment {
+            PathSegment::MoveTo(p) => {
+                let (x, y) = map(ts, p.x, p.y);
+                let _ = write!(d, "M{} {}", num(x), num(y));
+            }
+            PathSegment::LineTo(p) => {
+                let (x, y) = map(ts, p.x, p.y);
+                let _ = write!(d, "L{} {}", num(x), num(y));
+            }
+            PathSegment::QuadTo(p1, p) => {
+                let (x1, y1) = map(ts, p1.x, p1.y);
+                let (x, y) = map(ts, p.x, p.y);
+                let _ = write!(d, "Q{} {} {} {}", num(x1), num(y1), num(x), num(y));
+            }
+            PathSegment::CubicTo(p1, p2, p) => {
+                let (x1, y1) = map(ts, p1.x, p1.y);
+                let (x2, y2) = map(ts, p2.x, p2.y);
+                let (x, y) = map(ts, p.x, p.y);
+                let _ = write!(
+                    d,
+                    "C{} {} {} {} {} {}",
+                    num(x1),
+                    num(y1),
+                    num(x2),
+                    num(y2),
+                    num(x),
+                    num(y)
+                );
+            }
+            PathSegment::Close => d.push('Z'),
+        }
+    }
+    d
+}
+
+fn map(ts: Transform, x: f32, y: f32) -> (f32, f32) {
+    (ts.sx * x + ts.kx * y + ts.tx, ts.ky * x + ts.sy * y + ts.ty)
+}
+
+/**
+    Formats a float compactly (no trailing zeros).
+*/
+fn num(value: f32) -> String {
+    let rounded = (value * 1000.0).round() / 1000.0;
+    let s = format!("{rounded}");
+    if s == "-0" {
+        "0".to_string()
+    } else {
+        s
+    }
+}
+
 fn generate_svgs(
     source_palette: &Palette,
     target_palette: &Palette,
     icon_datas: &[IconData],
-    svg_bytes: &[u8],
-) -> Result<Vec<(PathBuf, Bytes)>> {
-    let svg_options = SvgOptions::default();
-    let xml_options = XmlOptions::default();
-
-    let svg_tree = SvgTree::from_data(svg_bytes, &svg_options)
-        .context("failed to parse svg contents into tree")?;
+    sprites: &[SpritePath],
+) -> Vec<(PathBuf, Bytes)> {
+    // When the source and target palettes are the same (e.g. the light pack,
+    // whose default palette IS the source palette) we leave the sprite-sheet
+    // colors exactly as-is, matching the original generator.
+    let recolor_pairs = if source_palette == target_palette {
+        Vec::new()
+    } else {
+        build_recolor_pairs(source_palette, target_palette)
+    };
 
     let mut icons = Vec::new();
     for icon_data in icon_datas {
@@ -97,103 +218,70 @@ fn generate_svgs(
             continue;
         }
 
-        // NOTE: Cloning the node here only clones the reference,
-        // but we want a completely new node tree to manipulate
-        let mut icon_tree = svg_tree.clone();
-        icon_tree.root = svg_tree.root.make_deep_copy();
-        icon_tree.size = Size::from_wh(16.0, 16.0).unwrap();
-        icon_tree.view_box = ViewBox {
-            aspect: icon_tree.view_box.aspect,
-            rect: NonZeroRect::from_xywh(16.0 * (icon_data.icon as f32), 0.0, 16.0, 16.0).unwrap(),
-        };
+        let offset = icon_data.icon * 16;
+        let mut svg = format!(
+            "<svg width=\"16\" height=\"16\" viewBox=\"{offset} 0 16 16\" \
+             fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">"
+        );
 
-        optimize_svg_for_viewbox(&mut icon_tree)?;
-        apply_palette_to_tree(source_palette, target_palette, &mut icon_tree)?;
+        // Include any path whose bounding box intersects this icon's 16px
+        // window, matching the original generator (a path straddling the column
+        // boundary belongs to both neighbours). Content fully outside the
+        // window is excluded; anything partly outside is cropped by the viewBox.
+        let lo = offset as f32;
+        let hi = lo + 16.0;
+        for sprite in sprites.iter().filter(|s| s.right >= lo && s.left <= hi) {
+            svg.push_str("<path d=\"");
+            svg.push_str(&sprite.data);
+            svg.push('"');
+            if let Some(color) = sprite.fill {
+                let (r, g, b) = recolor(color, &recolor_pairs);
+                let _ = write!(svg, " fill=\"#{r:02X}{g:02X}{b:02X}\"");
+            }
+            if sprite.opacity < 0.999 {
+                let _ = write!(svg, " fill-opacity=\"{}\"", num(sprite.opacity));
+            }
+            if sprite.even_odd {
+                svg.push_str(" fill-rule=\"evenodd\" clip-rule=\"evenodd\"");
+            }
+            svg.push_str("/>");
+        }
+
+        svg.push_str("</svg>");
 
         icons.push((
             PathBuf::from(format!("{}.svg", icon_data.name)),
-            Bytes::from(icon_tree.to_string(&xml_options)),
+            Bytes::from(svg),
         ));
     }
 
-    Ok(icons)
+    icons
 }
 
-fn optimize_svg_for_viewbox(svg_tree: &mut SvgTree) -> Result<()> {
-    let view_box = Rect::from_ltrb(
-        svg_tree.view_box.rect.left(),
-        svg_tree.view_box.rect.top(),
-        svg_tree.view_box.rect.right(),
-        svg_tree.view_box.rect.bottom(),
-    )
-    .context("view box has invalid size")?;
-
-    for child in svg_tree.root.children() {
-        if let Some(bbox) = child.calculate_bbox() {
-            if view_box.intersect(&bbox).is_none() {
-                child.detach();
-            }
-        }
-    }
-
-    Ok(())
+/**
+    Builds `(source_rgb, target_rgb)` pairs for every named palette color.
+*/
+fn build_recolor_pairs(source: &Palette, target: &Palette) -> Vec<(Rgb, Rgb)> {
+    source
+        .colors
+        .iter()
+        .filter_map(|(key, source_hex)| {
+            let target_hex = target.colors.get(key)?;
+            let source_rgb = color_from_hex(source_hex).ok()?;
+            let target_rgb = color_from_hex(target_hex).ok()?;
+            Some((source_rgb, target_rgb))
+        })
+        .collect()
 }
 
-fn apply_palette_to_tree(
-    source_palette: &Palette,
-    target_palette: &Palette,
-    svg_tree: &mut SvgTree,
-) -> Result<()> {
-    if source_palette == target_palette {
-        return Ok(());
-    }
-
-    for descendant in svg_tree.root.descendants() {
-        if let NodeKind::Path(path) = &mut *descendant.borrow_mut() {
-            if let Some(fill) = path.fill.as_mut() {
-                let mut new_fill = fill.clone();
-                new_fill.paint =
-                    apply_palette_to_paint(source_palette, target_palette, &fill.paint)?;
-                path.fill = Some(new_fill);
-            }
-        }
-    }
-
-    Ok(())
-}
-
-fn apply_palette_to_paint(
-    source_palette: &Palette,
-    target_palette: &Palette,
-    paint: &Paint,
-) -> Result<Paint> {
-    Ok(match paint {
-        Paint::LinearGradient(_) => paint.clone(),
-        Paint::RadialGradient(_) => paint.clone(),
-        Paint::Pattern(_) => paint.clone(),
-        Paint::Color(color) => {
-            let source_key = source_palette
-                .colors
-                .iter()
-                .find_map(|(source_key, source_hex)| {
-                    if color_from_hex(source_hex)
-                        .map(|c| colors_are_similar(color, &c))
-                        .unwrap_or_default()
-                    {
-                        Some(source_key)
-                    } else {
-                        None
-                    }
-                });
-            if let Some(source_key) = source_key {
-                let target_hex = target_palette
-                    .colors
-                    .get(source_key)
-                    .context("missing color in target palette")?;
-                Paint::Color(color_from_hex(target_hex)?)
-            } else {
-                Paint::Color(*color)
-            }
-        }
-    })
+/**
+    Maps a color to its target-palette equivalent, matching the source palette
+    with a small tolerance (the sprite sheet colors are not always exact).
+*/
+fn recolor(color: Rgb, pairs: &[(Rgb, Rgb)]) -> Rgb {
+    pairs
+        .iter()
+        .find(|(source, _)| colors_are_similar(color, *source))
+        .map(|(_, target)| *target)
+        .unwrap_or(color)
 }
