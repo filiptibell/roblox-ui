@@ -3,10 +3,9 @@
 use std::path::{Path, PathBuf};
 
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use async_channel::{unbounded, Receiver, Sender};
 use rbx_dom_weak::{types::Ref, Instance, InstanceBuilder, WeakDom};
 use serde::{Deserialize, Serialize};
-use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use ustr::Ustr;
 
 use roblox_ui_util::path::make_absolute_and_clean;
@@ -62,8 +61,8 @@ pub struct Dom {
     metas: HashMap<Ref, InstanceMetadata>,
     path_map: HashMap<PathBuf, Ref>,
     root_meta: InstanceMetadata,
-    notification_tx: UnboundedSender<DomNotification>,
-    notification_rx: Option<UnboundedReceiver<DomNotification>>,
+    notification_tx: Sender<DomNotification>,
+    notification_rx: Option<Receiver<DomNotification>>,
 }
 
 impl Default for Dom {
@@ -74,7 +73,7 @@ impl Default for Dom {
 
 impl Dom {
     pub fn new() -> Self {
-        let (notification_tx, notification_rx) = unbounded_channel();
+        let (notification_tx, notification_rx) = unbounded();
         Self {
             inner: WeakDom::new(InstanceBuilder::new(DOM_ROOT_NAME_NONE)),
             ids: HashSet::default(),
@@ -86,13 +85,13 @@ impl Dom {
         }
     }
 
-    pub fn take_notification_receiver(&mut self) -> Option<UnboundedReceiver<DomNotification>> {
+    pub fn take_notification_receiver(&mut self) -> Option<Receiver<DomNotification>> {
         self.notification_rx.take()
     }
 
     fn notify(&self, notification: DomNotification) {
         // NOTE: Not having any listeners is fine and is the only error case
-        self.notification_tx.send(notification).ok();
+        self.notification_tx.try_send(notification).ok();
     }
 
     fn insert_instance_into_dom(&mut self, parent_id: Ref, node: InstanceNode) -> Ref {
@@ -390,7 +389,7 @@ impl Dom {
         // this seems to be good enough for now and is not too slow
         let mut results = self
             .ids
-            .par_iter()
+            .iter()
             .filter_map(|id| {
                 self.inner
                     .get_by_ref(*id)

@@ -19,7 +19,7 @@ impl GenerateDataCommand {
 
         let path = self.output.join("api_docs.json");
         let json = serde_json::to_vec_pretty(&tree)?;
-        tokio::fs::write(path, json).await?;
+        async_fs::write(path, json).await?;
 
         Ok(())
     }

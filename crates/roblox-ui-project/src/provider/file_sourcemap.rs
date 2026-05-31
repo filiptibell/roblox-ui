@@ -1,5 +1,5 @@
 use anyhow::Result;
-use tokio::sync::mpsc::UnboundedSender;
+use async_channel::Sender;
 use tracing::trace;
 
 use super::{super::config::Config, InstanceNode};
@@ -10,11 +10,11 @@ use super::{super::config::Config, InstanceNode};
 #[derive(Debug)]
 pub struct FileSourcemapProvider {
     _config: Config,
-    sender: UnboundedSender<Option<InstanceNode>>,
+    sender: Sender<Option<InstanceNode>>,
 }
 
 impl FileSourcemapProvider {
-    pub fn new(config: Config, sender: UnboundedSender<Option<InstanceNode>>) -> Self {
+    pub fn new(config: Config, sender: Sender<Option<InstanceNode>>) -> Self {
         Self {
             _config: config,
             sender,
@@ -24,7 +24,7 @@ impl FileSourcemapProvider {
     pub async fn start(&mut self, smap: Option<&InstanceNode>) -> Result<()> {
         trace!("starting file provider");
 
-        self.sender.send(smap.cloned()).ok();
+        self.sender.try_send(smap.cloned()).ok();
 
         Ok(())
     }
@@ -32,7 +32,7 @@ impl FileSourcemapProvider {
     pub async fn update(&mut self, smap: Option<&InstanceNode>) -> Result<()> {
         trace!("updating file provider");
 
-        self.sender.send(smap.cloned()).ok();
+        self.sender.try_send(smap.cloned()).ok();
 
         Ok(())
     }

@@ -4,10 +4,11 @@ use std::{
 };
 
 use anyhow::{bail, Context, Error, Result};
+use async_fs as fs;
 use bytes::Bytes;
 use clap::Parser;
 use futures::{future::join_all, stream::FuturesUnordered, TryStreamExt as _};
-use tokio::{fs, try_join};
+use futures_lite::future::try_zip;
 use tracing::info;
 
 use roblox_ui_icons::*;
@@ -116,14 +117,16 @@ impl GenerateIconsCommand {
             ) = (theme_light, theme_dark)
             {
                 // Create pack contents from dark + light custom theme
-                let (theme_light_image_paths, theme_dark_image_paths) = try_join!(
+                let (theme_light_image_paths, theme_dark_image_paths) = try_zip(
                     theme_light.best_instances_paths(theme_light_dir),
-                    theme_dark.best_instances_paths(theme_dark_dir)
-                )?;
-                let (theme_light_image_bytes, theme_dark_image_bytes) = try_join!(
+                    theme_dark.best_instances_paths(theme_dark_dir),
+                )
+                .await?;
+                let (theme_light_image_bytes, theme_dark_image_bytes) = try_zip(
                     read_all_files(theme_light_image_paths),
-                    read_all_files(theme_dark_image_paths)
-                )?;
+                    read_all_files(theme_dark_image_paths),
+                )
+                .await?;
                 println!(
                     "Found {} light and {} dark custom theme images...",
                     theme_light_image_bytes.len(),

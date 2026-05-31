@@ -1,15 +1,14 @@
 use std::{process::Stdio, sync::LazyLock, time::Duration};
 
 use anyhow::{bail, Context, Result};
-use command_group::{AsyncCommandGroup, AsyncGroupChild};
-use semver::{Version, VersionReq};
-use tokio::{
+use async_channel::Sender;
+use async_io::Timer;
+use async_process::{Child, ChildStderr, ChildStdout, Command};
+use futures_lite::{
+    future,
     io::{AsyncBufReadExt, AsyncReadExt, BufReader},
-    process::{ChildStderr, ChildStdout, Command},
-    sync::mpsc::UnboundedSender,
-    task::{self},
-    time::sleep,
 };
+use semver::{Version, VersionReq};
 use tracing::{debug, error, trace};
 
 use super::{
@@ -28,13 +27,13 @@ static REQUIRED_VERSION: LazyLock<VersionReq> =
 #[derive(Debug)]
 pub struct RojoSourcemapProvider {
     config: Config,
-    sender: UnboundedSender<Option<InstanceNode>>,
+    sender: Sender<Option<InstanceNode>>,
     version: Option<Version>,
-    child: Option<AsyncGroupChild>,
+    child: Option<Child>,
 }
 
 impl RojoSourcemapProvider {
-    pub fn new(config: Config, sender: UnboundedSender<Option<InstanceNode>>) -> Self {
+    pub fn new(config: Config, sender: Sender<Option<InstanceNode>>) -> Self {
         Self {
             config,
             sender,
@@ -48,10 +47,11 @@ impl RojoSourcemapProvider {
 
         // Spawn rojo to figure out what version
         // it has and if it meets our requirement
-        let version = tokio::select! {
-            v = get_rojo_version() => v?,
-            _ = sleep(SPAWN_TIMEOUT) => bail!("rojo --version timed out"),
-        };
+        let version = future::or(get_rojo_version(), async {
+            Timer::after(SPAWN_TIMEOUT).await;
+            bail!("rojo --version timed out")
+        })
+        .await?;
         debug!("found rojo version: {}", version);
         // HACK: Get rid of prerelease for version req,
         // having a prerelease makes it not match :-(
@@ -73,17 +73,17 @@ impl RojoSourcemapProvider {
         // the rojo project file and parsing its 'tree' field, but this may fail
         let tree_stub = if let Some(project_file) = project_file {
             let tree = generate_project_file_instance_tree(project_file).await;
-            self.sender.send(tree.clone()).ok();
+            self.sender.try_send(tree.clone()).ok();
             tree
         } else {
-            self.sender.send(None).ok();
+            self.sender.try_send(None).ok();
             None
         };
 
         // Grab the output streams to process sourcemaps, and store the
         // child process in our struct so it doesn't drop and get killed
-        let stdout = child.inner().stdout.take().unwrap();
-        let stderr = child.inner().stderr.take().unwrap();
+        let stdout = child.stdout.take().unwrap();
+        let stderr = child.stderr.take().unwrap();
         handle_rojo_streams(stdout, stderr, self.sender.clone(), tree_stub);
         self.child.replace(child);
 
@@ -99,7 +99,7 @@ impl RojoSourcemapProvider {
         trace!("stopping rojo provider");
         self.version.take();
         if let Some(mut child) = self.child.take() {
-            child.kill().await?;
+            child.kill()?;
         }
         Ok(())
     }
@@ -111,11 +111,11 @@ async fn get_rojo_version() -> Result<Version> {
         .kill_on_drop(true)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .group_spawn()
+        .spawn()
         .context("failed to execute rojo --version")?;
 
     let output = child
-        .wait_with_output()
+        .output()
         .await
         .context("failed to wait on rojo --version")?;
 
@@ -128,7 +128,7 @@ async fn get_rojo_version() -> Result<Version> {
         .context("failed to parse rojo --version output")
 }
 
-fn spawn_rojo_sourcemap(config: &Config) -> Result<AsyncGroupChild> {
+fn spawn_rojo_sourcemap(config: &Config) -> Result<Child> {
     assert!(
         config.autogenerate,
         "autogenerate must be enabled to spawn rojo sourcemap --watch"
@@ -142,20 +142,20 @@ fn spawn_rojo_sourcemap(config: &Config) -> Result<AsyncGroupChild> {
         .kill_on_drop(true)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .group_spawn()
+        .spawn()
         .context("failed to spawn rojo sourcemap --watch")
 }
 
 fn handle_rojo_streams(
     stdout: ChildStdout,
     stderr: ChildStderr,
-    sender: UnboundedSender<Option<InstanceNode>>,
+    sender: Sender<Option<InstanceNode>>,
     tree_stub: Option<InstanceNode>,
 ) {
-    // Note that we don't really need to care about the join handles
-    // for our tasks here, they will exit when the rojo process dies
+    // Note that we don't really need to care about the task handles here,
+    // they will exit when the rojo process dies and its streams close
 
-    task::spawn(async move {
+    async_global_executor::spawn(async move {
         let mut reader = BufReader::new(stdout);
         let mut buffer = String::new();
         while reader.read_line(&mut buffer).await.unwrap() > 0 {
@@ -166,19 +166,21 @@ fn handle_rojo_streams(
                     if let Some(stub) = &tree_stub {
                         smap.merge_stub(stub);
                     }
-                    sender.send(Some(smap)).ok();
+                    sender.try_send(Some(smap)).ok();
                 }
             }
             buffer.clear();
         }
-    });
+    })
+    .detach();
 
-    task::spawn(async move {
+    async_global_executor::spawn(async move {
         let mut reader = BufReader::new(stderr);
         let mut buffer = String::new();
         while reader.read_to_string(&mut buffer).await.unwrap() > 0 {
             error!("rojo error: {buffer}");
             buffer.clear();
         }
-    });
+    })
+    .detach();
 }

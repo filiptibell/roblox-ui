@@ -1,5 +1,5 @@
 use anyhow::Result;
-use tokio::sync::mpsc::UnboundedSender;
+use async_channel::Sender;
 
 use crate::config::Config;
 
@@ -39,7 +39,7 @@ impl InstanceProviderVariant {
     pub fn from_kind(
         kind: InstanceProviderKind,
         config: Config,
-        sender: UnboundedSender<Option<InstanceNode>>,
+        sender: Sender<Option<InstanceNode>>,
     ) -> Self {
         match kind {
             InstanceProviderKind::None => Self::None(NoneProvider::new(config, sender)),

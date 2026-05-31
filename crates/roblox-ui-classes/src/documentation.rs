@@ -59,12 +59,9 @@ struct ApiDocItem {
 }
 
 pub async fn insert_documentation(classes: &mut Classes) -> Result<()> {
-    let bytes = reqwest::get(API_DOCS_URL)
+    let bytes = roblox_ui_http::get_bytes(API_DOCS_URL)
         .await
-        .context("failed to fetch api docs json (1)")?
-        .bytes()
-        .await
-        .context("failed to fetch api docs json (2)")?;
+        .context("failed to fetch api docs json")?;
 
     let docs = serde_json::from_slice::<BTreeMap<ApiDocKey, ApiDocItem>>(&bytes)
         .context("failed to deserialize api docs json")?;

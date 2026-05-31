@@ -7,9 +7,10 @@ license.workspace = true
 publish = false
 
 [dependencies]
+roblox-ui-http = { workspace = true }
+
 anyhow = { workspace = true }
 const_format = { workspace = true }
 quick-xml = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
-reqwest = { workspace = true }

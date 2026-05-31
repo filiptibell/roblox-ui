@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use anyhow::Result;
-use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
+use async_channel::{unbounded, Receiver, Sender};
 use tracing::error;
 
 use crate::config::Config;
@@ -30,8 +30,8 @@ pub use variant::*;
 #[derive(Debug)]
 pub struct InstanceProvider {
     config: Config,
-    instance_tx: UnboundedSender<Option<InstanceNode>>,
-    instance_rx: Option<UnboundedReceiver<Option<InstanceNode>>>,
+    instance_tx: Sender<Option<InstanceNode>>,
+    instance_rx: Option<Receiver<Option<InstanceNode>>>,
     last_sourcemap: Option<InstanceNode>,
     last_project: Option<RojoProjectFile>,
     provider: Option<InstanceProviderVariant>,
@@ -39,7 +39,7 @@ pub struct InstanceProvider {
 
 impl InstanceProvider {
     pub fn new(config: Config) -> Self {
-        let (instance_tx, instance_rx) = unbounded_channel();
+        let (instance_tx, instance_rx) = unbounded();
         Self {
             config,
             instance_tx,
@@ -50,7 +50,7 @@ impl InstanceProvider {
         }
     }
 
-    pub fn take_instance_receiver(&mut self) -> Option<UnboundedReceiver<Option<InstanceNode>>> {
+    pub fn take_instance_receiver(&mut self) -> Option<Receiver<Option<InstanceNode>>> {
         self.instance_rx.take()
     }
 

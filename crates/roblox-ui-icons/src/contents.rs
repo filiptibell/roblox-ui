@@ -3,9 +3,9 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
+use async_fs as fs;
 use bytes::Bytes;
 use futures::future::join_all;
-use tokio::fs;
 
 use super::*;
 

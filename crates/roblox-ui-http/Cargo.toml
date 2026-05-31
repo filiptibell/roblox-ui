@@ -1,0 +1,23 @@
+[package]
+name = "roblox-ui-http"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+anyhow = { workspace = true }
+bytes = { workspace = true }
+url = { workspace = true }
+
+async-global-executor = { workspace = true }
+async-net = { workspace = true }
+futures-lite = { workspace = true }
+
+hyper = { workspace = true }
+http-body-util = { workspace = true }
+futures-rustls = { workspace = true }
+rustls = { workspace = true }
+rustls-pki-types = { workspace = true }
+webpki-roots = { workspace = true }

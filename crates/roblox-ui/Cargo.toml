@@ -14,6 +14,10 @@ name = "roblox-ui"
 path = "src/main.rs"
 
 [dependencies]
+async-global-executor = { workspace = true }
+async-fs = { workspace = true }
+futures-lite = { workspace = true }
+
 roblox-ui-classes = { workspace = true }
 roblox-ui-data = { workspace = true }
 roblox-ui-icons = { workspace = true }
@@ -25,8 +29,6 @@ anyhow = { workspace = true }
 bytes = { workspace = true }
 clap = { workspace = true }
 futures = { workspace = true }
-rayon = { workspace = true }
 serde_json = { workspace = true }
-tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }

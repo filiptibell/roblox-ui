@@ -7,13 +7,19 @@ license.workspace = true
 publish = false
 
 [dependencies]
+async-global-executor = { workspace = true }
+async-channel = { workspace = true }
+async-lock = { workspace = true }
+blocking = { workspace = true }
+futures = { workspace = true }
+futures-lite = { workspace = true }
+
 roblox-ui-project = { workspace = true }
 
 anyhow = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
-tokio = { workspace = true }
 tracing = { workspace = true }
 ustr = { workspace = true }
 rbx_dom_weak = { workspace = true }

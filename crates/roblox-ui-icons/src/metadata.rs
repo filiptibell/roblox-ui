@@ -8,7 +8,8 @@ use bytes::Bytes;
 use rbx_reflection::ReflectionDatabase;
 use serde::Serialize;
 
-static CLASS_DATABASE: LazyLock<&ReflectionDatabase> = LazyLock::new(rbx_reflection_database::get);
+static CLASS_DATABASE: LazyLock<&ReflectionDatabase> =
+    LazyLock::new(|| rbx_reflection_database::get().expect("failed to load reflection database"));
 const CLASS_ICON_FALLBACKS: &[(&str, &[&str])] = &[("Package", &["PackageLink"])];
 
 fn class_name_from_path(path: &Path) -> Result<&str> {
@@ -33,7 +34,7 @@ fn class_is_a(instance_class: impl AsRef<str>, class_name: impl AsRef<str>) -> O
     if class_name == "Instance" || instance_class == class_name {
         Some(true)
     } else {
-        let db = rbx_reflection_database::get();
+        let db = *CLASS_DATABASE;
 
         while instance_class != class_name {
             let class_descriptor = db.classes.get(instance_class)?;

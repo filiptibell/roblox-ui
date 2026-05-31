@@ -1,9 +1,7 @@
+use std::io;
 use std::path::{Path, PathBuf};
 
-use tokio::{
-    fs::{create_dir, read, remove_dir_all, remove_file, rename, write},
-    io,
-};
+use async_fs::{create_dir, read, remove_dir_all, remove_file, rename, write};
 
 use roblox_ui_util::rojo::{parse_name_and_class_name, parse_name_and_suffix, CLASS_NAME_SUFFIXES};
 

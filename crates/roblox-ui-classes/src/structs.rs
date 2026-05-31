@@ -7,7 +7,8 @@ use rbx_reflection::{ClassTag, ReflectionDatabase};
 use serde::Serialize;
 use url::Url;
 
-static CLASS_DATABASE: LazyLock<&ReflectionDatabase> = LazyLock::new(rbx_reflection_database::get);
+static CLASS_DATABASE: LazyLock<&ReflectionDatabase> =
+    LazyLock::new(|| rbx_reflection_database::get().expect("failed to load reflection database"));
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]

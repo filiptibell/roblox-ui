@@ -58,7 +58,7 @@ pub async fn handle_rpc_message(msg: RpcMessage, dom: &mut Dom) -> Result<()> {
             _ => bail!("unknown request method '{method}'"),
         };
 
-        let mut stdout = tokio::io::stdout();
+        let mut stdout = blocking::Unblock::new(std::io::stdout());
         response.write_to(&mut stdout).await?;
     }
 

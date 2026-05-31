@@ -8,8 +8,8 @@ use std::{
 };
 
 use anyhow::{bail, Result};
+use async_fs as fs;
 use path_clean::PathClean;
-use tokio::fs;
 
 /**
     A simple file cache for async file watching.

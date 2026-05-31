@@ -7,6 +7,9 @@ license.workspace = true
 publish = false
 
 [dependencies]
+async-fs = { workspace = true }
+futures-lite = { workspace = true }
+
 roblox-ui-util = { workspace = true }
 
 anyhow = { workspace = true }
@@ -16,7 +19,6 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 serde_with = { workspace = true }
 thiserror = { workspace = true }
-tokio = { workspace = true }
 usvg = { workspace = true }
 rbx_reflection = { workspace = true }
 rbx_reflection_database = { workspace = true }

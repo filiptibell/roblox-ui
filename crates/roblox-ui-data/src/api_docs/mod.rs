@@ -22,12 +22,9 @@ pub struct ApiDocTree {
 
 impl ApiDocTree {
     pub async fn download() -> Result<Self> {
-        let bytes = reqwest::get(API_DOCS_URL)
+        let bytes = roblox_ui_http::get_bytes(API_DOCS_URL)
             .await
-            .context("failed to fetch api docs json (1)")?
-            .bytes()
-            .await
-            .context("failed to fetch api docs json (2)")?;
+            .context("failed to fetch api docs json")?;
 
         let json = serde_json::from_slice::<BTreeMap<String, JsonValue>>(&bytes)
             .context("failed to deserialize api docs json")?;

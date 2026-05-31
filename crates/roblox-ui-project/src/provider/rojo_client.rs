@@ -1,11 +1,10 @@
 use std::{collections::HashMap, net::SocketAddr, path::PathBuf};
 
 use anyhow::{bail, Context, Result};
+use async_net::TcpStream;
 use serde::Deserialize;
-use tokio::net::TcpStream;
 
 pub struct RojoClient {
-    client: reqwest::Client,
     url_info: String,
     url_read: String,
 }
@@ -29,9 +28,7 @@ impl RojoClient {
             .await
             .context("failed to connect")?;
 
-        let client = reqwest::Client::new();
         Ok(Self {
-            client,
             url_info: format!("http://{addr}/api/rojo"),
             url_read: format!("http://{addr}/api/read/"),
         })
@@ -43,25 +40,14 @@ impl RojoClient {
         May fail if the serve session is no longer available.
     */
     pub async fn get_info(&self) -> Result<RojoSessionInfo> {
-        let info_res = self
-            .client
-            .get(&self.url_info)
-            .send()
+        let (status, info_bytes) = roblox_ui_http::get(&self.url_info)
             .await
             .context("failed to make request")?;
 
-        if !info_res.status().is_success() {
-            bail!(
-                "{} {}",
-                info_res.status().as_u16(),
-                info_res.status().canonical_reason().unwrap_or("N/A")
-            )
+        if !(200..300).contains(&status) {
+            bail!("request failed with status {status}")
         }
 
-        let info_bytes = info_res
-            .bytes()
-            .await
-            .context("failed to get response bytes")?;
         serde_json::from_slice(&info_bytes).context("failed to deserialize response")
     }
 
@@ -71,25 +57,15 @@ impl RojoClient {
         May fail if the serve session is no longer available.
     */
     pub async fn read(&self, id: impl AsRef<str>) -> Result<RojoSessionReadResponse> {
-        let read_res = self
-            .client
-            .get(format!("{}{}", self.url_read, id.as_ref()))
-            .send()
+        let url = format!("{}{}", self.url_read, id.as_ref());
+        let (status, read_bytes) = roblox_ui_http::get(&url)
             .await
             .context("failed to make request")?;
 
-        if !read_res.status().is_success() {
-            bail!(
-                "{} {}",
-                read_res.status().as_u16(),
-                read_res.status().canonical_reason().unwrap_or("N/A")
-            )
+        if !(200..300).contains(&status) {
+            bail!("request failed with status {status}")
         }
 
-        let read_bytes = read_res
-            .bytes()
-            .await
-            .context("failed to get response bytes")?;
         serde_json::from_slice(&read_bytes).context("failed to deserialize response")
     }
 }

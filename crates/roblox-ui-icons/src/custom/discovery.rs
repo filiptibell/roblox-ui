@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
-use tokio::fs::read_dir;
+use async_fs::read_dir;
+use futures_lite::StreamExt;
 
 pub async fn discover_roblox_custom_dirs(
     path: impl Into<PathBuf>,
@@ -10,8 +11,8 @@ pub async fn discover_roblox_custom_dirs(
     while let Some(dir) = stack.pop() {
         let mut reader = read_dir(dir).await?;
         let mut inner = Vec::new();
-        while let Some(entry) = reader.next_entry().await? {
-            let entry_path = entry.path();
+        while let Some(entry) = reader.next().await {
+            let entry_path = entry?.path();
             if entry_path.is_dir() {
                 if entry_path
                     .file_name()

@@ -49,26 +49,14 @@ pub struct ReflectionEnumItem {
 }
 
 pub async fn download_latest_studio() -> Result<Vec<u8>> {
-    let client = reqwest::Client::new();
-
-    let version_bytes = client
-        .get(URL_VERSION)
-        .send()
+    let version_bytes = roblox_ui_http::get_bytes(URL_VERSION)
         .await
-        .context("failed to send version string request")?
-        .bytes()
-        .await
-        .context("failed to get version string bytes")?;
+        .context("failed to get version string")?;
     let version_string = String::from_utf8(version_bytes.to_vec())
         .context("failed to parse version string as utf-8")?;
 
     let studio_url = URL_STUDIO.replace(URL_VERSION_MARKER, &version_string);
-    let studio_bytes = client
-        .get(studio_url)
-        .send()
-        .await
-        .context("failed to send studio request")?
-        .bytes()
+    let studio_bytes = roblox_ui_http::get_bytes(&studio_url)
         .await
         .context("failed to get studio bytes")?;
 

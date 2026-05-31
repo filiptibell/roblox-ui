@@ -1,14 +1,10 @@
 use std::{path::PathBuf, sync::Arc};
 
 use anyhow::Result;
+use async_channel::{Receiver, Sender};
+use async_lock::Mutex as AsyncMutex;
+use futures_lite::io::BufReader;
 use serde_json::Value as JsonValue;
-use tokio::{
-    io::BufReader,
-    sync::{
-        mpsc::{UnboundedReceiver, UnboundedSender},
-        Mutex as AsyncMutex,
-    },
-};
 use tracing::{debug, error};
 
 use roblox_ui_project::{
@@ -26,7 +22,7 @@ pub async fn emit_notifications_dom(
     _config: Config,
     instance_dom: Arc<AsyncMutex<Dom>>,
 ) -> Result<()> {
-    let mut stdout = tokio::io::stdout();
+    let mut stdout = blocking::Unblock::new(std::io::stdout());
 
     // Emit an initial 'null' (meaning no instance data) to
     // let the consumer know instance notifications have started
@@ -36,13 +32,13 @@ pub async fn emit_notifications_dom(
         .await?;
 
     // Take out the notification receiver from the dom
-    let mut notification_receiver = {
+    let notification_receiver = {
         let mut dom = instance_dom.lock().await;
         dom.take_notification_receiver().unwrap()
     };
 
     // Emit rest of notifications while they keep coming in
-    while let Some(notification) = notification_receiver.recv().await {
+    while let Ok(notification) = notification_receiver.recv().await {
         RpcMessage::new_request("dom/notification")
             .with_data(notification)?
             .write_to(&mut stdout)
@@ -60,11 +56,11 @@ pub async fn serve_instances(
     instance_dom: Arc<AsyncMutex<Dom>>,
     instances: Arc<AsyncMutex<InstanceProvider>>,
 ) -> Result<()> {
-    let stdin = tokio::io::stdin();
+    let stdin = blocking::Unblock::new(std::io::stdin());
 
     // Spawn a task to listen for requests over stdin
     let stdin_dom = Arc::clone(&instance_dom);
-    let stdin_handle = tokio::spawn(async move {
+    let stdin_handle = async_global_executor::spawn(async move {
         let mut reader = BufReader::new(stdin);
         while let Some(res) = RpcMessage::read_from(&mut reader).await {
             match res {
@@ -81,20 +77,20 @@ pub async fn serve_instances(
     });
 
     // Take out the instance receiver from the provider
-    let mut instance_receiver = {
+    let instance_receiver = {
         let mut instances = instances.lock().await;
         instances.take_instance_receiver().unwrap()
     };
 
     // Watch for further changes received from instance provider(s)
-    while let Some(root_node_opt) = instance_receiver.recv().await {
+    while let Ok(root_node_opt) = instance_receiver.recv().await {
         let mut dom = instance_dom.lock().await;
         dom.apply_new_root(root_node_opt);
     }
 
     // Since our stdin task was spawned in the background
     // we must also manually abort it when we are done
-    stdin_handle.abort();
+    drop(stdin_handle);
 
     Ok(())
 }
@@ -110,9 +106,9 @@ pub async fn provide_instances(
     config: Config,
     _instance_dom: Arc<AsyncMutex<Dom>>,
     instances: Arc<AsyncMutex<InstanceProvider>>,
-    mut file_event_rx: UnboundedReceiver<FileEvent>,
+    file_event_rx: Receiver<FileEvent>,
 ) -> Result<()> {
-    while let Some((event, file_path, file_contents)) = file_event_rx.recv().await {
+    while let Ok((event, file_path, file_contents)) = file_event_rx.recv().await {
         // TODO: Make the dom aware of this file event, to add it to root metadata (for rojo, wally, ...)
 
         let res = if config.is_sourcemap_path(&file_path) {
@@ -141,7 +137,7 @@ pub async fn provide_instances(
 /**
     Watches for file changes to files in the given config and emits them using the given sender.
 */
-pub async fn watch_files(config: Config, file_event_tx: UnboundedSender<FileEvent>) -> Result<()> {
+pub async fn watch_files(config: Config, file_event_tx: Sender<FileEvent>) -> Result<()> {
     let paths = config.paths_to_watch();
     let paths = paths.iter().map(|p| p.to_path_buf()).collect::<Vec<_>>();
 
@@ -149,7 +145,7 @@ pub async fn watch_files(config: Config, file_event_tx: UnboundedSender<FileEven
     let mut cache = AsyncFileCache::new();
     for path in &paths {
         if let Some(event) = cache.read_file_at(path).await? {
-            file_event_tx.send((
+            file_event_tx.try_send((
                 event,
                 path.to_path_buf(),
                 cache.get_file(path).map(|f| f.to_string()),
@@ -161,7 +157,7 @@ pub async fn watch_files(config: Config, file_event_tx: UnboundedSender<FileEven
     let mut watcher = AsyncFileWatcher::new(paths)?;
     while let Some(path) = watcher.recv().await {
         if let Some(event) = cache.read_file_at(&path).await? {
-            file_event_tx.send((
+            file_event_tx.try_send((
                 event,
                 path.to_path_buf(),
                 cache.get_file(&path).map(|f| f.to_string()),
@@ -179,7 +175,7 @@ pub async fn emit_notifications_output(
     _config: Config,
     output_processor: Arc<AsyncMutex<OutputProcessor>>,
 ) -> Result<()> {
-    let mut stdout = tokio::io::stdout();
+    let mut stdout = blocking::Unblock::new(std::io::stdout());
 
     // Emit an initial 'null' (meaning no instance data) to
     // let the consumer know instance notifications have started
@@ -189,13 +185,13 @@ pub async fn emit_notifications_output(
         .await?;
 
     // Take out the notification receiver from the processor
-    let mut notification_receiver = {
+    let notification_receiver = {
         let mut output_processor = output_processor.lock().await;
         output_processor.take_notification_receiver().unwrap()
     };
 
     // Emit rest of notifications while they keep coming in
-    while let Some(notification) = notification_receiver.recv().await {
+    while let Ok(notification) = notification_receiver.recv().await {
         RpcMessage::new_request("output/notification")
             .with_data(notification)?
             .write_to(&mut stdout)

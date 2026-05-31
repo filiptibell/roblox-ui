@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
+use async_fs as fs;
 use clap::Parser;
-use tokio::fs;
 use tracing::info;
 
 use roblox_ui_classes::*;

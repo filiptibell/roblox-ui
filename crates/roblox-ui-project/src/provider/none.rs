@@ -1,5 +1,5 @@
 use anyhow::Result;
-use tokio::sync::mpsc::UnboundedSender;
+use async_channel::Sender;
 use tracing::trace;
 
 use super::{super::config::Config, InstanceNode};
@@ -12,11 +12,11 @@ use super::{super::config::Config, InstanceNode};
 #[derive(Debug)]
 pub struct NoneProvider {
     _config: Config,
-    sender: UnboundedSender<Option<InstanceNode>>,
+    sender: Sender<Option<InstanceNode>>,
 }
 
 impl NoneProvider {
-    pub fn new(config: Config, sender: UnboundedSender<Option<InstanceNode>>) -> Self {
+    pub fn new(config: Config, sender: Sender<Option<InstanceNode>>) -> Self {
         Self {
             _config: config,
             sender,
@@ -26,7 +26,7 @@ impl NoneProvider {
     pub async fn start(&mut self) -> Result<()> {
         trace!("starting none provider");
 
-        self.sender.send(None).ok();
+        self.sender.try_send(None).ok();
 
         Ok(())
     }

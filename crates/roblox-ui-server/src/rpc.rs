@@ -3,10 +3,10 @@
 use std::io;
 use std::sync::atomic::{AtomicU64, Ordering};
 
+use futures_lite::io::{AsyncBufRead, AsyncBufReadExt, AsyncWrite, AsyncWriteExt};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use thiserror::Error;
-use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncWrite, AsyncWriteExt};
 
 fn next_data_id() -> u64 {
     static ID_COUNTER: AtomicU64 = AtomicU64::new(0);

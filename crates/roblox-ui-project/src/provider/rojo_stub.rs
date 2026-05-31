@@ -1,8 +1,9 @@
 use std::path::{Path, PathBuf};
 
+use async_fs::{metadata, read_dir, read_to_string};
 use futures::future::join_all;
+use futures_lite::StreamExt;
 use serde::Deserialize;
-use tokio::fs::{metadata, read_dir, read_to_string};
 use ustr::Ustr;
 
 use roblox_ui_util::rojo::parse_name_and_class_name;
@@ -126,7 +127,7 @@ async fn read_dir_all(path: &Path) -> Vec<PathBuf> {
         Err(_) => return paths,
         Ok(e) => e,
     };
-    while let Ok(Some(entry)) = entries.next_entry().await {
+    while let Some(Ok(entry)) = entries.next().await {
         paths.push(entry.path())
     }
     paths

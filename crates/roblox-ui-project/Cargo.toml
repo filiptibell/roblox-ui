@@ -7,22 +7,28 @@ license.workspace = true
 publish = false
 
 [dependencies]
+roblox-ui-http = { workspace = true }
+async-global-executor = { workspace = true }
+async-channel = { workspace = true }
+async-lock = { workspace = true }
+async-io = { workspace = true }
+async-net = { workspace = true }
+async-fs = { workspace = true }
+async-process = { workspace = true }
+futures-lite = { workspace = true }
+
 roblox-ui-util = { workspace = true }
 
 ahash = { workspace = true }
 anyhow = { workspace = true }
-command-group = { workspace = true }
 futures = { workspace = true }
 path-clean = { workspace = true }
-rayon = { workspace = true }
 semver = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 strsim = { workspace = true }
-tokio = { workspace = true }
 tracing = { workspace = true }
 ustr = { workspace = true }
 rbx_dom_weak = { workspace = true }
 notify = { workspace = true }
 notify-debouncer-full = { workspace = true }
-reqwest = { workspace = true }

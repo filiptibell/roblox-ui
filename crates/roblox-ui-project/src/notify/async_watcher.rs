@@ -4,10 +4,10 @@ use std::{
 };
 
 use anyhow::Result;
+use async_channel::{unbounded, Receiver};
 use notify_debouncer_full::{
     new_debouncer, notify::*, DebounceEventResult, DebouncedEvent, Debouncer, RecommendedCache,
 };
-use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
 use tracing::error;
 
 fn is_matching_path(path: &Path, relevant_paths: &[PathBuf]) -> bool {
@@ -52,12 +52,12 @@ pub struct AsyncFileWatcher {
     // NOTE: We can't drop the debouncer since it would then stop watching,
     // so we keep it in the same struct that the consumer gets events from
     _debouncer: Debouncer<RecommendedWatcher, RecommendedCache>,
-    receiver: UnboundedReceiver<PathBuf>,
+    receiver: Receiver<PathBuf>,
 }
 
 impl AsyncFileWatcher {
     pub fn new(relevant_paths: Vec<PathBuf>) -> Result<Self> {
-        let (tx, rx) = unbounded_channel();
+        let (tx, rx) = unbounded();
 
         let mut debouncer = new_debouncer(
             Duration::from_millis(100),
@@ -67,7 +67,7 @@ impl AsyncFileWatcher {
                 Ok(events) => {
                     for event in events {
                         for path in matching_paths(&event, &relevant_paths) {
-                            tx.send(path).unwrap()
+                            tx.try_send(path).unwrap()
                         }
                     }
                 }
@@ -83,6 +83,6 @@ impl AsyncFileWatcher {
     }
 
     pub async fn recv(&mut self) -> Option<PathBuf> {
-        self.receiver.recv().await
+        self.receiver.recv().await.ok()
     }
 }

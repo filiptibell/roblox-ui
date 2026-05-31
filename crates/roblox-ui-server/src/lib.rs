@@ -1,10 +1,9 @@
 use std::sync::Arc;
 
-use anyhow::{Context, Result};
-use tokio::{
-    sync::{mpsc::unbounded_channel, Mutex as AsyncMutex},
-    task::JoinSet,
-};
+use anyhow::Result;
+use async_channel::unbounded;
+use async_lock::Mutex as AsyncMutex;
+use futures_lite::future::try_zip;
 
 use roblox_ui_project::{Dom, InstanceProvider};
 
@@ -25,7 +24,7 @@ impl Server {
     }
 
     pub async fn serve_instances(self) -> Result<()> {
-        let (file_event_tx, file_event_rx) = unbounded_channel();
+        let (file_event_tx, file_event_rx) = unbounded();
 
         let instance_dom = Dom::new();
         let instance_dom = Arc::new(AsyncMutex::new(instance_dom));
@@ -33,32 +32,30 @@ impl Server {
         let instance_provider = InstanceProvider::new(self.config.clone());
         let instance_provider = Arc::new(AsyncMutex::new(instance_provider));
 
-        // Spawn all of our tasks: watch files -> provide instances -> serve instances -> emit notifications
-        // These all depend on each other and pass messages upstream, so we spawn them in reverse order
-        let mut set = JoinSet::new();
-        set.spawn(tasks::emit_notifications_dom(
-            self.config.clone(),
-            Arc::clone(&instance_dom),
-        ));
-        set.spawn(tasks::serve_instances(
-            self.config.clone(),
-            Arc::clone(&instance_dom),
-            Arc::clone(&instance_provider),
-        ));
-        set.spawn(tasks::provide_instances(
-            self.config.clone(),
-            Arc::clone(&instance_dom),
-            Arc::clone(&instance_provider),
-            file_event_rx,
-        ));
-        set.spawn(tasks::watch_files(self.config.clone(), file_event_tx));
-
-        // Whenever a task errors fatally, we should bubble that up, which
-        // will drop our JoinSet and cancel all of our other tasks as well
-        while let Some(res) = set.join_next().await {
-            res.context("failed to join task")?
-                .context("task errored")?;
-        }
+        // Run all of our tasks concurrently: watch files -> provide instances
+        // -> serve instances -> emit notifications. They depend on each other
+        // and pass messages upstream. Whenever a task errors fatally we bubble
+        // that up, which drops (and thus cancels) all of the other tasks too.
+        try_zip(
+            try_zip(
+                tasks::emit_notifications_dom(self.config.clone(), Arc::clone(&instance_dom)),
+                tasks::serve_instances(
+                    self.config.clone(),
+                    Arc::clone(&instance_dom),
+                    Arc::clone(&instance_provider),
+                ),
+            ),
+            try_zip(
+                tasks::provide_instances(
+                    self.config.clone(),
+                    Arc::clone(&instance_dom),
+                    Arc::clone(&instance_provider),
+                    file_event_rx,
+                ),
+                tasks::watch_files(self.config.clone(), file_event_tx),
+            ),
+        )
+        .await?;
 
         Ok(())
     }
@@ -67,24 +64,13 @@ impl Server {
         let output_processor = output::OutputProcessor::new(self.config.clone());
         let output_processor = Arc::new(AsyncMutex::new(output_processor));
 
-        // Spawn all of our tasks: start server for plugin -> emit notifications
-        // These all depend on each other and pass messages upstream, so we spawn them in reverse order
-        let mut set = JoinSet::new();
-        set.spawn(tasks::emit_notifications_output(
-            self.config.clone(),
-            Arc::clone(&output_processor),
-        ));
-        set.spawn(tasks::connect_notifications_plugin(
-            self.config.clone(),
-            Arc::clone(&output_processor),
-        ));
-
-        // Whenever a task errors fatally, we should bubble that up, which
-        // will drop our JoinSet and cancel all of our other tasks as well
-        while let Some(res) = set.join_next().await {
-            res.context("failed to join task")?
-                .context("task errored")?;
-        }
+        // Run our tasks concurrently: start server for plugin -> emit
+        // notifications. A fatal error in either cancels the other.
+        try_zip(
+            tasks::emit_notifications_output(self.config.clone(), Arc::clone(&output_processor)),
+            tasks::connect_notifications_plugin(self.config.clone(), Arc::clone(&output_processor)),
+        )
+        .await?;
 
         Ok(())
     }

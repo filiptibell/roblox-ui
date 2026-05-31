@@ -1,7 +1,8 @@
 use std::{collections::HashMap, path::PathBuf, str::FromStr};
 
+use async_fs::read_dir;
+use futures_lite::StreamExt;
 use thiserror::Error;
-use tokio::fs::read_dir;
 
 const THEME_HEADER_NAME: &str = "Icon Theme";
 
@@ -15,7 +16,7 @@ pub enum CustomThemeError {
     #[error("Theme file is empty (no non-header sections)")]
     Empty,
     #[error("IO error: {0}")]
-    Io(#[from] tokio::io::Error),
+    Io(#[from] std::io::Error),
 }
 
 #[derive(Debug, Clone)]
@@ -56,8 +57,8 @@ impl CustomThemeFile {
         if let Some(dir) = dir {
             let mut paths = Vec::new();
             let mut reader = read_dir(dir).await?;
-            while let Some(entry) = reader.next_entry().await? {
-                let path = entry.path();
+            while let Some(entry) = reader.next().await {
+                let path = entry?.path();
                 if path.is_file() {
                     paths.push(path);
                 }

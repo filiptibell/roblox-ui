@@ -7,11 +7,12 @@ license.workspace = true
 publish = false
 
 [dependencies]
+roblox-ui-http = { workspace = true }
+
 anyhow = { workspace = true }
 const_format = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 url = { workspace = true }
-reqwest = { workspace = true }
 rbx_reflection = { workspace = true }
 rbx_reflection_database = { workspace = true }
