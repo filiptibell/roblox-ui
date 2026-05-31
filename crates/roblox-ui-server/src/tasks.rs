@@ -206,7 +206,7 @@ pub async fn emit_notifications_output(
 */
 pub async fn connect_notifications_plugin(
     _config: Config,
-    output_processor: Arc<AsyncMutex<OutputProcessor>>,
+    _output_processor: Arc<AsyncMutex<OutputProcessor>>,
 ) -> Result<()> {
     // TODO: Implement this
 

@@ -21,7 +21,7 @@ fn is_init_path(path: &Path) -> bool {
     }
 }
 
-fn get_instance_path_variant(paths: &InstanceMetadataPaths) -> InstancePathVariant {
+fn get_instance_path_variant(paths: &InstanceMetadataPaths) -> InstancePathVariant<'_> {
     let dir_path_opt = paths.folder.as_deref();
     let file_path_opt = paths.file.as_deref().or(paths.file_meta.as_deref());
     if matches!(file_path_opt.map(is_init_path), Some(true)) {

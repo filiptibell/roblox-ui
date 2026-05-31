@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use async_channel::{unbounded, Receiver, Sender};
 
 use roblox_ui_project::Config;
