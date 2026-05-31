@@ -11,13 +11,13 @@ use notify_debouncer_full::{
 use tracing::error;
 
 fn is_matching_path(path: &Path, relevant_paths: &[PathBuf]) -> bool {
-    let file_name = path.file_name().and_then(|f| f.to_str());
+    let file_name = path.file_name();
     let file_name = match file_name {
         None => return false,
         Some(f) => f,
     };
     relevant_paths.iter().any(|relevant_path| {
-        let rfile_name = relevant_path.file_name().and_then(|f| f.to_str());
+        let rfile_name = relevant_path.file_name();
         if let Some(rfile_name) = rfile_name {
             rfile_name == file_name
         } else {
