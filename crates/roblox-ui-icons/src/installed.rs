@@ -28,7 +28,10 @@ impl IconPackProvider for Installed {
     or `None` when no usable custom pack is set (so the caller falls back to `Modern`).
 */
 async fn load_custom_override() -> Result<Option<IconPackContents>> {
-    let Some(settings_path) = RobloxStudioPaths::new().ok().and_then(|p| p.global_settings()) else {
+    let Some(settings_path) = RobloxStudioPaths::new()
+        .ok()
+        .and_then(|p| p.global_settings())
+    else {
         return Ok(None);
     };
     let Ok(xml) = fs::read_to_string(&settings_path).await else {

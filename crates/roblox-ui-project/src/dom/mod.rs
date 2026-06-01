@@ -109,6 +109,11 @@ impl Dom {
     }
 
     #[inline]
+    pub fn weak_dom(&self) -> &WeakDom {
+        &self.inner
+    }
+
+    #[inline]
     pub fn get_instance(&self, id: Ref) -> Option<&Instance> {
         self.inner.get_by_ref(id)
     }
