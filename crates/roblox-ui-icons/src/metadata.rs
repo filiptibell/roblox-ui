@@ -1,4 +1,5 @@
 use std::borrow::Borrow;
+use std::cmp::Reverse;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
@@ -47,6 +48,27 @@ fn class_is_a(instance_class: impl AsRef<str>, class_name: impl AsRef<str>) -> O
 
         Some(true)
     }
+}
+
+/**
+    Depth of `class_name` in the class tree (number of superclasses up to the root). Unknown classes
+    are depth 0. Used to process icons most-derived-first, so a subclass inherits its *nearest*
+    iconed ancestor instead of whichever ancestor happened to be processed first.
+*/
+fn class_depth(class_name: &str) -> usize {
+    let db = *CLASS_DATABASE;
+    let mut depth = 0;
+    let mut current = class_name;
+    while let Some(descriptor) = db.classes.get(current) {
+        match descriptor.superclass.as_ref() {
+            Some(superclass) => {
+                current = superclass.borrow();
+                depth += 1;
+            }
+            None => break,
+        }
+    }
+    depth
 }
 
 #[derive(Debug, Clone, Default, Serialize)]
@@ -100,8 +122,19 @@ impl IconPackMetadata {
     pub fn from_paths(icon_paths: &[&Path]) -> Result<Self> {
         let mut metadata = IconPackMetadata::default();
 
+        // Process most-derived classes first. `add_icon` fills a subclass only if it has no icon
+        // yet, so the *nearest* iconed ancestor must run first to win — otherwise a far ancestor
+        // (e.g. `Instance`) claims subclasses before a closer one (e.g. `UIComponent`), and classes
+        // like `UICorner`/`UIScale`/`UIPadding` get the generic icon instead of the UI one.
+        let mut classed = Vec::with_capacity(icon_paths.len());
         for path in icon_paths {
-            metadata.add_icon(class_name_from_path(path)?, path, false);
+            classed.push((class_name_from_path(path)?, *path));
+        }
+
+        classed.sort_by_key(|(class_name, _)| Reverse(class_depth(class_name)));
+
+        for (class_name, path) in classed {
+            metadata.add_icon(class_name, path, false);
         }
 
         for (class_name, fallbacks) in CLASS_ICON_FALLBACKS {

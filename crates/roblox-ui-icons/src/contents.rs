@@ -185,26 +185,30 @@ mod tests {
     use crate::IconPack;
 
     /**
-        `resolve_dark` must apply the subclass fallback chain, so classes without their own icon
-        (e.g. `UICorner`) still resolve via an ancestor — matching what `write_to`'s metadata bakes.
+        `resolve_dark` must apply the subclass fallback chain and pick the *nearest* iconed ancestor:
+        `UICorner`/`UIScale`/`UIPadding`/`UIListLayout` have no own icon, so they must inherit
+        `UIComponent`'s icon — NOT fall all the way back to the generic `Instance` icon.
     */
     #[test]
-    fn resolve_dark_applies_subclass_fallback() {
+    fn resolve_dark_uses_nearest_iconed_ancestor() {
         let contents = futures_lite::future::block_on(IconPack::Vanilla2.get()).unwrap();
         let resolved = contents.resolve_dark().unwrap();
 
-        assert!(resolved.contains_key("Instance"), "root class has an icon");
-        assert!(
-            resolved.contains_key("Frame"),
-            "directly-iconed class resolves"
+        let ui_component = resolved.get("UIComponent");
+        let instance = resolved.get("Instance");
+        assert!(ui_component.is_some(), "UIComponent ships its own icon");
+        assert!(instance.is_some(), "Instance (root) has an icon");
+        assert_ne!(
+            ui_component, instance,
+            "the UIComponent icon differs from the Instance icon"
         );
-        assert!(
-            resolved.contains_key("UICorner"),
-            "UICorner has no own icon but must resolve via its superclass chain"
-        );
-        assert!(
-            resolved.contains_key("UIListLayout"),
-            "UIListLayout resolves via fallback too"
-        );
+
+        for class in ["UICorner", "UIScale", "UIPadding", "UIListLayout"] {
+            assert_eq!(
+                resolved.get(class),
+                ui_component,
+                "{class} must inherit the nearest ancestor (UIComponent), not the Instance icon",
+            );
+        }
     }
 }
