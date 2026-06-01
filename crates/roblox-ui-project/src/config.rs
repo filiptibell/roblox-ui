@@ -1,59 +1,40 @@
-use std::{
-    path::{Path, PathBuf},
-    str::FromStr,
-    sync::LazyLock,
-};
+/*!
+    Configuration for the in-house project backend - which `*.project.json`
+    to load and which globs to ignore. Accepts (and ignores) the legacy
+    sourcemap/Rojo settings keys for backwards compatibility.
+*/
+
+use std::{path::PathBuf, str::FromStr, sync::LazyLock};
 
 use serde::Deserialize;
 
 use roblox_ui_util::path::make_absolute_and_clean;
 
 /**
-    Configuration for the server.
+    Configuration for the in-house project backend.
 
-    Note that all fields are optional for deserializing or parsing
-    from a string, but have some defaults that may be surprising:
-
-    - `autogenerate` defaults to `true`
-    - `include_non_scripts` defaults to `true`
-    - `rojo_project_file` defaults to `default.project.json` in the current directory
-    - `sourcemap_file` defaults to `sourcemap.json` in the current directory
+    All fields are optional when parsing; the project file defaults to
+    `default.project.json` in the current directory. The legacy `sourcemapFile`
+    and `autogenerate` keys are still accepted (and ignored) for compatibility
+    with existing extension settings — we no longer use a sourcemap or Rojo.
 */
 #[derive(Debug, Clone)]
 pub struct Config {
-    pub autogenerate: bool,
-    pub rojo_project_file: PathBuf,
-    pub sourcemap_file: PathBuf,
+    /// Path to the `*.project.json` to load.
+    pub project_file: PathBuf,
+    /// Extra glob patterns to ignore while watching/walking.
+    pub ignore_globs: Vec<String>,
 }
 
 impl Config {
-    pub fn is_sourcemap_path(&self, path: &Path) -> bool {
-        let abs_path = make_absolute_and_clean(path);
-        abs_path == self.sourcemap_file
-    }
-
-    pub fn is_rojo_project_path(&self, path: &Path) -> bool {
-        let abs_path = make_absolute_and_clean(path);
-        abs_path == self.rojo_project_file
-    }
-
-    pub fn paths_to_watch(&self) -> Vec<&Path> {
-        if self.autogenerate {
-            vec![
-                /*
-                    NOTE: Order here is important! We should put the project
-                    file first, since during initialization these paths and their
-                    corresponding instance providers are started & checked in order.
-
-                    The rojo project provider will take precedence and ensure we never
-                    use the sourcemap, and emit an initial massive instance tree diff.
-                */
-                self.rojo_project_file.as_ref(),
-                self.sourcemap_file.as_ref(),
-            ]
-        } else {
-            vec![self.sourcemap_file.as_ref()]
-        }
+    /**
+        The compiled ignore globs, skipping any that fail to parse.
+    */
+    pub fn ignore_patterns(&self) -> Vec<glob::Pattern> {
+        self.ignore_globs
+            .iter()
+            .filter_map(|g| glob::Pattern::new(g).ok())
+            .collect()
     }
 }
 
@@ -66,9 +47,12 @@ impl Default for Config {
 impl From<ConfigDeserializable> for Config {
     fn from(value: ConfigDeserializable) -> Self {
         Self {
-            autogenerate: value.autogenerate,
-            rojo_project_file: value.rojo_project_file.expect("missing rojo_project_file"),
-            sourcemap_file: value.sourcemap_file.expect("missing sourcemap_file"),
+            project_file: value
+                .project_file
+                .or(value.rojo_project_file)
+                .map(make_absolute_and_clean)
+                .unwrap_or_else(|| DEFAULT_PROJECT_PATH.clone()),
+            ignore_globs: value.ignore_globs,
         }
     }
 }
@@ -87,8 +71,7 @@ impl FromStr for Config {
         if trimmed.is_empty() || trimmed == "null" {
             Ok(Self::default())
         } else {
-            let mut this = serde_json::from_str::<ConfigDeserializable>(trimmed)?;
-            this.apply_path_defaults_and_clean();
+            let this = serde_json::from_str::<ConfigDeserializable>(trimmed)?;
             Ok(this.into())
         }
     }
@@ -99,7 +82,6 @@ fn parse_config() {
     let full_conf = r#"
     {
         "autogenerate": true,
-        "ignoreNonScripts": false,
         "rojoProjectFile": "default.project.json",
         "sourcemapFile": "sourcemap.json"
     }
@@ -110,53 +92,19 @@ fn parse_config() {
     assert!("{}".parse::<Config>().is_ok());
     assert!("'{}'".parse::<Config>().is_ok());
     assert!(full_conf.parse::<Config>().is_ok());
+    let parsed = full_conf.parse::<Config>().unwrap();
+    assert!(parsed.project_file.ends_with("default.project.json"));
 }
 
-/**
-    Proxy struct for parsing and/or deserializing a `Config` struct.
-
-    All fields are optional and have defaults, check [`Config`] for additional details.
-*/
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 #[serde(default, rename_all = "camelCase")]
 struct ConfigDeserializable {
-    autogenerate: bool,
+    project_file: Option<PathBuf>,
+    /// Legacy alias for `project_file`.
     rojo_project_file: Option<PathBuf>,
-    sourcemap_file: Option<PathBuf>,
+    #[serde(default)]
+    ignore_globs: Vec<String>,
 }
 
-impl ConfigDeserializable {
-    fn apply_path_defaults_and_clean(&mut self) {
-        self.rojo_project_file
-            .replace(match &self.rojo_project_file {
-                Some(proj) => make_absolute_and_clean(proj),
-                None => DEFAULT_ROJO_PROJECT_PATH.to_path_buf(),
-            });
-        self.sourcemap_file.replace(match &self.sourcemap_file {
-            Some(smap) => make_absolute_and_clean(smap),
-            None => DEFAULT_SOURCEMAP_PATH.to_path_buf(),
-        });
-    }
-}
-
-impl Default for ConfigDeserializable {
-    fn default() -> Self {
-        let mut this = Self {
-            autogenerate: true,
-            rojo_project_file: None,
-            sourcemap_file: None,
-        };
-        this.apply_path_defaults_and_clean();
-        this
-    }
-}
-
-static DEFAULT_SOURCEMAP_PATH: LazyLock<PathBuf> = LazyLock::new(|| {
-    let path = PathBuf::from("sourcemap.json");
-    make_absolute_and_clean(path)
-});
-
-static DEFAULT_ROJO_PROJECT_PATH: LazyLock<PathBuf> = LazyLock::new(|| {
-    let path = PathBuf::from("default.project.json");
-    make_absolute_and_clean(path)
-});
+static DEFAULT_PROJECT_PATH: LazyLock<PathBuf> =
+    LazyLock::new(|| make_absolute_and_clean(PathBuf::from("default.project.json")));

@@ -1,3 +1,7 @@
+/*!
+    Small filename predicates shared by the store and metadata derivation.
+*/
+
 use std::path::Path;
 
 const FILE_PATH_SUFFIXES: &[&str] = &[".luau", ".lua", ".rbxmx", ".rbxm", ".txt", ".csv", ".json"];

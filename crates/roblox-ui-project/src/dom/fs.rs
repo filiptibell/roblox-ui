@@ -1,3 +1,9 @@
+/*!
+    The filesystem mutations backing the explorer's insert / rename / delete
+    actions. These only touch disk; the resulting tree change is observed and
+    reconciled through the normal sync path.
+*/
+
 use std::io;
 use std::path::{Path, PathBuf};
 

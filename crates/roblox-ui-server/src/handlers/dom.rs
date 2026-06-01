@@ -4,7 +4,7 @@ use anyhow::{Context, Result};
 use rbx_dom_weak::types::Ref;
 use serde::Deserialize;
 
-use roblox_ui_project::{Dom, DomQueryParams};
+use roblox_ui_project::Project;
 
 use crate::rpc::RpcMessage;
 
@@ -15,12 +15,13 @@ use super::util::ResponseInstance;
 pub(super) struct RootRequest {}
 
 impl RootRequest {
-    pub async fn respond_to(self, msg: RpcMessage, dom: &mut Dom) -> Result<RpcMessage> {
+    pub async fn respond_to(self, msg: RpcMessage, project: &Project) -> Result<RpcMessage> {
+        let dom = project.read().await;
         let instance = dom
             .get_root_id()
             .and_then(|id| dom.get_instance(id))
             .map(ResponseInstance::from_dom_instance)
-            .map(|inst| inst.with_dom_metadata(dom));
+            .map(|inst| inst.with_dom_metadata(&dom));
         msg.respond()
             .with_data(instance)
             .context("failed to serialize response")
@@ -34,11 +35,12 @@ pub(super) struct GetRequest {
 }
 
 impl GetRequest {
-    pub async fn respond_to(self, msg: RpcMessage, dom: &mut Dom) -> Result<RpcMessage> {
+    pub async fn respond_to(self, msg: RpcMessage, project: &Project) -> Result<RpcMessage> {
+        let dom = project.read().await;
         let instance = dom
             .get_instance(self.id)
             .map(ResponseInstance::from_dom_instance)
-            .map(|inst| inst.with_dom_metadata(dom));
+            .map(|inst| inst.with_dom_metadata(&dom));
         msg.respond()
             .with_data(instance)
             .context("failed to serialize response")
@@ -52,16 +54,14 @@ pub(super) struct ChildrenRequest {
 }
 
 impl ChildrenRequest {
-    pub async fn respond_to(self, msg: RpcMessage, dom: &mut Dom) -> Result<RpcMessage> {
-        let child_ids = dom
-            .get_instance(self.id)
-            .map(|inst| inst.children())
-            .unwrap_or_default();
+    pub async fn respond_to(self, msg: RpcMessage, project: &Project) -> Result<RpcMessage> {
+        let dom = project.read().await;
+        let child_ids = dom.children(self.id).to_vec();
         let instances = child_ids
             .iter()
             .filter_map(|id| dom.get_instance(*id))
             .map(ResponseInstance::from_dom_instance)
-            .map(|inst| inst.with_dom_metadata(dom))
+            .map(|inst| inst.with_dom_metadata(&dom))
             .collect::<Vec<_>>();
         msg.respond()
             .with_data(instances)
@@ -76,7 +76,8 @@ pub(super) struct AncestorsRequest {
 }
 
 impl AncestorsRequest {
-    pub async fn respond_to(self, msg: RpcMessage, dom: &mut Dom) -> Result<RpcMessage> {
+    pub async fn respond_to(self, msg: RpcMessage, project: &Project) -> Result<RpcMessage> {
+        let dom = project.read().await;
         let mut current = Some(self.id);
         let mut ancestor_ids = Vec::new();
         while let Some(current_id) = current.take() {
@@ -91,13 +92,13 @@ impl AncestorsRequest {
             }
         }
 
-        ancestor_ids.reverse(); // Sort top level ancestor first, target instance last
+        ancestor_ids.reverse();
 
         let instances = ancestor_ids
             .iter()
             .filter_map(|id| dom.get_instance(*id))
             .map(ResponseInstance::from_dom_instance)
-            .map(|inst| inst.with_dom_metadata(dom))
+            .map(|inst| inst.with_dom_metadata(&dom))
             .collect::<Vec<_>>();
         msg.respond()
             .with_data(instances)
@@ -112,12 +113,13 @@ pub(super) struct FindByPathRequest {
 }
 
 impl FindByPathRequest {
-    pub async fn respond_to(self, msg: RpcMessage, dom: &mut Dom) -> Result<RpcMessage> {
+    pub async fn respond_to(self, msg: RpcMessage, project: &Project) -> Result<RpcMessage> {
+        let dom = project.read().await;
         let instance = dom
             .find_by_path(self.path)
             .and_then(|id| dom.get_instance(id))
             .map(ResponseInstance::from_dom_instance)
-            .map(|inst| inst.with_dom_metadata(dom));
+            .map(|inst| inst.with_dom_metadata(&dom));
         msg.respond()
             .with_data(instance)
             .context("failed to serialize response")
@@ -132,16 +134,16 @@ pub(super) struct FindByQueryRequest {
 }
 
 impl FindByQueryRequest {
-    pub async fn respond_to(self, msg: RpcMessage, dom: &mut Dom) -> Result<RpcMessage> {
-        let mut params = DomQueryParams::from_str(&self.query);
-        params.limit = self.limit;
-
+    pub async fn respond_to(self, msg: RpcMessage, project: &Project) -> Result<RpcMessage> {
+        let dom = project.read().await;
+        // Roblox Studio explorer search semantics (name / is: / tag: / property
+        // comparisons / ancestry / boolean), capped at the requested limit.
         let instances = dom
-            .find_by_query(params)
+            .search(&self.query, self.limit)
             .iter()
             .filter_map(|id| dom.get_instance(*id))
             .map(ResponseInstance::from_dom_instance)
-            .map(|inst| inst.with_dom_metadata(dom))
+            .map(|inst| inst.with_dom_metadata(&dom))
             .collect::<Vec<_>>();
 
         msg.respond()

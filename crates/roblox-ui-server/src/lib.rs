@@ -1,15 +1,15 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use async_channel::unbounded;
 use async_lock::Mutex as AsyncMutex;
 use futures_lite::future::try_zip;
 
-use roblox_ui_project::{Dom, InstanceProvider};
+use roblox_ui_project::Project;
 
 pub use roblox_ui_project::Config;
 
 mod handlers;
+mod notification;
 mod output;
 mod rpc;
 mod tasks;
@@ -24,36 +24,18 @@ impl Server {
     }
 
     pub async fn serve_instances(self) -> Result<()> {
-        let (file_event_tx, file_event_rx) = unbounded();
+        // Open the project; this performs the initial sync AND starts the
+        // background file watcher transparently. We subscribe right after so the
+        // emit task receives every subsequent transaction's deltas.
+        let project = Arc::new(Project::open(self.config.clone()).await?);
+        let delta_rx = project.subscribe().await;
 
-        let instance_dom = Dom::new();
-        let instance_dom = Arc::new(AsyncMutex::new(instance_dom));
-
-        let instance_provider = InstanceProvider::new(self.config.clone());
-        let instance_provider = Arc::new(AsyncMutex::new(instance_provider));
-
-        // Run all of our tasks concurrently: watch files -> provide instances
-        // -> serve instances -> emit notifications. They depend on each other
-        // and pass messages upstream. Whenever a task errors fatally we bubble
-        // that up, which drops (and thus cancels) all of the other tasks too.
+        // Emit notifications + serve stdin requests concurrently. The project's
+        // watcher runs in the background (owned by `project`); a fatal error in
+        // either task bubbles up and cancels the other.
         try_zip(
-            try_zip(
-                tasks::emit_notifications_dom(self.config.clone(), Arc::clone(&instance_dom)),
-                tasks::serve_instances(
-                    self.config.clone(),
-                    Arc::clone(&instance_dom),
-                    Arc::clone(&instance_provider),
-                ),
-            ),
-            try_zip(
-                tasks::provide_instances(
-                    self.config.clone(),
-                    Arc::clone(&instance_dom),
-                    Arc::clone(&instance_provider),
-                    file_event_rx,
-                ),
-                tasks::watch_files(self.config.clone(), file_event_tx),
-            ),
+            tasks::emit_notifications_dom(Arc::clone(&project), delta_rx),
+            tasks::serve_instances(Arc::clone(&project)),
         )
         .await?;
 
@@ -64,8 +46,6 @@ impl Server {
         let output_processor = output::OutputProcessor::new(self.config.clone());
         let output_processor = Arc::new(AsyncMutex::new(output_processor));
 
-        // Run our tasks concurrently: start server for plugin -> emit
-        // notifications. A fatal error in either cancels the other.
         try_zip(
             tasks::emit_notifications_output(self.config.clone(), Arc::clone(&output_processor)),
             tasks::connect_notifications_plugin(self.config.clone(), Arc::clone(&output_processor)),

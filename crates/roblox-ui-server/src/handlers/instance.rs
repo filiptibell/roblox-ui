@@ -3,7 +3,7 @@ use rbx_dom_weak::types::Ref;
 use serde::Deserialize;
 use ustr::Ustr;
 
-use roblox_ui_project::Dom;
+use roblox_ui_project::{Command, Delta, Project};
 
 use crate::rpc::RpcMessage;
 
@@ -18,15 +18,29 @@ pub(super) struct InsertRequest {
 }
 
 impl InsertRequest {
-    pub async fn respond_to(self, msg: RpcMessage, dom: &mut Dom) -> Result<RpcMessage> {
-        let inserted_instance_id_opt = dom
-            .insert_instance(self.parent_id, self.class_name, self.name)
+    pub async fn respond_to(self, msg: RpcMessage, project: &Project) -> Result<RpcMessage> {
+        let deltas = project
+            .apply(Command::Insert {
+                parent: self.parent_id,
+                class: self.class_name,
+                name: self.name,
+            })
             .await
+            .unwrap_or_default();
+
+        // The inserted instance shows up as the first Added under the parent.
+        let inserted = deltas.iter().find_map(|d| match d {
+            Delta::Added { id, parent, .. } if *parent == self.parent_id => Some(*id),
+            _ => None,
+        });
+
+        let dom = project.read().await;
+        let instance = inserted
             .and_then(|id| dom.get_instance(id))
             .map(ResponseInstance::from_dom_instance)
-            .map(|inst| inst.with_dom_metadata(dom));
+            .map(|inst| inst.with_dom_metadata(&dom));
         msg.respond()
-            .with_data(inserted_instance_id_opt)
+            .with_data(instance)
             .context("failed to serialize response")
     }
 }
@@ -39,8 +53,15 @@ pub(super) struct RenameRequest {
 }
 
 impl RenameRequest {
-    pub async fn respond_to(self, msg: RpcMessage, dom: &mut Dom) -> Result<RpcMessage> {
-        let was_renamed = dom.rename_instance(self.id, self.name).await;
+    pub async fn respond_to(self, msg: RpcMessage, project: &Project) -> Result<RpcMessage> {
+        let deltas = project
+            .apply(Command::Rename {
+                id: self.id,
+                name: self.name,
+            })
+            .await
+            .unwrap_or_default();
+        let was_renamed = !deltas.is_empty();
         msg.respond()
             .with_data(was_renamed)
             .context("failed to serialize response")
@@ -54,8 +75,14 @@ pub(super) struct DeleteRequest {
 }
 
 impl DeleteRequest {
-    pub async fn respond_to(self, msg: RpcMessage, dom: &mut Dom) -> Result<RpcMessage> {
-        let was_deleted = dom.delete_instance(self.id).await;
+    pub async fn respond_to(self, msg: RpcMessage, project: &Project) -> Result<RpcMessage> {
+        let deltas = project
+            .apply(Command::Delete { id: self.id })
+            .await
+            .unwrap_or_default();
+        let was_deleted = deltas
+            .iter()
+            .any(|d| matches!(d, Delta::Removed { id, .. } if *id == self.id));
         msg.respond()
             .with_data(was_deleted)
             .context("failed to serialize response")
@@ -70,10 +97,12 @@ pub(super) struct MoveRequest {
 }
 
 impl MoveRequest {
-    pub async fn respond_to(self, msg: RpcMessage, dom: &mut Dom) -> Result<RpcMessage> {
-        let was_deleted = dom.move_instance(self.id, self.parent_id).await;
+    pub async fn respond_to(self, msg: RpcMessage, _project: &Project) -> Result<RpcMessage> {
+        // Moving across parents changes a node's provenance key; not yet
+        // supported by the filesystem mutation layer.
+        let _ = (self.id, self.parent_id);
         msg.respond()
-            .with_data(was_deleted)
+            .with_data(false)
             .context("failed to serialize response")
     }
 }

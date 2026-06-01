@@ -1,3 +1,9 @@
+/*!
+    Per-instance metadata derived from its source paths: Wally package info,
+    available explorer actions (open / move / paste / insert), and the categorised
+    file/folder paths that back the instance.
+*/
+
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
