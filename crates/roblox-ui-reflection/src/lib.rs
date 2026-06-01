@@ -1,50 +1,54 @@
 use std::collections::BTreeMap;
 
 use anyhow::{Context, Result};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
+mod cache;
 mod constants;
 mod node;
 mod value;
 
 use constants::*;
 
+pub use cache::*;
 pub use node::*;
 pub use value::*;
 
-#[derive(Debug, Clone, Serialize)]
+// NOTE: `#[serde(default)]` on the skipped fields makes these round-trip through the on-disk cache:
+// `skip_serializing_if` omits empty/none fields when writing, and `default` supplies them on read.
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Reflection {
     pub classes: BTreeMap<String, ReflectionClass>,
     pub enums: BTreeMap<String, ReflectionEnum>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReflectionClass {
     pub name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub summary: Option<String>,
-    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub values: BTreeMap<String, Value>,
     // FUTURE: Include properties, methods, events?
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReflectionEnum {
     pub name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub summary: Option<String>,
-    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub values: BTreeMap<String, Value>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub items: Vec<ReflectionEnumItem>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReflectionEnumItem {
     pub name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub summary: Option<String>,
-    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub values: BTreeMap<String, Value>,
 }
 
@@ -143,4 +147,26 @@ pub fn parse_reflection_metadata(reflection_bytes: &[u8]) -> Result<Reflection> 
     }
 
     Ok(reflection)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /**
+        The cache round-trips through JSON. Non-negative integers (ExplorerOrder/Index) need
+        `visit_u64`, and a serialized `Value::None` returns as JSON `null` via `visit_unit` — both
+        are required for `serde_json::from_str` to succeed on real reflection data.
+    */
+    #[test]
+    fn reflection_roundtrips_scalar_values() {
+        let json = r#"{"classes":{"Part":{"name":"Part","values":{"ExplorerOrder":150,"FFlag":null}}},"enums":{}}"#;
+        let reflection: Reflection = serde_json::from_str(json).unwrap();
+        let part = reflection.classes.get("Part").unwrap();
+        assert!(matches!(
+            part.values.get("ExplorerOrder"),
+            Some(Value::Integer(150))
+        ));
+        assert!(matches!(part.values.get("FFlag"), Some(Value::None)));
+    }
 }

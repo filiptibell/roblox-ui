@@ -8,9 +8,17 @@ publish = false
 
 [dependencies]
 roblox-ui-http = { workspace = true }
+roblox-ui-util = { workspace = true }
+async-fs = { workspace = true }
 
 anyhow = { workspace = true }
 const_format = { workspace = true }
 quick-xml = { workspace = true }
 serde = { workspace = true }
+serde_json = { workspace = true }
 thiserror = { workspace = true }
+
+# Disk cache for the fetched Studio reflection metadata (see cache.rs): a cross-platform cache dir
+# plus a once-a-day update gate.
+dirs = "6"
+chrono = "0.4"

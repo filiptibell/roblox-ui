@@ -2,6 +2,7 @@ mod classic;
 mod contents;
 mod custom;
 mod metadata;
+mod modern;
 mod pack;
 mod vanilla2;
 

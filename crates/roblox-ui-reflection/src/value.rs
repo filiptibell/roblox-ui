@@ -12,7 +12,7 @@ pub enum ValueKindParseError {
     Unknown(String),
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ValueKind {
     Bool,
     Double,
@@ -191,6 +191,10 @@ impl<'de> Deserialize<'de> for Value {
                 Ok(Value::Integer(v))
             }
 
+            fn visit_u64<E: serde::de::Error>(self, v: u64) -> Result<Self::Value, E> {
+                Ok(Value::Integer(v as i64))
+            }
+
             fn visit_f64<E: serde::de::Error>(self, v: f64) -> Result<Self::Value, E> {
                 Ok(Value::Double(v))
             }
@@ -200,6 +204,10 @@ impl<'de> Deserialize<'de> for Value {
             }
 
             fn visit_none<E: serde::de::Error>(self) -> Result<Self::Value, E> {
+                Ok(Value::None)
+            }
+
+            fn visit_unit<E: serde::de::Error>(self) -> Result<Self::Value, E> {
                 Ok(Value::None)
             }
 
