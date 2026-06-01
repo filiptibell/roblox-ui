@@ -3,6 +3,7 @@ use std::str::FromStr;
 
 use anyhow::{Context, Result};
 use async_fs as fs;
+use roblox_studio_utils::RobloxStudioPaths;
 
 use super::modern::Modern;
 use super::*;
@@ -27,7 +28,7 @@ impl IconPackProvider for Installed {
     or `None` when no usable custom pack is set (so the caller falls back to `Modern`).
 */
 async fn load_custom_override() -> Result<Option<IconPackContents>> {
-    let Some(settings_path) = roblox_studio_utils::global_settings_path() else {
+    let Some(settings_path) = RobloxStudioPaths::new().ok().and_then(|p| p.global_settings()) else {
         return Ok(None);
     };
     let Ok(xml) = fs::read_to_string(&settings_path).await else {

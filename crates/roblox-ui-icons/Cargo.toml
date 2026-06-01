@@ -11,9 +11,7 @@ async-fs = { workspace = true }
 futures-lite = { workspace = true }
 
 roblox-ui-util = { workspace = true }
-# The `Modern` pack reads the installed Studio's themed `InsertableObjects` icons; this locates the
-# current Studio installation cross-platform (and errors when Studio isn't installed).
-roblox-studio-utils = { path = "../../../roblox-studio-utils" }
+roblox-studio-utils = "0.3.3"
 
 anyhow = { workspace = true }
 bytes = { workspace = true }

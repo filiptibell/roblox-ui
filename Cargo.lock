@@ -1790,7 +1790,9 @@ dependencies = [
 
 [[package]]
 name = "roblox-studio-utils"
-version = "0.3.2"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "78288531b892457a597b7669b96ac3dacc30c2f9f9875e874520ebe3149b94f2"
 dependencies = [
  "dirs 6.0.0",
  "libc",
