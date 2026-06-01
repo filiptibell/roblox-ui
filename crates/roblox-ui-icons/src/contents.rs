@@ -54,6 +54,44 @@ impl IconPackContents {
     }
 
     /**
+        Resolves every Roblox class to its light-theme icon bytes, applying the **same subclass
+        fallback chain** that [`write_to`](Self::write_to) bakes into `metadata.json` (via
+        [`IconPackMetadata`]) — but entirely in memory. The returned map is keyed by class name, so
+        e.g. `UICorner` resolves to the nearest ancestor that has an icon.
+    */
+    pub fn resolve_light(&self) -> Result<BTreeMap<String, Bytes>> {
+        Self::resolve_map(&self.light)
+    }
+
+    /**
+        Resolves every Roblox class to its dark-theme icon bytes, applying the **same subclass
+        fallback chain** that [`write_to`](Self::write_to) bakes into `metadata.json` — in memory.
+        See [`resolve_light`](Self::resolve_light).
+    */
+    pub fn resolve_dark(&self) -> Result<BTreeMap<String, Bytes>> {
+        Self::resolve_map(&self.dark)
+    }
+
+    /**
+        Build a `class name → icon bytes` map from a path→bytes set, expanding via the pack metadata
+        so subclasses inherit an ancestor's icon (the in-memory equivalent of `write_to`'s metadata).
+    */
+    fn resolve_map(map: &IconPackContentsMap) -> Result<BTreeMap<String, Bytes>> {
+        let paths = map.keys().map(|p| p.deref()).collect::<Vec<_>>();
+        let metadata =
+            IconPackMetadata::from_paths(&paths).context("failed to build icon pack metadata")?;
+
+        let mut resolved = BTreeMap::new();
+        for (class_name, icon_path) in metadata.class_icons {
+            if let Some(bytes) = map.get(&icon_path) {
+                resolved.insert(class_name, bytes.clone());
+            }
+        }
+
+        Ok(resolved)
+    }
+
+    /**
         Inserts the given icon into the light icon set.
     */
     pub fn insert_icon_light<P, C>(&mut self, path: P, contents: C)
@@ -139,5 +177,34 @@ impl IconPackContents {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::IconPack;
+
+    /**
+        `resolve_dark` must apply the subclass fallback chain, so classes without their own icon
+        (e.g. `UICorner`) still resolve via an ancestor — matching what `write_to`'s metadata bakes.
+    */
+    #[test]
+    fn resolve_dark_applies_subclass_fallback() {
+        let contents = futures_lite::future::block_on(IconPack::Vanilla2.get()).unwrap();
+        let resolved = contents.resolve_dark().unwrap();
+
+        assert!(resolved.contains_key("Instance"), "root class has an icon");
+        assert!(
+            resolved.contains_key("Frame"),
+            "directly-iconed class resolves"
+        );
+        assert!(
+            resolved.contains_key("UICorner"),
+            "UICorner has no own icon but must resolve via its superclass chain"
+        );
+        assert!(
+            resolved.contains_key("UIListLayout"),
+            "UIListLayout resolves via fallback too"
+        );
     }
 }
