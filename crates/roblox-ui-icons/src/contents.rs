@@ -37,14 +37,18 @@ impl IconPackContents {
         self.len_light() + self.len_dark()
     }
 
-    /// The light-theme icon set (icon file path → bytes), for consumers that render icons directly
-    /// from memory instead of writing the pack to disk first.
+    /**
+        The light-theme icon set (icon file path → bytes), for consumers that render icons directly
+        from memory instead of writing the pack to disk first.
+    */
     pub fn light(&self) -> &BTreeMap<PathBuf, Bytes> {
         &self.light
     }
 
-    /// The dark-theme icon set (icon file path → bytes), for consumers that render icons directly
-    /// from memory instead of writing the pack to disk first.
+    /**
+        The dark-theme icon set (icon file path → bytes), for consumers that render icons directly
+        from memory instead of writing the pack to disk first.
+    */
     pub fn dark(&self) -> &BTreeMap<PathBuf, Bytes> {
         &self.dark
     }
