@@ -6,6 +6,7 @@ use serde_with::{DeserializeFromStr, SerializeDisplay};
 use thiserror::Error;
 
 use super::classic::*;
+use super::installed::*;
 use super::modern::*;
 use super::vanilla2::*;
 use super::*;
@@ -15,11 +16,12 @@ pub enum IconPack {
     Classic,
     Vanilla2,
     Modern,
+    Installed,
 }
 
 impl IconPack {
     pub fn all() -> &'static [Self] {
-        &[Self::Classic, Self::Vanilla2, Self::Modern]
+        &[Self::Classic, Self::Vanilla2, Self::Modern, Self::Installed]
     }
 
     pub async fn get(self) -> Result<IconPackContents> {
@@ -27,6 +29,7 @@ impl IconPack {
             Self::Classic => Classic.get().await,
             Self::Vanilla2 => Vanilla2.get().await,
             Self::Modern => Modern.get().await,
+            Self::Installed => Installed.get().await,
         }
     }
 }
@@ -37,6 +40,7 @@ impl Display for IconPack {
             Self::Classic => "Classic",
             Self::Vanilla2 => "Vanilla2",
             Self::Modern => "Modern",
+            Self::Installed => "Installed",
         };
         s.fmt(f)
     }
@@ -44,7 +48,7 @@ impl Display for IconPack {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
 pub enum IconPackParseError {
-    #[error("unknown icon pack - must be one of 'Classic', 'Vanilla2', 'Modern'")]
+    #[error("unknown icon pack - must be one of 'Classic', 'Vanilla2', 'Modern', 'Installed'")]
     UnknownIconPack,
 }
 
@@ -55,6 +59,7 @@ impl FromStr for IconPack {
             "classic" => Ok(Self::Classic),
             "vanilla2" | "vanilla2.1" | "vanilla2_1" => Ok(Self::Vanilla2),
             "modern" => Ok(Self::Modern),
+            "installed" => Ok(Self::Installed),
             _ => Err(IconPackParseError::UnknownIconPack),
         }
     }
