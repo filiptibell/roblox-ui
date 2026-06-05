@@ -38,7 +38,7 @@ fn tls_config() -> Arc<ClientConfig> {
     Performs a single HTTP/HTTPS GET request, returning the
     status code, an optional redirect location, and the body.
 */
-async fn get_once(url: &Url) -> Result<(u16, Option<String>, Bytes)> {
+async fn get_once(url: &Url, headers: &[(&str, &str)]) -> Result<(u16, Option<String>, Bytes)> {
     let host = url.host_str().context("missing host in url")?.to_string();
     let is_https = match url.scheme() {
         "https" => true,
@@ -57,9 +57,11 @@ async fn get_once(url: &Url) -> Result<(u16, Option<String>, Bytes)> {
         .with_context(|| format!("failed to connect to {host}:{port}"))?;
 
     // Build the request once - same shape regardless of TLS
-    let request = Request::builder()
-        .uri(&path_and_query)
-        .header(HOST, &host)
+    let mut builder = Request::builder().uri(&path_and_query).header(HOST, &host);
+    for (name, value) in headers {
+        builder = builder.header(*name, *value);
+    }
+    let request = builder
         .body(Empty::<Bytes>::new())
         .context("failed to build request")?;
 
@@ -123,15 +125,30 @@ where
     Does not error on non-success status codes - the caller decides.
 */
 pub async fn get(url: impl AsRef<str>) -> Result<(u16, Bytes)> {
+    get_with_headers(url, &[]).await
+}
+
+/**
+    Like [`get`], but attaches the given `headers` (name/value pairs) to the request.
+
+    The headers are sent only on the INITIAL request, not re-sent across a redirect
+    (a redirect to a different host — e.g. a signed CDN URL — must not carry auth).
+*/
+pub async fn get_with_headers(
+    url: impl AsRef<str>,
+    headers: &[(&str, &str)],
+) -> Result<(u16, Bytes)> {
     let mut current = Url::parse(url.as_ref()).context("failed to parse url")?;
+    let mut hop_headers = headers;
 
     for _ in 0..MAX_REDIRECTS {
-        let (status, location, body) = get_once(&current).await?;
+        let (status, location, body) = get_once(&current, hop_headers).await?;
         if (300..400).contains(&status) {
             if let Some(location) = location {
                 current = current
                     .join(&location)
                     .context("failed to resolve redirect location")?;
+                hop_headers = &[]; // drop auth headers when following a (possibly cross-host) redirect
                 continue;
             }
         }
@@ -146,8 +163,19 @@ pub async fn get(url: impl AsRef<str>) -> Result<(u16, Bytes)> {
     returns the response body. Errors on any non-success status code.
 */
 pub async fn get_bytes(url: impl AsRef<str>) -> Result<Bytes> {
+    get_bytes_with_headers(url, &[]).await
+}
+
+/**
+    Like [`get_bytes`], but attaches the given `headers` to the initial request
+    (see [`get_with_headers`]). Errors on any non-success status code.
+*/
+pub async fn get_bytes_with_headers(
+    url: impl AsRef<str>,
+    headers: &[(&str, &str)],
+) -> Result<Bytes> {
     let url = url.as_ref();
-    let (status, body) = get(url).await?;
+    let (status, body) = get_with_headers(url, headers).await?;
     if !(200..300).contains(&status) {
         bail!("request to '{url}' failed with status {status}");
     }
