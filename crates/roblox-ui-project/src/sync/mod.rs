@@ -48,7 +48,7 @@ pub struct EngineOptions {
 }
 
 impl EngineOptions {
-    fn is_ignored(&self, path: &Path) -> bool {
+    pub(crate) fn is_ignored(&self, path: &Path) -> bool {
         if path.file_name().and_then(|n| n.to_str()) == Some(".git") {
             return true;
         }

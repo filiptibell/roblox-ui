@@ -198,3 +198,73 @@ fn delete_via_command() {
         assert!(dom.get_instance(gone).is_none());
     });
 }
+
+/*
+    A change that cannot affect the project must not reconcile anything. To
+    see a full resync if one happens, each test first edits a tracked file
+    WITHOUT syncing it; a resync would pick that edit up as a delta.
+*/
+
+#[test]
+fn change_inside_git_dir_is_ignored() {
+    let fx = fixture();
+    fx.project(game_project())
+        .file("src/Tracked.luau", "return 1\n");
+    let project = fx.open();
+
+    run(async {
+        let rx = project.subscribe().await;
+
+        fx.file("src/Tracked.luau", "return 2\n");
+        fx.file(".git/lfs/tmp/352470601", "churn");
+        project.sync_path(&fx.path(".git/lfs/tmp/352470601")).await;
+
+        assert!(drain(&rx).is_empty(), "a .git change must not resync");
+    });
+}
+
+#[test]
+fn change_outside_path_roots_is_ignored() {
+    let fx = fixture();
+    fx.project(game_project())
+        .file("src/Tracked.luau", "return 1\n");
+    let project = fx.open();
+
+    run(async {
+        let rx = project.subscribe().await;
+
+        fx.file("src/Tracked.luau", "return 2\n");
+        fx.file("notes/todo.txt", "unrelated");
+        project.sync_path(&fx.path("notes/todo.txt")).await;
+
+        assert!(
+            drain(&rx).is_empty(),
+            "a change outside every $path root must not resync"
+        );
+    });
+}
+
+#[test]
+fn change_through_canonical_path_still_syncs() {
+    let fx = fixture();
+    fx.project(game_project())
+        .file("src/Tracked.luau", "return 1\n");
+    let project = fx.open();
+
+    run(async {
+        let rx = project.subscribe().await;
+
+        // The watcher can report another spelling of the same path (on macOS
+        // the temp dir is `/var/...`, and events come as `/private/var/...`).
+        fx.file("src/Tracked.luau", "return 2\n");
+        let canonical = std::fs::canonicalize(fx.path("src/Tracked.luau")).unwrap();
+        project.sync_path(&canonical).await;
+
+        assert!(
+            drain(&rx)
+                .iter()
+                .any(|d| matches!(d, Delta::PropertiesChanged { .. })),
+            "a change under a $path root syncs through any spelling of its path"
+        );
+    });
+}

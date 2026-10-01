@@ -188,6 +188,30 @@ impl Project {
 }
 
 /**
+    Canonicalize `path`, or, when it does not exist (a deleted file), its
+    nearest existing ancestor with the missing components joined back on.
+*/
+fn canonical_or_nearest(path: &Path) -> PathBuf {
+    let mut missing = Vec::new();
+    let mut current = path;
+    loop {
+        if let Ok(canonical) = std::fs::canonicalize(current) {
+            return missing
+                .iter()
+                .rev()
+                .fold(canonical, |acc: PathBuf, part| acc.join(part));
+        }
+        match (current.file_name(), current.parent()) {
+            (Some(name), Some(parent)) => {
+                missing.push(name.to_os_string());
+                current = parent;
+            }
+            _ => return path.to_path_buf(),
+        }
+    }
+}
+
+/**
     Spawn a detached background watch loop bound to `inner`. The returned `Task`
     cancels the loop when dropped (on handle drop or on a project-file swap).
 */
@@ -343,6 +367,15 @@ impl ProjectInner {
             return;
         }
 
+        // Skip changes that cannot affect the project: anything inside a `.git`
+        // directory (git and git-lfs churn temp files there constantly), ignored
+        // paths, and paths outside every `$path` root. The watcher observes the
+        // whole project file directory, so without this, each such event would
+        // fall through to a full resync below.
+        if !self.is_relevant_change(&path).await {
+            return;
+        }
+
         // Recompute the owner of the changed path. For a delete, the path itself
         // is gone, so start the ancestor search at its parent directory.
         let exists = metadata(&path).await.is_ok();
@@ -380,6 +413,34 @@ impl ProjectInner {
             // Could not recompute incrementally (e.g. a project-node owner, or a
             // recompute that returned nothing) → fall back to a full resync.
             self.resync().await;
+        }
+    }
+
+    /**
+        Whether a filesystem change at `path` can affect the project: it must not
+        be inside a `.git` directory, must not match the ignore options, and must
+        lie under one of the project's `$path` roots.
+    */
+    async fn is_relevant_change(&self, path: &Path) -> bool {
+        if path.components().any(|c| c.as_os_str() == ".git") {
+            return false;
+        }
+        if self.opts().await.is_ignored(path) {
+            return false;
+        }
+        match self.parse_project().await {
+            Some(project) => {
+                // Compare canonical paths: the watcher can report a path through
+                // another spelling of the same directory (on macOS, `/var` is
+                // `/private/var`).
+                let path = canonical_or_nearest(path);
+                project
+                    .path_roots()
+                    .iter()
+                    .any(|root| path.starts_with(canonical_or_nearest(root)))
+            }
+            // The project file does not parse right now; keep the old behavior.
+            None => true,
         }
     }
 
