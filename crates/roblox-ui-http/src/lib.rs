@@ -4,7 +4,7 @@ use anyhow::{bail, Context, Result};
 use async_net::TcpStream;
 use bytes::Bytes;
 use futures_rustls::TlsConnector;
-use http_body_util::{BodyExt, Empty};
+use http_body_util::{BodyExt, Full};
 use hyper::{header::HOST, Request};
 use rustls::{ClientConfig, RootCertStore};
 use rustls_pki_types::ServerName;
@@ -35,10 +35,26 @@ fn tls_config() -> Arc<ClientConfig> {
 }
 
 /**
-    Performs a single HTTP/HTTPS GET request, returning the
-    status code, an optional redirect location, and the body.
+    An HTTP response: the status code, its reason phrase, the
+    headers in the order the server sent them, and the body.
 */
-async fn get_once(url: &Url, headers: &[(&str, &str)]) -> Result<(u16, Option<String>, Bytes)> {
+#[derive(Debug, Clone)]
+pub struct Response {
+    pub status: u16,
+    pub reason: String,
+    pub headers: Vec<(String, String)>,
+    pub body: Bytes,
+}
+
+/**
+    Performs a single HTTP/HTTPS request, without following redirects.
+*/
+async fn request_once(
+    method: &str,
+    url: &Url,
+    headers: &[(&str, &str)],
+    body: Bytes,
+) -> Result<Response> {
     let host = url.host_str().context("missing host in url")?.to_string();
     let is_https = match url.scheme() {
         "https" => true,
@@ -57,12 +73,15 @@ async fn get_once(url: &Url, headers: &[(&str, &str)]) -> Result<(u16, Option<St
         .with_context(|| format!("failed to connect to {host}:{port}"))?;
 
     // Build the request once - same shape regardless of TLS
-    let mut builder = Request::builder().uri(&path_and_query).header(HOST, &host);
+    let mut builder = Request::builder()
+        .method(method)
+        .uri(&path_and_query)
+        .header(HOST, &host);
     for (name, value) in headers {
         builder = builder.header(*name, *value);
     }
     let request = builder
-        .body(Empty::<Bytes>::new())
+        .body(Full::new(body))
         .context("failed to build request")?;
 
     // Send the request over either a plain or TLS-wrapped connection
@@ -79,11 +98,14 @@ async fn get_once(url: &Url, headers: &[(&str, &str)]) -> Result<(u16, Option<St
     };
 
     let status = response.status();
-    let location = response
+    let headers = response
         .headers()
-        .get(hyper::header::LOCATION)
-        .and_then(|v| v.to_str().ok())
-        .map(ToString::to_string);
+        .iter()
+        .map(|(name, value)| {
+            let value = String::from_utf8_lossy(value.as_bytes()).into_owned();
+            (name.as_str().to_string(), value)
+        })
+        .collect();
 
     let body = response
         .into_body()
@@ -92,12 +114,31 @@ async fn get_once(url: &Url, headers: &[(&str, &str)]) -> Result<(u16, Option<St
         .context("failed to read response body")?
         .to_bytes();
 
-    Ok((status.as_u16(), location, body))
+    Ok(Response {
+        status: status.as_u16(),
+        reason: status.canonical_reason().unwrap_or_default().to_string(),
+        headers,
+        body,
+    })
+}
+
+/**
+    The `Location` header of a redirect response, if the status is a redirect.
+*/
+fn redirect_location(response: &Response) -> Option<&str> {
+    if !(300..400).contains(&response.status) {
+        return None;
+    }
+    response
+        .headers
+        .iter()
+        .find(|(name, _)| name.eq_ignore_ascii_case("location"))
+        .map(|(_, value)| value.as_str())
 }
 
 async fn send_request<I>(
     io: I,
-    request: Request<Empty<Bytes>>,
+    request: Request<Full<Bytes>>,
 ) -> Result<hyper::Response<hyper::body::Incoming>>
 where
     I: hyper::rt::Read + hyper::rt::Write + Send + Unpin + 'static,
@@ -138,21 +179,42 @@ pub async fn get_with_headers(
     url: impl AsRef<str>,
     headers: &[(&str, &str)],
 ) -> Result<(u16, Bytes)> {
+    let response = request("GET", url, headers, Bytes::new()).await?;
+    Ok((response.status, response.body))
+}
+
+/**
+    Performs an HTTP/HTTPS request with the given method, headers, and body.
+
+    A `GET` or `HEAD` request follows redirects. The headers are sent only on
+    the INITIAL request, not re-sent across a redirect (a redirect to a
+    different host — e.g. a signed CDN URL — must not carry auth). Any other
+    method returns a redirect response as it is.
+
+    Does not error on non-success status codes - the caller decides.
+*/
+pub async fn request(
+    method: &str,
+    url: impl AsRef<str>,
+    headers: &[(&str, &str)],
+    body: Bytes,
+) -> Result<Response> {
     let mut current = Url::parse(url.as_ref()).context("failed to parse url")?;
+    let follows = method.eq_ignore_ascii_case("GET") || method.eq_ignore_ascii_case("HEAD");
     let mut hop_headers = headers;
 
     for _ in 0..MAX_REDIRECTS {
-        let (status, location, body) = get_once(&current, hop_headers).await?;
-        if (300..400).contains(&status) {
-            if let Some(location) = location {
+        let response = request_once(method, &current, hop_headers, body.clone()).await?;
+        if follows {
+            if let Some(location) = redirect_location(&response) {
                 current = current
-                    .join(&location)
+                    .join(location)
                     .context("failed to resolve redirect location")?;
                 hop_headers = &[]; // drop auth headers when following a (possibly cross-host) redirect
                 continue;
             }
         }
-        return Ok((status, body));
+        return Ok(response);
     }
 
     bail!("too many redirects (>{MAX_REDIRECTS})")
