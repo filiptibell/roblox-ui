@@ -62,7 +62,7 @@ fn resolve_property(
     // Ambiguous form: resolve the property's declared type from reflection.
     if let Some(data_type) = find_property_type(db, class, prop_name) {
         match data_type {
-            DataType::Enum(enum_name) => return resolve_enum(db, enum_name.as_ref(), json),
+            DataType::Enum(enum_name) => return resolve_enum(db, enum_name, json),
             DataType::Value(vt) => return from_typed(db, vt, json),
             _ => {}
         }

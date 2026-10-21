@@ -153,10 +153,7 @@ fn canonical_property(db: &ReflectionDatabase, class: &str, prop: &str) -> Optio
                 });
             }
         }
-        current = descriptor
-            .superclass
-            .as_ref()
-            .and_then(|sc| db.classes.get(sc.as_ref()));
+        current = descriptor.superclass.and_then(|sc| db.classes.get(sc));
     }
     None
 }
@@ -178,9 +175,7 @@ fn variant_to_val(
         Variant::ContentId(c) => Some(Val::Str(c.as_str().to_string())),
         Variant::Content(c) => c.as_uri().map(|uri| Val::Str(uri.to_string())),
         Variant::Enum(e) => match crate::reflect::property_data_type(db, class, prop) {
-            Some(DataType::Enum(name)) => {
-                enum_item_name(db, name.as_ref(), e.to_u32()).map(Val::Str)
-            }
+            Some(DataType::Enum(name)) => enum_item_name(db, name, e.to_u32()).map(Val::Str),
             _ => Some(Val::Num(f64::from(e.to_u32()))),
         },
         Variant::Vector3(v) => match sub {

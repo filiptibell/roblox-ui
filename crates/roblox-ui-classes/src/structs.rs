@@ -22,8 +22,8 @@ impl Classes {
         let mut class_datas = BTreeMap::new();
 
         for class_name in CLASS_DATABASE.classes.keys() {
-            let class_data = ClassData::from_class_name(class_name.as_ref())?;
-            class_datas.insert(class_name.clone().into_owned(), class_data);
+            let class_data = ClassData::from_class_name(*class_name)?;
+            class_datas.insert((*class_name).to_string(), class_data);
         }
 
         Ok(Self {

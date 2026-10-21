@@ -25,10 +25,7 @@ pub fn class_is_a(db: &ReflectionDatabase<'_>, class: &str, target: &str) -> boo
         if descriptor.name.eq_ignore_ascii_case(target) {
             return true;
         }
-        current = descriptor
-            .superclass
-            .as_ref()
-            .and_then(|sc| db.classes.get(sc.as_ref()));
+        current = descriptor.superclass.and_then(|sc| db.classes.get(sc));
     }
     false
 }
@@ -57,10 +54,7 @@ pub fn property_data_type<'a>(
         if let Some(property) = descriptor.properties.get(prop) {
             return Some(property.data_type.clone());
         }
-        current = descriptor
-            .superclass
-            .as_ref()
-            .and_then(|sc| db.classes.get(sc.as_ref()));
+        current = descriptor.superclass.and_then(|sc| db.classes.get(sc));
     }
     None
 }
@@ -91,10 +85,7 @@ pub fn default_value<'a>(
         if let Some(value) = descriptor.default_properties.get(prop) {
             return Some(value);
         }
-        current = descriptor
-            .superclass
-            .as_ref()
-            .and_then(|sc| db.classes.get(sc.as_ref()));
+        current = descriptor.superclass.and_then(|sc| db.classes.get(sc));
     }
     None
 }

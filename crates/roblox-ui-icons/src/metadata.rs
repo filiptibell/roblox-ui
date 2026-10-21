@@ -1,4 +1,3 @@
-use std::borrow::Borrow;
 use std::cmp::Reverse;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -39,8 +38,8 @@ fn class_is_a(instance_class: impl AsRef<str>, class_name: impl AsRef<str>) -> O
 
         while instance_class != class_name {
             let class_descriptor = db.classes.get(instance_class)?;
-            if let Some(sup) = &class_descriptor.superclass {
-                instance_class = sup.borrow();
+            if let Some(sup) = class_descriptor.superclass {
+                instance_class = sup;
             } else {
                 return Some(false);
             }
@@ -60,9 +59,9 @@ fn class_depth(class_name: &str) -> usize {
     let mut depth = 0;
     let mut current = class_name;
     while let Some(descriptor) = db.classes.get(current) {
-        match descriptor.superclass.as_ref() {
+        match descriptor.superclass {
             Some(superclass) => {
-                current = superclass.borrow();
+                current = superclass;
                 depth += 1;
             }
             None => break,
@@ -97,7 +96,7 @@ impl IconPackMetadata {
             .classes
             .values()
             .filter_map(|descriptor| {
-                let subclass = descriptor.name.as_ref();
+                let subclass = descriptor.name;
                 if subclass != class_name && class_is_a(subclass, class_name).unwrap_or_default() {
                     Some(subclass)
                 } else {
